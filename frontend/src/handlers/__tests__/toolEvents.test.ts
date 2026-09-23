@@ -115,6 +115,35 @@ describe('Tool Events', () => {
       durationMs: 2210,
       success: true
     })
+    // 终态明细入 toolHistory（完成后保留的执行记录）
+    expect(steps[0].toolHistory).toEqual([
+      { tool: 'asearch_web', source: 'builtin', durationMs: 2210, success: true }
+    ])
+  })
+
+  it('多次调用累计到 toolHistory（汇总行的数据源）', () => {
+    const ctx = makeContextWithSteps(baseSteps)
+    for (const [tool, ms] of [['asearch_web', 1000], ['read_webpage', 2500]] as const) {
+      handleToolCalling(
+        {
+          id: 'e', type: 'tool.calling' as const, timestamp: '',
+          data: { task_id: 'task-1', expert_type: 'search', tool, source: 'builtin' as const, args_summary: '', attempt: 1 }
+        } as any,
+        ctx
+      )
+      handleToolResult(
+        {
+          id: 'e', type: 'tool.result' as const, timestamp: '',
+          data: { task_id: 'task-1', expert_type: 'search', tool, source: 'builtin' as const, success: true, duration_ms: ms }
+        } as any,
+        ctx
+      )
+    }
+    const steps = readSteps(ctx)
+    expect(steps[0].toolHistory).toHaveLength(2)
+    expect(steps[0].toolHistory?.[1]).toEqual({
+      tool: 'read_webpage', source: 'builtin', durationMs: 2500, success: true
+    })
   })
 
   it('迟到的不相关工具 result 不覆盖当前 calling（乱序防护）', () => {

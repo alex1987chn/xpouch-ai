@@ -185,9 +185,22 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
       ? `${description.slice(0, 30)}…`
       : description
     : typeLabels[step.type || 'default']
-  const hasDetail = !!step.content || !!step.url
+  const hasDetail =
+    !!step.content || !!step.url || (step.toolHistory?.length ?? 0) > 0
   // 组内少了专家色点（8px + 12px 间距），详情/产物块的缩进随之左移
   const indent = inExpertGroup ? 'pl-[46px]' : 'pl-[66px]'
+
+  // 工具可见性：calling 中显示实时活动行；否则显示终态汇总行（完成后保留——
+  // 工具痕迹是结果可信度的证据，对齐主流 agent 产品的活动日志）
+  const callingActivity =
+    step.status === 'running' && step.toolActivity?.state === 'calling' ? step.toolActivity : null
+  const toolStats = step.toolHistory?.length
+    ? {
+        count: step.toolHistory.length,
+        totalMs: step.toolHistory.reduce((sum, h) => sum + (h.durationMs || 0), 0),
+        failed: step.toolHistory.filter(h => !h.success).length,
+      }
+    : null
 
   // 格式化耗时
   const formatDuration = (ms?: number) => {
@@ -264,10 +277,9 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
         </button>
       )}
 
-      {/* 工具活动行：任务执行期间的「正在调什么工具」。仅 running 态渲染——
-          终态信息（耗时/成败汇总）由运行时间线承载，这里只做执行中的实时感知。
-          calling 态微转圈区分「模型在想」与「在等工具」。 */}
-      {step.toolActivity && step.status === 'running' && (
+      {/* 工具行（calling 中）：实时「正在调什么工具」——微转圈区分
+          「模型在想」与「在等工具」。 */}
+      {callingActivity && (
         <div
           className={cn(
             'flex items-center gap-1.5 pb-1.5 pt-0.5 text-caption text-content-muted',
@@ -275,37 +287,60 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
           )}
         >
           <Wrench className="h-3 w-3 shrink-0" />
-          <span className="truncate font-mono">{step.toolActivity.tool}</span>
-          {step.toolActivity.source === 'mcp' && (
+          <span className="truncate font-mono">{callingActivity.tool}</span>
+          {callingActivity.source === 'mcp' && (
             <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
           )}
-          {step.toolActivity.state === 'calling' ? (
-            <>
-              <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-              <span>
-                {(step.toolActivity.attempt ?? 1) > 1
-                  ? t('thinkingToolRetrying')
-                  : t('thinkingToolCalling')}
-              </span>
-            </>
-          ) : (
-            <span
-              className={cn(
-                'shrink-0',
-                step.toolActivity.success ? 'text-status-online' : 'text-status-offline'
-              )}
-            >
-              {step.toolActivity.success ? '✓' : '✗'}
-              {step.toolActivity.durationMs != null &&
-                ` ${(step.toolActivity.durationMs / 1000).toFixed(1)}s`}
-            </span>
-          )}
+          <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+          <span>
+            {(callingActivity.attempt ?? 1) > 1
+              ? t('thinkingToolRetrying')
+              : t('thinkingToolCalling')}
+          </span>
         </div>
       )}
 
-      {/* 展开详情：过程文本 / 链接 */}
+      {/* 工具行（终态汇总）：任务执行期间/完成后保留「共调了几次工具、花了多久」。
+          有失败时标红计数；逐次明细在展开区。 */}
+      {!callingActivity && toolStats && (
+        <div
+          className={cn(
+            'flex items-center gap-1.5 pb-1.5 pt-0.5 text-caption text-content-muted',
+            indent
+          )}
+        >
+          <Wrench className="h-3 w-3 shrink-0" />
+          <span>
+            {toolStats.count} {t('thinkingToolCalls')}
+            {toolStats.failed > 0 && (
+              <span className="text-status-offline">（{toolStats.failed} ✗）</span>
+            )}
+          </span>
+          <span>· {formatDuration(toolStats.totalMs)}</span>
+        </div>
+      )}
+
+      {/* 展开详情：工具调用明细 / 过程文本 / 链接 */}
       {open && (
         <div className={cn('pb-3 pr-4 pt-1', indent)}>
+          {step.toolHistory && step.toolHistory.length > 0 && (
+            <div className="mb-2 space-y-1 border-l border-border-divider pl-3">
+              {step.toolHistory.map((call, i) => (
+                <div key={i} className="flex items-center gap-1.5 text-tiny text-content-muted">
+                  <span
+                    className={call.success ? 'text-status-online' : 'text-status-offline'}
+                  >
+                    {call.success ? '✓' : '✗'}
+                  </span>
+                  <span className="truncate font-mono">{call.tool}</span>
+                  {call.source === 'mcp' && (
+                    <span className="shrink-0 rounded-sm border border-border-divider px-1">MCP</span>
+                  )}
+                  <span>{formatDuration(call.durationMs)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {step.content && (
             <p className="whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
               {step.content}

@@ -44,6 +44,7 @@ const STEP_EVENTS = new Set([
   'task_started',
   'task_completed',
   'task_failed',
+  'tool_result',
 ])
 
 /** 与 systemEvents 的实时文案共用同一个 i18n 词条（由调用方注入，见 ThinkingStepLabels） */
@@ -149,6 +150,25 @@ export function buildThinkingStepsFromTimeline(
           type: 'execution',
           duration,
         })
+        break
+      }
+
+      case 'tool_result': {
+        // 工具终态归并进对应任务的 toolHistory（实时面板由 handlers/toolEvents
+        // 维护同款数据；这里覆盖恢复路径——两边渲染同一汇总行/明细）
+        const id = event.task_id ?? ''
+        const existing = taskStepIndex.get(id)
+        if (existing === undefined) break
+        const call = {
+          tool: asText(data.tool) || 'unknown',
+          source: asText(data.source) === 'mcp' ? ('mcp' as const) : ('builtin' as const),
+          durationMs: asNumber(data.duration_ms) ?? 0,
+          success: data.success === true,
+        }
+        steps[existing] = {
+          ...steps[existing],
+          toolHistory: [...(steps[existing].toolHistory ?? []), call],
+        }
         break
       }
 

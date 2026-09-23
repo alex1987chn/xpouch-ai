@@ -6,8 +6,9 @@
  * - tool.result: 单个 tool_call 结束（耗时/成败）
  *
  * 数据落点：最后一条 AI 消息的 thinking 数组里对应 task_id 的步骤——
- * 更新其 toolActivity（只保留最新一次）。任务终态后 UI 不再渲染该字段，
- * 历史序列由运行时间线（runevent 账本）承载，两处分工不重复。
+ * toolActivity 记「当前活动」（调用中/刚完成，仅执行期间渲染），
+ * toolHistory 记终态明细（append-only，任务完成后保留为汇总行与展开明细，
+ * 对齐主流 agent 产品的做法：工具痕迹是结果可信度的证据）。
  */
 
 import type { ToolCallingEvent, ToolResultEvent } from './types'
@@ -60,6 +61,17 @@ export function handleToolResult(event: ToolResultEvent, context: HandlerContext
   const current = thinking[idx].toolActivity
   if (current && current.tool !== event.data.tool) return
 
+  // 终态明细 append 到 toolHistory（重试只记最终一次，与账本口径一致）
+  const toolHistory = [
+    ...(thinking[idx].toolHistory ?? []),
+    {
+      tool: event.data.tool,
+      source: event.data.source,
+      durationMs: event.data.duration_ms,
+      success: event.data.success,
+    },
+  ]
+
   thinking[idx] = {
     ...thinking[idx],
     toolActivity: {
@@ -69,6 +81,7 @@ export function handleToolResult(event: ToolResultEvent, context: HandlerContext
       durationMs: event.data.duration_ms,
       success: event.data.success,
     },
+    toolHistory,
   }
   updateMessageMetadata(lastAi.id, { thinking })
 

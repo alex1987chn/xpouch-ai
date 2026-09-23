@@ -60,8 +60,7 @@ export interface ThinkingStep {
   status: 'pending' | 'running' | 'completed' | 'failed'
   /**
    * 任务步骤（type='execution'）执行期间的**当前工具活动**——实时可见
-   * 「正在调什么工具」。只保留最新一次（历史去运行时间线看）；任务进入
-   * 终态后 UI 不再渲染本字段。
+   * 「正在调什么工具」。只保留最新一次调用中/刚完成的状态。
    */
   toolActivity?: {
     tool: string
@@ -71,6 +70,17 @@ export interface ThinkingStep {
     durationMs?: number
     success?: boolean
   }
+  /**
+   * 该步骤的**工具调用终态记录**（append-only，任务完成后仍保留——对齐
+   * 主流 agent 产品：工具痕迹是结果可信度的证据，执行完恰是最该回看的
+   * 时候）。汇总行（N 次 · 总耗时）与展开明细都从它渲染。
+   */
+  toolHistory?: Array<{
+    tool: string
+    source: 'builtin' | 'mcp'
+    durationMs: number
+    success: boolean
+  }>
   /**
    * 步骤类型，用于 UI 区分显示图标
    * - search: 联网搜索

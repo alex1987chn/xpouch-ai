@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 变更
 
-- **工具调用全程可见（tool.calling / tool.result 事件协议）**：专家执行期间调了什么工具、多久、成败，此前只进后端日志——SSE 实时流、断线重放、时间线回看三个消费面全黑（LangGraph 官方 astream_events 本就发射 on_tool_start/on_tool_end，被转换层丢弃）。发射点在工具调用包装器（按单个 tool_call 粒度）：每次尝试发 tool.calling（含参数摘要与 attempt 轮次，重试可见），终态发 tool.result（耗时/成败/友好错误）；tool.result 另入 runevent 账本（迁移 20260923_000300 扩枚举），时间线页新增工具行（专家归属 + 工具名 + MCP 标记 + 耗时 + 成败色）。聊天页任务卡同步新增实时工具活动行（🔧 工具名 + 调用中/重试中转圈 → ✓ 耗时/✗，任务终态后隐去——历史归时间线）。四通道一致（实时 SSE / 持久帧 / 账本 / 时间线 API）经真实 LLM E2E 与浏览器实测验证
+- **工具调用全程可见（tool.calling / tool.result 事件协议）**：专家执行期间调了什么工具、多久、成败，此前只进后端日志——SSE 实时流、断线重放、时间线回看三个消费面全黑（LangGraph 官方 astream_events 本就发射 on_tool_start/on_tool_end，被转换层丢弃）。发射点在工具调用包装器（按单个 tool_call 粒度）：每次尝试发 tool.calling（含参数摘要与 attempt 轮次，重试可见），终态发 tool.result（耗时/成败/友好错误）；tool.result 另入 runevent 账本（迁移 20260923_000300 扩枚举），时间线页新增工具行（专家归属 + 工具名 + MCP 标记 + 耗时 + 成败色）。聊天页任务卡同步新增工具活动行：执行中显示实时调用（🔧 工具名 + 调用中/重试中转圈），**任务完成后保留汇总行**（N 次工具调用 · 总耗时，展开可见逐次明细）——工具痕迹是结果可信度的证据，对齐主流 agent 产品的活动日志做法；会话恢复路径（账本重建思考步骤）同步归并 tool_result，与实时面板同一份数据。四通道一致（实时 SSE / 持久帧 / 账本 / 时间线 API）经真实 LLM E2E 与浏览器实测验证
 - **MCP 服务器可编辑（协议迁移在后端原本走不通）**：PATCH 端点收了 `transport` 字段却不应用，改 URL 时的通电测试还沿用旧协议——SSE → Streamable HTTP 这类端点迁移只能直改库绕过。现在 URL/协议任一变化都按「最终 URL + 最终协议」组合重新通电测试（失败 400 拒绝且不落库）；CREATE/PATCH/DELETE 落库后立即失效工具缓存（此前 5 分钟 TTL 窗口内专家仍按旧清单发现/调用工具——新加的服务器要等过期才可见，删掉的还残留）。管理台 MCP 卡片新增编辑入口（铅笔），表单与添加共用 `MCPFormDialog`
 - **提示词时间注入统一用户墙钟（新增 `DISPLAY_TIMEZONE` 配置）**：四处注入（direct_reply 头部/执行框架头部/router 占位符/`get_current_time` 工具）此前混用 `datetime.now()`（服务器墙钟——生产容器 UTC 下给模型的时间差 8 小时）与 `utc_now()` 直格式化（同样输出 UTC 时刻）。新增 `utils.time.display_now`/`format_display_datetime` 单一真相源，展示时区可配（默认 Asia/Shanghai），存储与 API 时间不受影响（全链路 aware UTC）
 

@@ -122,6 +122,32 @@ describe('buildThinkingStepsFromTimeline', () => {
     expect(steps[0]).toMatchObject({ status: 'failed', content: '任务执行失败', expertName: 'coder' })
   })
 
+  it('tool_result 归并进对应任务的 toolHistory（恢复路径与实时面板同款数据）', () => {
+    const steps = buildThinkingStepsFromTimeline(
+      [
+        ev({ id: 1, event_type: 'task_started', task_id: 't1', event_data: { expert_type: 'search', description: '调研' } }),
+        ev({ id: 2, event_type: 'tool_result', task_id: 't1', event_data: { tool: 'asearch_web', source: 'builtin', success: true, duration_ms: 2100 } }),
+        ev({ id: 3, event_type: 'tool_result', task_id: 't1', event_data: { tool: 'maps_geo', source: 'mcp', success: false, duration_ms: 300 } }),
+        ev({ id: 4, event_type: 'task_completed', task_id: 't1', event_data: { duration_ms: 5000 } }),
+      ],
+      LABELS,
+    )
+
+    expect(steps).toHaveLength(1)
+    expect(steps[0].toolHistory).toEqual([
+      { tool: 'asearch_web', source: 'builtin', durationMs: 2100, success: true },
+      { tool: 'maps_geo', source: 'mcp', durationMs: 300, success: false },
+    ])
+  })
+
+  it('孤儿 tool_result（任务步骤不存在）不产生步骤也不抛错', () => {
+    const steps = buildThinkingStepsFromTimeline(
+      [ev({ id: 1, event_type: 'tool_result', task_id: 'ghost', event_data: { tool: 'x', success: true, duration_ms: 1 } })],
+      LABELS,
+    )
+    expect(steps).toHaveLength(0)
+  })
+
   it('生命周期 / HITL / 产物事件不产生步骤', () => {
     const steps = buildThinkingStepsFromTimeline(
       [
