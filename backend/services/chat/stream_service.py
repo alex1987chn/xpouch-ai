@@ -999,10 +999,17 @@ class StreamService(EventBuildersMixin):
         #
         # ⚠️ 依赖集合必须用 **commander 语义 id（`task_id`）**，不能用 db id：
         # `depends_on` 里存的是 "task_1" 这类 commander id，而 `id` 是数据库主键。
-        # 二者不同源（「双身份」），此前用 `task.get("id")` 建集合导致交集恒为空
-        # —— 用户一旦编辑计划，**所有依赖都会被清空**，下游任务随即失去上游产出
-        # 的上下文注入（generic 读取 depends_on 拼接上下文）。
-        kept_task_ids = {str(task.get("task_id") or task.get("id")) for task in updated_plan}
+        # 二者不同源（「双身份」）。且前端回传的 updated_plan（TaskInfo 形态）
+        # **没有 task_id 字段**——直接 `task.get("task_id") or task.get("id")` 会
+        # 全部落回 db uuid，语义依赖 ∩ uuid 集合恒为空 → 依赖被清空 → 下游任务
+        # 失去上游产出注入（实测 writer 报「task_1 检索报告缺失」）。所以必须先
+        # 经 current_task_map 把 uuid 映射回语义 id，映射不到（用户新增的任务）
+        # 才用其自身 id。
+        def _semantic_key(task: dict) -> str:
+            existing = current_task_map.get(task.get("id"))
+            return str((existing or {}).get("task_id") or task.get("task_id") or task.get("id"))
+
+        kept_task_ids = {_semantic_key(task) for task in updated_plan}
         merged_plan = []
 
         for task in updated_plan:

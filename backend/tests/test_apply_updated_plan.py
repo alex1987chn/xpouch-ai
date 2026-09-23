@@ -61,6 +61,40 @@ def _by_key(task_list: list[dict]) -> dict[str, dict]:
 class TestDependencyPreserved:
     """核心回归：编辑计划后依赖不得被清空。"""
 
+    def test_kept_dependency_survives_frontend_taskinfo_shape(self):
+        """真实前端回传是 TaskInfo 形态：id=db uuid、**没有 task_id 字段**、
+        depends_on=语义 id。此前 kept_task_ids 对这种形态全落回 uuid，
+        语义依赖 ∩ uuid 集合恒空 → 依赖被清空 → 下游失去上游注入
+        （实测 writer 报「task_1 检索报告缺失」）。"""
+        current = [
+            _task("task_1", db_id="uuid-1", status="completed"),
+            _task("task_2", db_id="uuid-2", deps=["task_1"]),
+        ]
+        updated = [
+            {
+                "id": "uuid-1",
+                "expert_type": "search",
+                "description": "d1",
+                "sort_order": 0,
+                "status": "completed",
+                "depends_on": [],
+            },
+            {
+                "id": "uuid-2",
+                "expert_type": "writer",
+                "description": "d2",
+                "sort_order": 1,
+                "status": "pending",
+                "depends_on": ["task_1"],
+            },
+        ]
+
+        merged = _by_key(_apply(current, updated)["task_list"])
+
+        assert merged["task_2"]["depends_on"] == ["task_1"], (
+            "前端 TaskInfo 形态（无 task_id 字段）的语义依赖必须经 uuid→语义映射后保留"
+        )
+
     def test_kept_dependency_survives(self):
         current = [_task("task_1", status="completed"), _task("task_2", deps=["task_1"])]
         updated = [_task("task_1", status="completed"), _task("task_2", deps=["task_1"])]
