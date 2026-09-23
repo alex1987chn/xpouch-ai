@@ -14,6 +14,8 @@
 - **同层并发上限默认 1（串行）**；将来做管理页面可配置项（system_setting 模式）。
 - **对话列 760px 不动**；中文字体轮（Noto Sans SC）已否决，未来要上=全部自托管。
 - **品牌**：唯一品牌图形=卡片进口袋（黄卡+蓝袋，The4DPocketLogo）；字标 [XPOUCH]；slogan "initial minds, one pouch" 只落品牌触点（登录/分享/首跑空态/关于），不进工作台。禁止自创几何块当品牌标记。
+- **题材型专家不内置（2026-09-23）**：内置=系统能力型专家（search/coder/researcher/analyzer/writer/planner/commander/router/aggregator/memorize_expert，共 11）；story_writer（小说家）已移出种子——需要者经管理台自建。判据：内置清单里的每个专家都必须有消费链路承接。
+- **image_analyzer 暂缓（2026-09-23 审计）**：图片只附在初始消息（router 可见），专家执行无图片传递管道——教材虽好但收不到图。管道做之前该专家保持现状（未移出内置、不投入），见 BACKLOG。
 
 ## 工程
 
@@ -30,6 +32,8 @@
 - **依赖 patch 批（2026-09-22）**：后端点名升级 sqlalchemy 2.0.54 / psycopg 三件 3.3.6 / uvicorn 0.53 / watchfiles 1.3 / sse-starlette 3.4.11 / tavily 0.8.4 / tencentcloud 179 / pypdf 6.19 / langgraph-sdk 0.4.5 / langsmith 0.14 / ruff 0.16.8；前端 react-router-dom 7.18.4 / typescript-eslint 8.70.1 / prettier 3.9.8 / @vitest-coverage 5.0.1。**sqlmodel 已解钉至 0.0.45（2026-09-22 随时区 aware 化专项）**：其 naive 强校验正是该专项的触发信号；普通 `datetime` 注解默认映射 UTCDateTime（= timestamptz）。websockets 留 16（langsmith 0.14 已放宽上界，但我们无活的 WS 代码路径，零收益不点名）；mcp 1.29 / uuid-utils 0.17 仍被上游区间锁死（langchain-mcp-adapters 0.3.2 锁 mcp<2——2026-09-22 复核 PyPI 最新仍 0.3.2；langchain-core 锁 uuid-utils<1.0）。
 - **pnpm 已升 12.5.1（2026-09-22，Rust 重写版）**：官方口径命令/flag/设置/lockfile 格式沿用 11，实测零迁移成本；锚点三处=根 `package.json` 的 `packageManager`+`engines`、`frontend/Dockerfile` 的 `pnpm@12`（CI 的 action-setup 自动读 packageManager）；lockfile 自记 pnpm 版本与平台二进制（`@pnpm/exe.*`，约 160 行自引用元数据，属预期非漂移）；`pnpm-workspace.yaml` 的 allowBuilds/minimumReleaseAge 继续有效。
 - **API 建模约定**：恒序列化、值可空的字段**不写默认值**（默认值会被 OpenAPI 降级 optional，与运行时恒有键矛盾）。改协议/路由后的常规动作：`just gen-enums` / `just gen-event-types` / `just gen-openapi-types`。
+- **专家教材单一真相源 = `expert_config.EXPERT_DEFAULTS`（2026-09-23）**：代码种子即教材，已部署库的教材修复走迁移下发（只覆盖 is_dynamic=false 的内置行，用户自建专家不碰）；constants.py 的 router/aggregator 静态兜底直接引用种子（不维护第二份字符串）。**迁移即种子**：需要补种内置专家的迁移必须对全部内置做 INSERT IF NOT EXISTS——只补一两个会让表非空、main.py 的空表自举跳过、其余专家永远缺失。改教材的连带清单：EXPERT_DEFAULTS + 迁移下发 + 存量库同步。
+- **run.mode 可空（2026-09-23）**：占位值 `"router"` 废弃——路由决策前终止的 run 如实存 NULL（迁移 20260923_000100 清洗存量）；接口契约放宽为可空 str 并对未迁移库存量值宽容。教训：不用假数据填还没发生的事实。
 - **evals/ 不进镜像**=有意（仅测试引用）。
 - **许可：标准 Apache-2.0**（2026-09-15，4fb7377）：LICENSE 与官方逐字一致 + NOTICE（§4d），SPDX 三处；用户明确放弃 SaaS 限制与品牌保护（执行前二次确认过）。后果：他人可自由 SaaS 转售/改名；**再收紧需征得贡献者同意（无 CLA），收外部 PR 前应先考虑加 CLA/DCO**。
 - **部署语义**：镜像内（代码/providers.yaml=必须发版）vs 宿主机（backend/.env=可热改，`docker compose up -d` 生效，restart 不重读 env）。

@@ -131,7 +131,7 @@ The current stable baseline includes:
 ### User management & audit log (admin)
 
 - **User management**: instance-wide user list (masked phone with on-demand reveal, UUID, registered/last-login time, role), plus create user, edit profile & role, reset password (custom or system-random — random shown only once), and delete user with cascading cleanup
-- **Audit log**: admin-side mutations (users / experts / quota / concurrency) and plan decisions (approve / revise / terminate) are recorded with actor, action, target, and detail; searchable. **Structural facts only — never conversation or plan contents** (a governance trail, not a content copy)
+- **Audit log**: admin-side mutations (users / experts / quota / concurrency) and plan decisions (approve / revise / terminate) are recorded with actor, action, target, and detail; searchable and paginated (20 per page). **Structural facts only — never conversation or plan contents** (a governance trail, not a content copy)
 
 ### Document attachments (multimodal context)
 
