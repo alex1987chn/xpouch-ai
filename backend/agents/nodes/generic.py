@@ -727,9 +727,10 @@ async def expert_worker_node(
         artifact_type = _detect_artifact_type(response.content, expert_type)
 
         # ✅ 构建 artifact 对象（符合 ArtifactCreate 模型）
+        artifact_title = _artifact_title_from_output(response.content, f"{expert_name}结果")
         artifact = {
             "type": artifact_type,
-            "title": f"{expert_name}结果",
+            "title": artifact_title,
             # 模型常用 ```html:index.html 的围栏给产物命名——原样入库会把围栏
             # 头尾渲染进 HTML 预览（页面顶部出现文件名、底部多一行 ```）。
             # 剥掉「包裹整体的围栏」，正文内部的代码块不动。
@@ -772,7 +773,7 @@ async def expert_worker_node(
                     artifact_id=artifact_id,
                     artifact_type=artifact_type,
                     content=response.content,
-                    title=f"{expert_name}结果",
+                    title=artifact_title,
                 )
                 # task.completed 事件同样交给保存协程：先更新专家消息（产物引用/
                 # 工具统计）再发射——事件载荷即消息终态，前端「收到即可查」，
@@ -905,6 +906,38 @@ def _format_input_data(data: dict) -> str:
         return "（无额外参数）"
 
     return "\n".join(f"- {key}: {value}" for key, value in data.items())
+
+
+def _artifact_title_from_output(content: str, fallback: str, max_len: int = 80) -> str:
+    """产物标题的提取规则（title 单一真相源在落库处，画廊/产物卡/预览/
+    下载文件名全部从这里读，不在展示层重复推导）：
+
+    1. 优先第一个 markdown 标题行（`#`/`##`…）——报告的正式标题；
+    2. 无标题行时，首非空行**仅当短（≤40 字符）且不含句读**才采用
+       （形如短语/文件名）；模型过渡句（"I have sufficient information.
+       Let me compile…"）特征就是完整长句，必须兜底；
+    3. 兜底「{专家}结果」。
+    """
+    first_line = ""
+    for line in (content or "").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            cleaned = stripped.lstrip("#").strip()
+            if cleaned:
+                return cleaned[:max_len]
+        if not first_line:
+            first_line = stripped
+    if first_line:
+        candidate = first_line.strip("*").strip()
+        if (
+            candidate
+            and len(candidate) <= 40
+            and not any(ch in candidate for ch in "。．.！!？?；;，,")
+        ):
+            return candidate[:max_len]
+    return fallback
 
 
 def _detect_artifact_type(content: str, expert_type: str) -> str:

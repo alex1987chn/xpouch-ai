@@ -20,6 +20,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from agents.nodes import generic as gan  # noqa: E402
 from agents.nodes.generic import GenericWorkerError, expert_worker_node  # noqa: E402
 
 
@@ -452,3 +453,32 @@ async def test_config_load_failure_yields_failed_outcome():
     assert outcome["status"] == "failed"
     assert "Failed to load expert config" in outcome["error"]
     assert outcome["task_key"] == "task_1"
+
+
+class TestArtifactTitleExtraction:
+    """产物标题提取规则（title 单一真相源在落库处，画廊/预览/下载名都读它）。
+
+    规则：优先第一个 markdown 标题行；无标题时首行仅当短（≤40）且无句读
+    才采用——模型过渡句（完整长句）必须兜底，否则画廊里会出现
+    "I have sufficient information…" 这类废标题（E2E 实抓）。
+    """
+
+    def test_prefers_first_markdown_heading(self):
+        title = gan._artifact_title_from_output(
+            "过渡句……\n\n# Tauri 2 插件生态调研总结\n\n正文", "搜索专家结果"
+        )
+        assert title == "Tauri 2 插件生态调研总结"
+
+    def test_transitional_first_line_without_heading_falls_back(self):
+        title = gan._artifact_title_from_output(
+            "I have sufficient information. Let me compile the report.\n\n正文无标题",
+            "搜索专家结果",
+        )
+        assert title == "搜索专家结果"
+
+    def test_short_punct_free_first_line_is_used(self):
+        title = gan._artifact_title_from_output("**部署手册**\n正文", "写作专家结果")
+        assert title == "部署手册"
+
+    def test_empty_output_falls_back(self):
+        assert gan._artifact_title_from_output("\n  \n", "写作专家结果") == "写作专家结果"
