@@ -114,7 +114,9 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
 
    {/* 内容 */}
    <div className="min-w-0 flex-1">
-    <div className="flex items-center gap-2">
+    {/* min-h-8 与图标等高：单行文字在盒内居中，与图标同一条中线（图标 32px，
+        文字行本身只有 20px，顶对齐会显得文字浮在图标上方） */}
+    <div className="flex min-h-8 items-center gap-2">
      {/* 专家归属：识别色点 + 名称（寻路语义） */}
      {expertType && (
       <span className="flex items-center gap-1.5 text-xs" style={{ color: expertColor(expertType) }}>
@@ -220,7 +222,10 @@ function PlanCard({ threadId }: { threadId: string }) {
         className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
         style={{ backgroundColor: expertColor(task.expert_type) }}
        />
-       <span className="text-content-primary">{task.description}</span>
+       {/* 长描述单行截断（概览定位，全文悬停可读） */}
+       <span className="min-w-0 flex-1 truncate text-content-primary" title={task.description}>
+        {task.description}
+       </span>
       </span>
       {task.status && (
        <span className="ml-3 text-xs text-content-muted">
