@@ -16,6 +16,8 @@ export type EventType =
   | 'task.progress'
   | 'task.completed'
   | 'task.failed'
+  | 'tool.calling'
+  | 'tool.result'
   | 'artifact.generated'
   | 'message.delta'
   | 'message.thinking'
@@ -85,6 +87,25 @@ export interface TaskFailedData {
   description: string
   error: string
   failed_at: string
+}
+
+export interface ToolCallingData {
+  task_id: string
+  expert_type: string
+  tool: string
+  source: 'builtin' | 'mcp'
+  args_summary: string
+  attempt: number
+}
+
+export interface ToolResultData {
+  task_id: string
+  expert_type: string
+  tool: string
+  source: 'builtin' | 'mcp'
+  success: boolean
+  duration_ms: number
+  error?: string | null
 }
 
 export interface ArtifactInfo {
@@ -166,6 +187,8 @@ export interface EventPayloadMap {
   'task.progress': TaskProgressData,
   'task.completed': TaskCompletedData,
   'task.failed': TaskFailedData,
+  'tool.calling': ToolCallingData,
+  'tool.result': ToolResultData,
   'artifact.generated': ArtifactGeneratedData,
   'message.delta': MessageDeltaData,
   'message.thinking': MessageThinkingData,

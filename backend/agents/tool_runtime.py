@@ -12,7 +12,7 @@
 """
 
 import asyncio
-import logging
+import time
 from typing import Any
 
 import httpx
@@ -23,12 +23,14 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt.tool_node import ToolCallRequest
 
+from agents.event_stream import emit_event
 from agents.state import AgentState
 from agents.tool_policy import build_tool_policy_message, evaluate_tool_policy, get_tool_name
+from event_types.events import ToolResultData
 from services.tool_policy_service import tool_policy_service
 from tools import ASYNC_TOOLS as BASE_TOOLS
-
-logger = logging.getLogger(__name__)
+from utils.event_generator import event_tool_calling, event_tool_result
+from utils.logger import logger
 
 # ============================================================================
 # 超时配置
@@ -127,13 +129,32 @@ def is_retryable_error(err: Exception) -> bool:
     return isinstance(err, httpx.ConnectError | httpx.ConnectTimeout | httpx.TimeoutException)
 
 
-def build_tool_call_wrapper(builtin_tool_names: set[str]):
-    """构造 `awrap_tool_call` 包装器：按单个 tool_call 施加超时、重试与错误降级。
+def build_tool_call_wrapper(
+    builtin_tool_names: set[str],
+    *,
+    config: RunnableConfig | None = None,
+    task_id: str | None = None,
+    expert_type: str | None = None,
+    run_id: str | None = None,
+    thread_id: str | None = None,
+    execution_plan_id: str | None = None,
+):
+    """构造 `awrap_tool_call` 包装器：按单个 tool_call 施加超时、重试、错误降级，
+    并发射工具可见性事件（tool.calling / tool.result）。
 
     - 超时值按该工具是内置还是 MCP 选取（不再被同批的 MCP 工具拖宽）
     - 只有可重试错误才退避重试，且只重跑失败的那一个调用
     - 重试耗尽后**在本包装器内**构造错误 ToolMessage——id/name 取自
       `request.tool_call`（精确值，不存在旧实现 "unknown" 兜底那种无效 id）
+
+    事件通道分工（与 task.started 同构）：
+    - tool.calling / tool.result 经 emit_event 走实时 SSE + 持久帧（断线重放）；
+      重试的每次尝试都发 calling（attempt 标注轮次），result 只在终态发一次
+    - tool.result 另写 runevent 账本（时间线页按账本回看，每工具一行汇总）；
+      calling 不进账本——回看不需要"开始"行，避免行数翻倍
+
+    task_id 为空（单元测试直调等无任务上下文）时不发射、不写账本；
+    emit_event 在无图执行上下文时自身也是 no-op（见 event_stream）。
 
     为什么错误消息不交给 `handle_tool_errors`（重要）：该回调在 `execute` **内部**
     就执行，异常在那一步已被转成消息返回，本包装器根本看不到异常，
@@ -144,21 +165,71 @@ def build_tool_call_wrapper(builtin_tool_names: set[str]):
     形参名用 handler 而非协议文档里的 execute：位置传入，改名不影响协议。
     """
 
+    def _ledger(result_data: ToolResultData) -> None:
+        """tool.result 落账本（后台线程，失败只告警不影响流）。"""
+        if not (run_id and thread_id):
+            return
+        try:
+            from utils.async_task_queue import async_append_run_event, spawn_background
+
+            spawn_background(
+                async_append_run_event(
+                    run_id=run_id,
+                    event_type="tool_result",
+                    thread_id=thread_id,
+                    execution_plan_id=execution_plan_id,
+                    task_id=task_id,
+                    event_data=result_data.model_dump(),
+                ),
+                label=f"run_event:tool_result:{result_data.tool}",
+            )
+        except (RuntimeError, ValueError) as event_err:
+            logger.warning("[ToolNode] ⚠️ tool_result 账本写入提交失败: %s", event_err)
+
     async def _wrapper(request: ToolCallRequest, handler):
         call = request.tool_call or {}
         tool_name = call.get("name") or "unknown"
         call_id = call.get("id") or "unknown"
         timeout_seconds = BASE_TOOL_TIMEOUT if tool_name in builtin_tool_names else MCP_TOOL_TIMEOUT
+        source = "builtin" if tool_name in builtin_tool_names else "mcp"
+        args_summary = str(call.get("args", {}))[:200]
 
         for attempt in range(1, MAX_ATTEMPTS + 1):
+            if task_id:
+                await emit_event(
+                    event_tool_calling(
+                        task_id=task_id,
+                        expert_type=expert_type or "unknown",
+                        tool=tool_name,
+                        source=source,
+                        args_summary=args_summary,
+                        attempt=attempt,
+                    ),
+                    config=config,
+                )
+            started = time.perf_counter()
+
             try:
                 async with asyncio.timeout(timeout_seconds):
                     result = await handler(request)
+                duration_ms = int((time.perf_counter() - started) * 1000)
                 logger.info("[ToolNode] ✅ 工具 %s 调用成功", tool_name)
+                if task_id:
+                    result_data = ToolResultData(
+                        task_id=task_id,
+                        expert_type=expert_type or "unknown",
+                        tool=tool_name,
+                        source=source,
+                        success=True,
+                        duration_ms=duration_ms,
+                    )
+                    await emit_event(event_tool_result(**result_data.model_dump()), config=config)
+                    _ledger(result_data)
                 return result
             except Exception as err:
                 is_last = attempt >= MAX_ATTEMPTS
                 category, user_msg = classify_tool_error(err)
+                duration_ms = int((time.perf_counter() - started) * 1000)
 
                 if is_retryable_error(err) and not is_last:
                     delay = RETRY_DELAYS[attempt - 1]
@@ -180,6 +251,18 @@ def build_tool_call_wrapper(builtin_tool_names: set[str]):
                     category,
                     err,
                 )
+                if task_id:
+                    result_data = ToolResultData(
+                        task_id=task_id,
+                        expert_type=expert_type or "unknown",
+                        tool=tool_name,
+                        source=source,
+                        success=False,
+                        duration_ms=duration_ms,
+                        error=user_msg,
+                    )
+                    await emit_event(event_tool_result(**result_data.model_dump()), config=config)
+                    _ledger(result_data)
                 return ToolMessage(
                     content=user_msg,
                     tool_call_id=call_id,
@@ -234,6 +317,8 @@ async def dynamic_tool_node(
     # 游标 + 列表的旧口径已随 C2 删除——工具节点现在只在分支里跑。
     current_task = state.get("current_task") if isinstance(state, dict) else None
     expert_type = (current_task or {}).get("expert_type")
+    branch_context = state.get("branch_context") if isinstance(state, dict) else None
+    branch_context = branch_context or {}
     policy_overrides = await tool_policy_service.get_overrides()
 
     # 记录工具调用请求
@@ -285,9 +370,18 @@ async def dynamic_tool_node(
 
     # 超时/重试/错误降级统一由 awrap_tool_call 包装器完成（见其 docstring：
     # handle_tool_errors 在 execute 内部就会吞掉异常，导致重试不可能发生）。
+    # 工具可见性事件（calling/result + 账本）的上下文同批传入。
     tool_executor = ToolNode(
         runtime_tools,
         handle_tool_errors=False,
-        awrap_tool_call=build_tool_call_wrapper(builtin_tool_names),
+        awrap_tool_call=build_tool_call_wrapper(
+            builtin_tool_names,
+            config=config,
+            task_id=str((current_task or {}).get("id") or "") or None,
+            expert_type=expert_type,
+            run_id=branch_context.get("run_id"),
+            thread_id=branch_context.get("thread_id"),
+            execution_plan_id=branch_context.get("execution_plan_id"),
+        ),
     )
     return await tool_executor.ainvoke(state, config)

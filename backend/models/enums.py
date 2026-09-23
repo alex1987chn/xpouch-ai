@@ -153,6 +153,9 @@ class RunEventType(StrEnum):
     TASK_COMPLETED = "task_completed"  # 子任务完成
     TASK_FAILED = "task_failed"  # 子任务失败
 
+    # 工具调用事件（时间线回看：只记 result 一行汇总，calling 走实时流+帧）
+    TOOL_RESULT = "tool_result"  # 单个工具调用结束（含耗时与成败）
+
     # 产物事件
     ARTIFACT_GENERATED = "artifact_generated"  # 产物生成
 

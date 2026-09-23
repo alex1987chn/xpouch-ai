@@ -14,7 +14,7 @@
 
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, Clock, AlertCircle, CheckCircle, Loader2, ChevronRight, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Clock, AlertCircle, CheckCircle, Loader2, ChevronRight, ExternalLink, Wrench } from 'lucide-react'
 import { format, formatDistanceToNow, differenceInSeconds } from 'date-fns'
 import { useTranslation } from '@/i18n'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -43,6 +43,7 @@ const eventIconConfig: Record<string, { icon: typeof Clock; color: string }> = {
  plan: { icon: Clock, color: 'text-accent-info' },
  hitl: { icon: AlertCircle, color: 'text-accent-warning' },
  task: { icon: Loader2, color: 'text-accent-brand' },
+ tool: { icon: Wrench, color: 'text-content-muted' },
  artifact: { icon: CheckCircle, color: 'text-accent-success' },
  other: { icon: Clock, color: 'text-content-secondary' },
 }
@@ -95,7 +96,10 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
 
  const hasPayload = event.event_data && Object.keys(event.event_data).length > 0
  const isTaskEvent = ['task_started', 'task_completed', 'task_failed'].includes(event.event_type)
- const expertType = isTaskEvent ? String(event.event_data?.expert_type || '') : ''
+ // 工具行同属专家活动：显示专家归属（工具名放详情行，与任务的 description 分层）
+ const isToolEvent = event.event_type === 'tool_result'
+ const expertType = (isTaskEvent || isToolEvent) ? String(event.event_data?.expert_type || '') : ''
+ const toolFailed = isToolEvent && event.event_data?.success === false
 
  return (
   <div className="group relative -mx-2 cursor-pointer pb-6" onClick={onClick}>
@@ -127,6 +131,20 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
      <span className={cn('text-sm', expertType ? 'text-content-secondary' : 'font-medium text-content-primary')}>
       {getEventDisplayName(event.event_type)}
      </span>
+     {isToolEvent && (
+      <span className="truncate font-mono text-xs text-content-secondary">
+       {String(event.event_data?.tool || 'unknown')}
+       {event.event_data?.source === 'mcp' && <span className="ml-1.5 rounded-sm border border-border-divider px-1 text-tiny text-content-muted">MCP</span>}
+      </span>
+     )}
+     {isToolEvent && event.event_data?.duration_ms != null && (
+      <span className="text-xs text-content-muted">{(event.event_data.duration_ms as number / 1000).toFixed(1)}s</span>
+     )}
+     {isToolEvent && (
+      <span className={cn('text-xs', toolFailed ? 'text-accent-destructive' : 'text-accent-success')}>
+       {toolFailed ? '✗' : '✓'}
+      </span>
+     )}
      <span className="text-xs text-content-muted">{timeStr}</span>
      <span className="text-xs text-content-muted">({timeAgo})</span>
 
@@ -150,6 +168,9 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
       )}
       {event.event_type === 'artifact_generated' && (
        <span>{t('artifactTypeLabel')} {String(event.event_data.artifact_type || 'unknown')}</span>
+      )}
+      {event.event_type === 'tool_result' && event.event_data?.error && (
+       <span className="text-accent-destructive">{String(event.event_data.error)}</span>
       )}
      </div>
     )}

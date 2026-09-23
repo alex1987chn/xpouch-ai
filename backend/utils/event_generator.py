@@ -25,6 +25,8 @@ from event_types.events import (
     TaskInfo,
     TaskProgressData,
     TaskStartedData,
+    ToolCallingData,
+    ToolResultData,
     build_sse_event,
     sse_event_to_string,
 )
@@ -173,6 +175,48 @@ class EventGenerator:
         )
         return build_sse_event(EventType.TASK_FAILED, data, self._next_event_id())
 
+    def tool_calling(
+        self,
+        task_id: str,
+        expert_type: str,
+        tool: str,
+        source: str,
+        args_summary: str,
+        attempt: int = 1,
+    ) -> SSEEvent:
+        """生成 tool.calling 事件（单个 tool_call 开始）"""
+        data = ToolCallingData(
+            task_id=task_id,
+            expert_type=expert_type,
+            tool=tool,
+            source=source,
+            args_summary=args_summary,
+            attempt=attempt,
+        )
+        return build_sse_event(EventType.TOOL_CALLING, data, self._next_event_id())
+
+    def tool_result(
+        self,
+        task_id: str,
+        expert_type: str,
+        tool: str,
+        source: str,
+        success: bool,
+        duration_ms: int,
+        error: str | None = None,
+    ) -> SSEEvent:
+        """生成 tool.result 事件（单个 tool_call 结束）"""
+        data = ToolResultData(
+            task_id=task_id,
+            expert_type=expert_type,
+            tool=tool,
+            source=source,
+            success=success,
+            duration_ms=duration_ms,
+            error=error,
+        )
+        return build_sse_event(EventType.TOOL_RESULT, data, self._next_event_id())
+
     # ========================================================================
     # 产物阶段事件
     # ========================================================================
@@ -279,6 +323,16 @@ def event_task_completed(*args, **kwargs) -> SSEEvent:
 def event_task_failed(*args, **kwargs) -> SSEEvent:
     """便捷函数：生成 task.failed 事件"""
     return _event_generator.task_failed(*args, **kwargs)
+
+
+def event_tool_calling(*args, **kwargs) -> SSEEvent:
+    """便捷函数：生成 tool.calling 事件"""
+    return _event_generator.tool_calling(*args, **kwargs)
+
+
+def event_tool_result(*args, **kwargs) -> SSEEvent:
+    """便捷函数：生成 tool.result 事件"""
+    return _event_generator.tool_result(*args, **kwargs)
 
 
 def event_artifact_generated(*args, **kwargs) -> SSEEvent:

@@ -20,6 +20,9 @@ export type EventType =
   | 'task.progress'
   | 'task.completed'
   | 'task.failed'
+  // 工具调用（任务执行期间的可见性）
+  | 'tool.calling'
+  | 'tool.result'
   // 产物阶段 (v3.2.0: 仅保留批处理模式 artifact.generated)
   | 'artifact.generated'
   // 消息阶段
@@ -120,6 +123,33 @@ export interface TaskFailedData {
 }
 
 export type TaskFailedEvent = SSEEvent<TaskFailedData, 'task.failed'>
+
+// ============================================================================
+// 工具调用事件（任务执行期间）
+// ============================================================================
+
+export interface ToolCallingData {
+  task_id: string
+  expert_type: string
+  tool: string
+  source: 'builtin' | 'mcp'
+  args_summary: string
+  attempt: number
+}
+
+export type ToolCallingEvent = SSEEvent<ToolCallingData, 'tool.calling'>
+
+export interface ToolResultData {
+  task_id: string
+  expert_type: string
+  tool: string
+  source: 'builtin' | 'mcp'
+  success: boolean
+  duration_ms: number
+  error?: string | null
+}
+
+export type ToolResultEvent = SSEEvent<ToolResultData, 'tool.result'>
 
 // ============================================================================
 // 任务进度事件（可选）
@@ -261,6 +291,8 @@ type _TaskStarted = Assert<SameShape<TaskStartedData, Generated.TaskStartedData>
 type _TaskProgress = Assert<SameShape<TaskProgressData, Generated.TaskProgressData>>
 type _TaskCompleted = Assert<SameShape<TaskCompletedData, Generated.TaskCompletedData>>
 type _TaskFailed = Assert<SameShape<TaskFailedData, Generated.TaskFailedData>>
+type _ToolCalling = Assert<SameShape<ToolCallingData, Generated.ToolCallingData>>
+type _ToolResult = Assert<SameShape<ToolResultData, Generated.ToolResultData>>
 type _ArtifactInfo = Assert<SameShape<ArtifactInfo, Generated.ArtifactInfo>>
 type _ArtifactGenerated = Assert<SameShape<ArtifactGeneratedData, Generated.ArtifactGeneratedData>>
 type _MessageDelta = Assert<SameShape<MessageDeltaData, Generated.MessageDeltaData>>
@@ -304,6 +336,8 @@ export type AnyServerEvent =
   | TaskProgressEvent     // 🔥 新增
   | TaskCompletedEvent
   | TaskFailedEvent
+  | ToolCallingEvent
+  | ToolResultEvent
   | ArtifactGeneratedEvent
   | MessageDeltaEvent
   | MessageThinkingEvent  // 🔥 新增：模型思考过程流式块

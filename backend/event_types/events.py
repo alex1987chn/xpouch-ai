@@ -26,6 +26,10 @@ class EventType(StrEnum):
     TASK_COMPLETED = "task.completed"  # 专家完成
     TASK_FAILED = "task.failed"  # 专家失败
 
+    # 工具调用（任务执行期间的可见性：模型在调什么工具、多久、成败）
+    TOOL_CALLING = "tool.calling"  # 单个 tool_call 开始（attempt 标注重试轮次）
+    TOOL_RESULT = "tool.result"  # 单个 tool_call 结束（含耗时与成败）
+
     # 产物阶段
     ARTIFACT_GENERATED = "artifact.generated"  # 产物生成
 
@@ -149,6 +153,34 @@ class TaskFailedData(BaseModel):
     description: str
     error: str
     failed_at: str
+
+
+# ============================================================================
+# 工具调用事件（任务执行期间）
+# ============================================================================
+
+
+class ToolCallingData(BaseModel):
+    """tool.calling 事件数据（单个 tool_call 开始）"""
+
+    task_id: str
+    expert_type: str
+    tool: str
+    source: Literal["builtin", "mcp"]
+    args_summary: str  # 参数摘要（截断），执行可见性用
+    attempt: int  # 第几次尝试（1=首次；重试可见性）
+
+
+class ToolResultData(BaseModel):
+    """tool.result 事件数据（单个 tool_call 结束）"""
+
+    task_id: str
+    expert_type: str
+    tool: str
+    source: Literal["builtin", "mcp"]
+    success: bool
+    duration_ms: int
+    error: str | None = None  # 失败时的用户友好错误（成功为 None）
 
 
 # ============================================================================

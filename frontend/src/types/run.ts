@@ -164,6 +164,7 @@ export function getEventCategory(eventType: RunEventType): string {
   if (eventType.startsWith('plan_')) return 'plan'
   if (eventType.startsWith('hitl_')) return 'hitl'
   if (eventType.startsWith('task_')) return 'task'
+  if (eventType.startsWith('tool_')) return 'tool'
   if (eventType.startsWith('artifact_')) return 'artifact'
   return 'other'
 }
@@ -186,6 +187,7 @@ export function getEventDisplayName(eventType: RunEventType): string {
     task_started: '任务开始',
     task_completed: '任务完成',
     task_failed: '任务失败',
+    tool_result: '工具调用',
     artifact_generated: '产物生成',
     run_completed: '运行完成',
     run_failed: '运行失败',
