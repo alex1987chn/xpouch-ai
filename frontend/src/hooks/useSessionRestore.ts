@@ -321,7 +321,7 @@ export function useSessionRestore(
             .map((t: SubTask, index: number) => ({
               id: t.id,
               expert_type: t.expert_type,
-              description: t.task_description,
+              description: t.description,
               sort_order: index,
               status: 'pending' as const,
               depends_on: t.depends_on || [],

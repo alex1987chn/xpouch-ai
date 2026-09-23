@@ -212,7 +212,7 @@ export interface SubTask {
   id: string
   execution_plan_id: string
   expert_type: string
-  task_description: string
+  description: string
   depends_on?: string[]
   status?: string
   output_result?: Record<string, unknown> | string | null  // 后端返回的原始输出结果

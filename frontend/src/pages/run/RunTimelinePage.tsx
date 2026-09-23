@@ -98,18 +98,18 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
  const expertType = isTaskEvent ? String(event.event_data?.expert_type || '') : ''
 
  return (
-  <div
-   className={cn(
-    'group relative -mx-2 flex cursor-pointer gap-4 rounded-md px-2 pb-6 transition-colors hover:bg-surface-tint/50',
-    isSelected && 'bg-surface-tint'
-   )}
-   onClick={onClick}
-  >
-   {/* 时间线 */}
+  <div className="group relative -mx-2 cursor-pointer pb-6" onClick={onClick}>
+   {/* 时间线（z-10：内层 hover 背景后绘制，不抬层会盖住穿过 padding 区的线） */}
    {!isLast && (
-    <div className="absolute left-4 top-10 h-full w-px bg-border-divider" />
+    <div className="absolute left-4 top-10 z-10 h-full w-px bg-border-divider" />
    )}
 
+   {/* hover/选中背景条：只包内容（行距 pb-6 留在外层给连接线贯穿），
+       上下对称 padding 让文案在 hover 条内垂直居中，不再贴顶 */}
+   <div className={cn(
+    'relative flex gap-4 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-tint/50',
+    isSelected && 'bg-surface-tint'
+   )}>
    <EventIcon eventType={event.event_type} />
 
    {/* 内容 */}
@@ -155,6 +155,7 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
     {event.note && (
      <p className="mt-1 text-sm text-content-secondary">{event.note}</p>
     )}
+   </div>
    </div>
   </div>
  )
@@ -219,7 +220,7 @@ function PlanCard({ threadId }: { threadId: string }) {
         className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
         style={{ backgroundColor: expertColor(task.expert_type) }}
        />
-       <span className="text-content-primary">{task.task_description}</span>
+       <span className="text-content-primary">{task.description}</span>
       </span>
       {task.status && (
        <span className="ml-3 text-xs text-content-muted">
