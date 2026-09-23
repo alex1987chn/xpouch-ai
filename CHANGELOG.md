@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 修复
 
+- **run 异常终止后会话永远提示"任务仍在执行中"（收尾缺失，用户实报）**：run 实际已 timed_out（第一个搜索的 MCP 工具远端 hang，吃满 deadline——工具层 per-call 超时 90s×2 次恰好等于 run 预算 180s，机制按设计工作），但 `mark_run_timed_out/failed/cancelled` 只收尾 run 行——正在执行的 SubTask 与 running 态专家执行消息无人收尾，前端会话恢复读到"还有 running 任务"就永远提示，统计页停在卡死的那步，会话无法继续。修法：`close_orphaned_task_state` 单一收尾转换点（本 run 的 running SubTask 置 failed + 该轮 running 专家消息置 failed，专家消息 extra 补 run_id 归属），接入三个终态函数；收尾失败大声告警但不阻断终态标记。迁移 20260923_000500 清洗存量僵尸行（用户卡死会话已实测解锁），空库链 45 步 + 开发库双口径验证
 - **一个 MCP 服务器故障连坐拖死全部 MCP 工具（高德被 ModelScope 拖死）**：`MultiServerMCPClient` 的整体 `get_tools` 用 TaskGroup 并发连接，任一服务器失败（实测 ModelScope 报 `[USER_NOT_IN_ORG]`——key/组织失效）会把整个 TaskGroup 炸掉，其余健康服务器的工具一并归零（日志只见"MCP: 0"，真实原因被子异常吞掉）。修法：逐服务器独立拉取（partial failure isolation），失败的单个跳过并警告暴露，健康的照常注入；缓存键哈希顺带从 MD5 换 SHA-256。E2E 验证：ModelScope 失败被隔离，高德 15 个工具全部进入绑定
 - **专家对 MCP 工具"协议层通、认知层断"（工具在碗里没人告诉它碗里有）**：bind_tools 绑了全部 MCP 工具，但执行框架头部指令通篇只点名通用工具、search 教材写死"必须使用 `search_web`"——模型从不主动用 maps_*。修法（认知通道）：①执行框架头部**动态注入【可用工具清单】**（本次实际绑定的真名+描述+来源标注+选择指引：地点/本地生活优先 maps_*），新接 MCP 服务器零教材改动；②顺带根治指令层硬编码错名——指令引用的 `search_web`/`read_webpage` 从来不是实际绑定的真名（异步版为 `asearch_web`/`aread_webpage`），模型此前全靠猜；③search 教材工具条款从排他定向改为"以清单为准+领域工具让位"（迁移 20260923_000400 下发，空库链+开发库双口径验证）。E2E 验证：新会话"查景点和餐厅点评"任务，search 专家全程使用 maps_geo→maps_around_search→maps_text_search→maps_search_detail，未调一次网页搜索
 - **死代码清扫**：`constants.EXPERT_PROMPTS`（教材收敛到 EXPERT_DEFAULTS 时漏删的旧静态兜底，零消费者，且内部全是 `search_web` 错名）整块删除
