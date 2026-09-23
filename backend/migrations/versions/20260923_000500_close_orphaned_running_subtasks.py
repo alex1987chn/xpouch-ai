@@ -45,12 +45,16 @@ def upgrade() -> None:
         ),
         {"now": now},
     )
-    # 2) 僵尸专家消息 → failed（extra_data 是 json 列：Python 侧整体改写后回写）
+    # 2) 僵尸专家消息 → failed。
+    # ⚠️ extra_data 的列类型跨环境漂移（生产=text，开发=json，2026-09-23 部署实抓）：
+    # `->>` 只存在于 json/jsonb——统一经 `NULLIF(extra_data::text,'')::json` 取值，
+    # 两种列类型通吃且空串安全；列类型归一在 000700 治本。
     msg_rows = conn.execute(
         text(
             "SELECT m.id, m.thread_id, m.extra_data FROM message m "
-            "WHERE m.role = 'assistant' AND m.extra_data->>'message_kind' = 'expert_result' "
-            "AND m.extra_data->>'status' = 'running'"
+            "WHERE m.role = 'assistant' "
+            "AND NULLIF(m.extra_data::text, '')::json ->> 'message_kind' = 'expert_result' "
+            "AND NULLIF(m.extra_data::text, '')::json ->> 'status' = 'running'"
         )
     ).fetchall()
     closed_msgs = 0
@@ -63,11 +67,13 @@ def upgrade() -> None:
         ).fetchone()
         if latest is None or latest[0] not in _TERMINAL_RUN_STATUSES:
             continue
-        patched = dict(extra or {})
-        patched.update(status="failed", error=_FAIL_NOTE)
+        # json 列返回 dict、text 列返回 str——统一解析
+        data = json.loads(extra) if isinstance(extra, str) else dict(extra or {})
+        data.update(status="failed", error=_FAIL_NOTE)
+        # 回写用字符串参数：text 列直接存，json 列由赋值上下文完成 text→json
         conn.execute(
-            text("UPDATE message SET extra_data = CAST(:new_json AS json) WHERE id = :id"),
-            {"new_json": json.dumps(patched, ensure_ascii=False), "id": msg_id},
+            text("UPDATE message SET extra_data = :new_json WHERE id = :id"),
+            {"new_json": json.dumps(data, ensure_ascii=False), "id": msg_id},
         )
         closed_msgs += 1
     print(

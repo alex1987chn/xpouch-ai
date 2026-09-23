@@ -25,16 +25,18 @@ def upgrade() -> None:
     import json
 
     conn = op.get_bind()
+    # ⚠️ extra_data 列类型跨环境漂移（生产=text）：统一经
+    # `NULLIF(extra_data::text,'')::json` 取值，两种列类型通吃（同 000500）
     rows = conn.execute(
         text(
             "SELECT m.id, m.extra_data FROM message m "
-            "WHERE m.extra_data->>'message_kind' = 'expert_result' "
-            "AND m.extra_data->>'summary' IS NOT NULL"
+            "WHERE NULLIF(m.extra_data::text, '')::json ->> 'message_kind' = 'expert_result' "
+            "AND NULLIF(m.extra_data::text, '')::json ->> 'summary' IS NOT NULL"
         )
     ).fetchall()
     synced = 0
     for msg_id, extra in rows:
-        data = extra or {}
+        data = json.loads(extra) if isinstance(extra, str) else dict(extra or {})
         artifact_ids = data.get("artifact_ids") or []
         if not artifact_ids:
             continue
@@ -44,11 +46,11 @@ def upgrade() -> None:
         ).fetchone()
         if art is None or not art[0] or art[0] == data.get("summary"):
             continue
-        patched = dict(data)
-        patched["summary"] = art[0]
+        data["summary"] = art[0]
+        # 回写用字符串参数（text/json 列通吃，见 000500 注）
         conn.execute(
-            text("UPDATE message SET extra_data = CAST(:j AS json) WHERE id = :id"),
-            {"j": json.dumps(patched, ensure_ascii=False), "id": msg_id},
+            text("UPDATE message SET extra_data = :j WHERE id = :id"),
+            {"j": json.dumps(data, ensure_ascii=False), "id": msg_id},
         )
         synced += 1
     print(f"[migration 000600] synced {synced} expert-message summaries to artifact titles")
