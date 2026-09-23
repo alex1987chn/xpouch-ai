@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     )
     port: int = Field(default=3002, alias="PORT")
 
+    # 面向人/LLM 的展示时区（prompt 时间注入、get_current_time 工具）。
+    # 只影响展示，存储与 API 时间不受此影响（全链路 aware UTC，见 utils/time.py）。
+    # 生产容器系统时区是 UTC，不配置的话给模型的时间会差出真实墙钟数小时。
+    display_timezone: str = Field(default="Asia/Shanghai", alias="DISPLAY_TIMEZONE")
+
     # 数据库
     database_url: str = Field(default="", alias="DATABASE_URL")
 

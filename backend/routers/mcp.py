@@ -28,6 +28,7 @@ from dependencies import get_current_user, require_role
 from models import User, UserRole
 from models.mcp import MCPServer
 from schemas.mcp import MCPServerCreate, MCPServerResponse, MCPServerUpdate
+from services.mcp_tools_service import mcp_tools_service
 from utils.exceptions import ValidationError
 from utils.logger import logger
 from utils.time import utc_now
@@ -288,6 +289,9 @@ async def create_mcp_server(
     session.commit()
     session.refresh(mcp_server)
 
+    # 新服务器立即可被专家发现（不失效的话要等 TTL 过期才进工具清单）
+    await mcp_tools_service.invalidate_cache()
+
     return mcp_server
 
 
@@ -317,44 +321,56 @@ async def update_mcp_server(
     """
     更新 MCP 服务器
 
-    支持部分更新，包括切换 is_active 状态。
-    如果更新 sse_url，会重新进行连接测试。
+    支持部分更新，包括切换 is_active 状态、更换 endpoint 与传输协议。
+    URL 或协议任一变化时，按「最终 URL + 最终协议」组合重新通电测试
+    （旧实现只在 URL 变化时测试且沿用旧协议——协议迁移场景必炸）。
+    变更落库后失效工具缓存，专家下一个请求就能看到新工具集。
     """
     # 查找服务器
     server = get_mcp_server_or_404(session, server_id)
 
-    # 如果更新 SSE URL，需要重新测试连接
-    if update_data.sse_url and update_data.sse_url != server.sse_url:
-        # P0 修复: URL 验证
-        is_valid, error_msg = await validate_mcp_url(update_data.sse_url)
+    new_url = update_data.sse_url
+    new_transport = update_data.transport
+    url_changed = bool(new_url and new_url != server.sse_url)
+    transport_changed = bool(new_transport and new_transport != server.transport)
+
+    # P0 修复: URL 验证（仅 URL 变化时需要）
+    if url_changed:
+        is_valid, error_msg = await validate_mcp_url(new_url)
         if not is_valid:
             raise ValidationError(
-                message=f"URL 验证失败: {error_msg}", details={"sse_url": update_data.sse_url}
+                message=f"URL 验证失败: {error_msg}", details={"sse_url": new_url}
             )
 
         # 检查新 URL 是否已被其他服务器使用
         existing = session.exec(
-            select(MCPServer).where(
-                MCPServer.sse_url == update_data.sse_url, MCPServer.id != server_id
-            )
+            select(MCPServer).where(MCPServer.sse_url == new_url, MCPServer.id != server_id)
         ).first()
 
         if existing:
             raise ValidationError(
-                message="该 SSE URL 已被其他服务器使用", details={"sse_url": update_data.sse_url}
+                message="该 SSE URL 已被其他服务器使用", details={"sse_url": new_url}
             )
 
-        # P0 修复: 重新通电测试（带超时）
+    # P0 修复: 按最终组合重新通电测试（带超时）
+    if url_changed or transport_changed:
+        effective_url = new_url or server.sse_url
+        effective_transport = new_transport or server.transport
         is_connected, error_msg = await test_mcp_connection(
-            update_data.sse_url, transport=server.transport
+            effective_url, transport=effective_transport
         )
         if not is_connected:
             raise ValidationError(
                 message=f"新地址连接测试失败: {error_msg}",
-                details={"sse_url": update_data.sse_url, "error": error_msg},
+                details={
+                    "sse_url": effective_url,
+                    "transport": effective_transport,
+                    "error": error_msg,
+                },
             )
 
-        server.sse_url = update_data.sse_url
+        server.sse_url = effective_url
+        server.transport = effective_transport
         server.connection_status = "connected"
 
     # 更新其他字段
@@ -372,6 +388,10 @@ async def update_mcp_server(
     session.add(server)
     session.commit()
     session.refresh(server)
+
+    # 配置已变：立即失效工具缓存（TTL 最长 5 分钟，不失效的话
+    # 专家在窗口内仍按旧清单发现/调用工具）
+    await mcp_tools_service.invalidate_cache()
 
     return server
 
@@ -391,6 +411,9 @@ async def delete_mcp_server(
 
     session.delete(server)
     session.commit()
+
+    # 已删服务器的工具立即退出发现链路（不失效的话 TTL 窗口内专家仍会调用）
+    await mcp_tools_service.invalidate_cache()
 
     return None
 

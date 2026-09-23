@@ -20,7 +20,8 @@ import {
   deleteMCPServer,
   getMCPServerTools,
   type MCPServer,
-  type MCPServerCreate
+  type MCPServerCreate,
+  type MCPServerUpdate
 } from '@/services/mcp'
 import { logger } from '@/utils/logger'
 import { CACHE_TIMES } from '@/config/query'
@@ -107,6 +108,31 @@ export function useCreateMCP() {
     },
     onError: (error) => {
       logger.error('[useCreateMCP] Failed to create server:', error)
+    },
+  })
+}
+
+/**
+ * 更新 MCP 服务器的 Mutation（编辑弹窗用）
+ *
+ * 成功后同时失效列表与该服务器的工具清单——endpoint/协议变化
+ * 会在后端触发通电测试并失效服务端工具缓存，前端同步刷新。
+ */
+export function useUpdateMCP() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: MCPServerUpdate }) => {
+      const server = await updateMCPServer(id, data)
+      return server
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: mcpKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: mcpKeys.tools(updated.id) })
+      logger.debug('[useUpdateMCP] Updated and invalidated cache:', updated.id)
+    },
+    onError: (error) => {
+      logger.error('[useUpdateMCP] Failed to update server:', error)
     },
   })
 }

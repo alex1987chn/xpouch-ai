@@ -1,57 +1,110 @@
-﻿/**
- * 添加 MCP 服务器弹窗
- * 
- * 与 PersonalSettingsDialog 保持统一风格
+/**
+ * MCP 服务器表单弹窗（添加 / 编辑共用）
+ *
+ * 单一表单真相源：mode='add' 创建、mode='edit' 预填现有配置走 PATCH。
+ * 编辑保存时后端会按「最终 URL + 最终协议」通电测试并失效工具缓存，
+ * 专家下一个请求即按新清单发现工具。
+ *
+ * 风格与 PersonalSettingsDialog 保持统一。
  */
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import { useCreateMCP } from '@/hooks/queries/useMCPQuery'
+import { useCreateMCP, useUpdateMCP } from '@/hooks/queries/useMCPQuery'
 import { Input } from '@/components/ui/input'
 import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 import { useToast } from '@/components/ui/use-toast'
-import type { MCPTransport } from '@/types/mcp'
+import type { MCPServer, MCPTransport } from '@/types/mcp'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 
-interface AddMCPDialogProps {
+interface MCPFormDialogProps {
   isOpen: boolean
   onClose: () => void
+  mode: 'add' | 'edit'
+  /** edit 模式必传：待编辑的服务器 */
+  server?: MCPServer
   /** 创建成功回调，返回新服务器 ID */
   onSuccess?: (serverId: string) => void
 }
 
-export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) {
+const EMPTY_FORM = {
+  name: '',
+  description: '',
+  sse_url: '',
+  transport: 'sse' as MCPTransport
+}
+
+export function MCPFormDialog({ isOpen, onClose, mode, server, onSuccess }: MCPFormDialogProps) {
   const { t } = useTranslation()
   const { toast } = useToast()
+  const isEdit = mode === 'edit'
   const createMutation = useCreateMCP()
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    sse_url: '',
-    transport: 'sse' as MCPTransport
-  })
+  const updateMutation = useUpdateMCP()
+  const isPending = createMutation.isPending || updateMutation.isPending
 
-  // 打开时重置表单
+  const [formData, setFormData] = useState(EMPTY_FORM)
+
+  // 打开时重置表单（编辑模式预填现有配置）
   useEffect(() => {
     if (isOpen) {
-      setFormData({ name: '', description: '', sse_url: '', transport: 'sse' })
+      if (isEdit && server) {
+        setFormData({
+          name: server.name,
+          description: server.description ?? '',
+          sse_url: server.sse_url,
+          transport: server.transport
+        })
+      } else {
+        setFormData(EMPTY_FORM)
+      }
     }
-  }, [isOpen])
+  }, [isOpen, isEdit, server])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.name.trim() || !formData.sse_url.trim()) {
       toast({
         title: t('validationError') || 'Validation Error',
         description: t('nameAndUrlRequired') || 'Name and URL are required',
         variant: 'destructive'
       })
+      return
+    }
+
+    if (isEdit && server) {
+      updateMutation.mutate(
+        {
+          id: server.id,
+          data: {
+            name: formData.name.trim(),
+            description: formData.description.trim() || null,
+            sse_url: formData.sse_url.trim(),
+            transport: formData.transport
+          }
+        },
+        {
+          onSuccess: () => {
+            toast({
+              title: t('success') || 'Success',
+              description: t('mcpServerUpdated') || 'MCP server saved',
+            })
+            onClose()
+          },
+          onError: (error: any) => {
+            logger.error('[MCPFormDialog] Failed to update:', error)
+            toast({
+              title: t('error') || 'Error',
+              description: error.message || t('toggleFailed') || 'Update failed',
+              variant: 'destructive'
+            })
+          }
+        }
+      )
       return
     }
 
@@ -68,12 +121,12 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
             title: t('success') || 'Success',
             description: t('mcpServerAdded') || 'MCP server added successfully',
           })
-          setFormData({ name: '', description: '', sse_url: '', transport: 'sse' })
+          setFormData(EMPTY_FORM)
           onSuccess?.(newServer.id)
           onClose()
         },
         onError: (error: any) => {
-          logger.error('[AddMCPDialog] Failed to add:', error)
+          logger.error('[MCPFormDialog] Failed to add:', error)
           toast({
             title: t('error') || 'Error',
             description: error.message || t('failedToAddServer') || 'Failed to add server',
@@ -85,13 +138,13 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
   }
 
   const handleClose = () => {
-    if (!createMutation.isPending) {
+    if (!isPending) {
       onClose()
     }
   }
 
   useEscapeToClose(isOpen, handleClose)
-  const a11y = useDialogA11y<HTMLDivElement>(isOpen, 'add-mcp-title')
+  const a11y = useDialogA11y<HTMLDivElement>(isOpen, 'mcp-form-title')
 
   if (!isOpen) return null
 
@@ -110,14 +163,16 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-divider">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-accent-hover"></div>
-            <span id="add-mcp-title" className="text-xs font-bold text-content-secondary">
-              {t('addModule') || 'Add Module'}
+            <span id="mcp-form-title" className="text-xs font-bold text-content-secondary">
+              {isEdit
+                ? (t('editModule') || 'Edit MCP Server')
+                : (t('addModule') || 'Add Module')}
             </span>
           </div>
           <button
             aria-label={t('close')}
             onClick={handleClose}
-            disabled={createMutation.isPending}
+            disabled={isPending}
             className="w-6 h-6 flex items-center justify-center border border-border-default hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
@@ -140,7 +195,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder={t('serverNamePlaceholder') || 'e.g. Amap'}
-              disabled={createMutation.isPending}
+              disabled={isPending}
             />
           </section>
 
@@ -157,7 +212,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder={t('mcpDescriptionPlaceholder') || 'Describe what this MCP server provides...'}
-              disabled={createMutation.isPending}
+              disabled={isPending}
             />
           </section>
 
@@ -177,7 +232,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
                   value="sse"
                   checked={formData.transport === 'sse'}
                   onChange={(e) => setFormData({ ...formData, transport: e.target.value as MCPTransport })}
-                  disabled={createMutation.isPending}
+                  disabled={isPending}
                   className="w-4 h-4 accent-accent-hover"
                 />
                 <span className="text-xs">{t('transportSSE') || 'SSE'}</span>
@@ -189,7 +244,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
                   value="streamable_http"
                   checked={formData.transport === 'streamable_http'}
                   onChange={(e) => setFormData({ ...formData, transport: e.target.value as MCPTransport })}
-                  disabled={createMutation.isPending}
+                  disabled={isPending}
                   className="w-4 h-4 accent-accent-hover"
                 />
                 <span className="text-xs">{t('transportStreamableHTTP') || 'Streamable HTTP'}</span>
@@ -197,7 +252,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
             </div>
           </section>
 
-          {/* SSE URL */}
+          {/* Endpoint URL */}
           <section>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 bg-content-secondary"></div>
@@ -211,11 +266,11 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
               value={formData.sse_url}
               onChange={(e) => setFormData({ ...formData, sse_url: e.target.value })}
               placeholder={formData.transport === 'sse' ? 'https://mcp.example.com/sse' : 'https://mcp.example.com/mcp'}
-              disabled={createMutation.isPending}
+              disabled={isPending}
               className="font-mono text-sm"
             />
             <p className="mt-2 text-caption text-content-muted">
-              {formData.transport === 'sse' 
+              {formData.transport === 'sse'
                 ? 'SSE endpoint URL for Server-Sent Events transport'
                 : 'HTTP endpoint URL for Streamable HTTP transport'}
             </p>
@@ -227,7 +282,7 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <button
             type="button"
             onClick={handleClose}
-            disabled={createMutation.isPending}
+            disabled={isPending}
             className="rounded-full border border-border-divider bg-surface-page px-4 py-2 text-body-sm font-bold text-content-secondary transition-colors hover:border-border-hover hover:text-content-primary disabled:opacity-50"
           >
             {t('cancel') || 'Cancel'}
@@ -235,16 +290,20 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
           <button
             type="submit"
             onClick={handleSubmit}
-            disabled={createMutation.isPending}
+            disabled={isPending}
             className="rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-body-sm font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
           >
-            {createMutation.isPending ? (
+            {isPending ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent-ink/30 border-t-accent-ink"></span>
-                {t('connecting') || 'Connecting...'}
+                {isEdit
+                  ? (t('saving') || 'Saving...')
+                  : (t('connecting') || 'Connecting...')}
               </span>
             ) : (
-              t('add') || 'Add'
+              isEdit
+                ? (t('save') || 'Save')
+                : (t('add') || 'Add')
             )}
           </button>
         </div>
@@ -254,4 +313,4 @@ export function AddMCPDialog({ isOpen, onClose, onSuccess }: AddMCPDialogProps) 
   )
 }
 
-export default AddMCPDialog
+export default MCPFormDialog

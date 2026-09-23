@@ -7,12 +7,13 @@
  */
 
 import { useState } from 'react'
-import { ChevronDown, Wrench } from 'lucide-react'
+import { ChevronDown, Pencil, Wrench } from 'lucide-react'
 import { useToggleMCP, useDeleteMCP, useMCPServerTools } from '@/hooks/queries/useMCPQuery'
 import { useTranslation } from '@/i18n'
 import { logger } from '@/utils/logger'
 import { useToast } from '@/components/ui/use-toast'
 import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
+import { MCPFormDialog } from './MCPFormDialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { MCPServer } from '@/types/mcp'
@@ -79,6 +80,7 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
   const toggleMutation = useToggleMCP()
   const deleteMutation = useDeleteMCP()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   // 仅在展开时获取工具列表
   const { data: tools, isLoading: isLoadingTools, isError: isToolsError } = useMCPServerTools(
@@ -163,6 +165,17 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
               <button
                 onClick={(e) => {
                   e.stopPropagation()
+                  setIsEditDialogOpen(true)
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary opacity-0 group-hover:opacity-100"
+                title={t('editModule') || 'Edit'}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
                   setIsDeleteDialogOpen(true)
                 }}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-accent-destructive/10 hover:text-accent-destructive opacity-0 group-hover:opacity-100"
@@ -237,6 +250,14 @@ export function MCPCard({ server, isExpanded, isAdmin = false, onToggleExpand }:
           </div>
         )}
       </div>
+
+      {/* 编辑弹窗（保存后后端失效工具缓存，专家即时按新清单发现工具） */}
+      <MCPFormDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        mode="edit"
+        server={server}
+      />
 
       {/* 删除确认弹窗 */}
       <DeleteConfirmDialog

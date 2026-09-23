@@ -2,11 +2,11 @@
 Prompt 工具函数
 
 提供 System Prompt 增强功能：
-- 当前时间注入
+- 当前时间注入（用户墙钟：utils.time.display_now，随 DISPLAY_TIMEZONE 配置）
 - 通用 Prompt 增强
 """
 
-from datetime import datetime
+from utils.time import display_now, format_display_datetime
 
 
 def inject_current_time(system_prompt: str) -> str:
@@ -33,12 +33,8 @@ def inject_current_time(system_prompt: str) -> str:
         - 如果用户询问"今天"、"昨天"或"最近"的新闻/事件，请根据【当前日期】将相对时间转换为具体日期格式
         ...
     """
-    now = datetime.now()
-    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    weekday_str = weekdays[now.weekday()]
-
-    # 格式化时间：2026年02月06日 14:30:00 星期五
-    time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")
+    now = display_now()
+    time_str = format_display_datetime(now)
     date_str = now.strftime("%Y-%m-%d")
 
     # 构建增强的 System Prompt
@@ -64,10 +60,8 @@ def enhance_system_prompt_with_tools(system_prompt: str) -> str:
 
     用于 Generic Worker 节点，强制模型使用工具而非脑补答案。
     """
-    now = datetime.now()
-    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    weekday_str = weekdays[now.weekday()]
-    time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")
+    now = display_now()
+    time_str = format_display_datetime(now)
     date_str = now.strftime("%Y-%m-%d")
 
     # 🔥 核心增强：给模型洗脑，强制它使用工具，禁止脑补

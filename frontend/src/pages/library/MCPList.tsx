@@ -12,7 +12,7 @@ import { SearchInput } from '@/components/ui/input'
 import { CardSkeleton } from '@/components/ui/skeleton'
 import { ErrorState, EmptyState } from '@/components/ui/states'
 import MCPCard from './components/MCPCard'
-import { AddMCPDialog } from './components/AddMCPDialog'
+import { MCPFormDialog } from './components/MCPFormDialog'
 import { useTranslation } from '@/i18n'
 
 interface MCPListProps {
@@ -164,10 +164,11 @@ export function MCPList({ searchQuery, onSearchChange, isAdmin = false }: MCPLis
     />
    )}
 
-   {/* 添加弹窗 */}
-   <AddMCPDialog 
-    isOpen={isAddOpen} 
+   {/* 添加弹窗（编辑弹窗在每张 MCPCard 内） */}
+   <MCPFormDialog
+    isOpen={isAddOpen}
     onClose={() => setIsAddOpen(false)}
+    mode="add"
     onSuccess={(serverId) => setLastCreatedId(serverId)}
    />
   </div>

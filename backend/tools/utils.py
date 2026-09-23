@@ -5,9 +5,10 @@
 import ast
 import math
 import operator
-from datetime import datetime
 
 from langchain_core.tools import tool
+
+from utils.time import format_display_datetime
 
 # calculator 求值器：AST 节点 → 运算符映射（仅算术运算）
 _BIN_OPS = {
@@ -34,15 +35,10 @@ def get_current_time() -> str:
     当用户询问"今天几号"、"现在几点"、"今天是星期几"时使用此工具。
 
     Returns:
-        格式化的时间字符串，格式如：2026-02-06 14:30:00 星期五
+        格式化的时间字符串，格式如：2026年02月06日 14:30:00 星期五
+        （用户墙钟，随 DISPLAY_TIMEZONE 配置，非服务器系统时区）
     """
-    now = datetime.now()
-    # 中文星期数组
-    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    weekday_str = weekdays[now.weekday()]
-
-    # 格式化为：2026-02-06 14:30:00 星期五
-    return now.strftime(f"%Y-%m-%d %H:%M:%S {weekday_str}")
+    return format_display_datetime()
 
 
 @tool

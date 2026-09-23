@@ -1240,8 +1240,10 @@ export interface paths {
          * Update Mcp Server
          * @description 更新 MCP 服务器
          *
-         *     支持部分更新，包括切换 is_active 状态。
-         *     如果更新 sse_url，会重新进行连接测试。
+         *     支持部分更新，包括切换 is_active 状态、更换 endpoint 与传输协议。
+         *     URL 或协议任一变化时，按「最终 URL + 最终协议」组合重新通电测试
+         *     （旧实现只在 URL 变化时测试且沿用旧协议——协议迁移场景必炸）。
+         *     变更落库后失效工具缓存，专家下一个请求就能看到新工具集。
          */
         patch: operations["update_mcp_server_api_mcp_servers__server_id__patch"];
         trace?: never;

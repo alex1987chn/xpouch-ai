@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 修复
+
+- **MCP 服务器可编辑（协议迁移在后端原本走不通）**：PATCH 端点收了 `transport` 字段却不应用，改 URL 时的通电测试还沿用旧协议——SSE → Streamable HTTP 这类端点迁移只能直改库绕过。现在 URL/协议任一变化都按「最终 URL + 最终协议」组合重新通电测试（失败 400 拒绝且不落库）；CREATE/PATCH/DELETE 落库后立即失效工具缓存（此前 5 分钟 TTL 窗口内专家仍按旧清单发现/调用工具——新加的服务器要等过期才可见，删掉的还残留）。管理台 MCP 卡片新增编辑入口（铅笔），表单与添加共用 `MCPFormDialog`
+- **提示词时间注入统一用户墙钟（新增 `DISPLAY_TIMEZONE` 配置）**：四处注入（direct_reply 头部/执行框架头部/router 占位符/`get_current_time` 工具）此前混用 `datetime.now()`（服务器墙钟——生产容器 UTC 下给模型的时间差 8 小时）与 `utc_now()` 直格式化（同样输出 UTC 时刻）。新增 `utils.time.display_now`/`format_display_datetime` 单一真相源，展示时区可配（默认 Asia/Shanghai），存储与 API 时间不受影响（全链路 aware UTC）
+
 ## [2026-09-23] - v3.5.5 词汇与时区收敛、专家教材根治、产物与统计修复
 
 ### 修复（2026-09-23 批次）

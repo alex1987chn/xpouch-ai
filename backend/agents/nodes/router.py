@@ -25,7 +25,7 @@ from utils.event_generator import event_router_decision, event_router_start
 from utils.logger import logger
 from utils.message_text import extract_message_text
 from utils.prompt_utils import inject_current_time  # v3.6: 提取到工具函数
-from utils.time import utc_now
+from utils.time import format_display_datetime
 
 
 class RoutingDecision(BaseModel):
@@ -220,11 +220,8 @@ def _fill_router_placeholders(system_prompt: str, user_query: str, relevant_memo
     - {current_time}: 当前时间
     - {relevant_memories}: 相关记忆
     """
-    # 准备时间信息
-    now = utc_now()
-    weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
-    weekday_str = weekdays[now.weekday()]
-    time_str = now.strftime(f"%Y年%m月%d日 %H:%M:%S {weekday_str}")
+    # 准备时间信息（用户墙钟：服务器/容器系统时区通常是 UTC，不能拿它当用户时间）
+    time_str = format_display_datetime()
 
     # 构建占位符映射
     placeholder_map = {
