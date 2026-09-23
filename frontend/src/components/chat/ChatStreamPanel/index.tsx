@@ -47,6 +47,7 @@ import { ArtifactViewerModal } from '@/components/artifacts/ArtifactViewerModal'
 import { RunPollingBar } from '../RunPollingBar'
 import { parseThinkTags, formatThinkingAsSteps } from '@/utils/thinkParser'
 import { isSameId } from '@/utils/normalize'
+import { cn } from '@/lib/utils'
 import type { ResumeChatParams } from '@/services/chat'
 import type { AvatarStatus } from '@/components/ui/StatusAvatar'
 import type { RunStatus } from '@/types/run'
@@ -334,8 +335,15 @@ export default function ChatStreamPanel({
             const isLiveThinking = index === lastThinkingIndex
             const isThinkingNow = isLastAndStreaming && isLiveThinking
 
+            // 专家卡成组：同轮连续的专家消息收紧间距（space-y-8 → 组内 ~0.75rem），
+            // 一轮多卡在视觉上是一个过程块；组间（专家卡↔其他消息）保持原间距
+            const kindOf = (m: typeof msg) => (m.extra_data as { message_kind?: string } | undefined)?.message_kind
+            const isExpertGrouped =
+              kindOf(msg) === 'expert_result' &&
+              kindOf(displayMessages[index - 1]) === 'expert_result'
+
             return (
-              <div key={messageKey}>
+              <div key={messageKey} className={cn(isExpertGrouped && '-mt-5')}>
                 {/* Thinking chain display (outside message bubble, BEFORE message content) */}
                 {/* 常规布局：思考过程在消息上方 */}
                 {thinkingSteps.length > 0 && (
