@@ -258,7 +258,10 @@ export function handleTaskCompleted(
         source: String((c as { source?: unknown }).source ?? 'builtin'),
       })),
       duration_ms: event.data.duration_ms,
-      summary: (event.data.output || '').slice(0, 120) || null,
+      // 产出标题（落库后回填的权威值；事件未带时兜底 output 首个非空行）
+      summary: event.data.summary ?? (
+        ((event.data.output || '').split('\n').find(l => l.trim()) || '').slice(0, 120) || null
+      ),
     })
   }
 

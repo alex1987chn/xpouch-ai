@@ -168,6 +168,7 @@ class EventGenerator:
         artifact_ids: list[str] | None = None,
         tool_stats: dict[str, int] | None = None,
         tool_calls: list[dict[str, Any]] | None = None,
+        summary: str | None = None,
     ) -> SSEEvent:
         """生成 task.completed 事件"""
         data = TaskCompletedData(
@@ -183,6 +184,7 @@ class EventGenerator:
             artifact_ids=artifact_ids or [],
             tool_stats=tool_stats,
             tool_calls=tool_calls,
+            summary=summary,
         )
         return build_sse_event(EventType.TASK_COMPLETED, data, self._next_event_id())
 

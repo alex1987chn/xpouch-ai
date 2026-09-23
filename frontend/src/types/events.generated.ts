@@ -87,6 +87,7 @@ export interface TaskCompletedData {
   artifact_ids?: string[]
   tool_stats?: Record<string, number> | null
   tool_calls?: Record<string, unknown>[] | null
+  summary?: string | null
 }
 
 export interface TaskFailedData {

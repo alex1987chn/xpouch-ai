@@ -122,6 +122,8 @@ export interface TaskCompletedData {
   tool_stats?: Record<string, number> | null
   /** 逐次工具调用明细（完成时刻快照；真相源=账本） */
   tool_calls?: Record<string, unknown>[] | null
+  /** 产出标题（与 artifact.title 同源）——横条/摘要行用它，不用 output 首行 */
+  summary?: string | null
 }
 
 export type TaskCompletedEvent = SSEEvent<TaskCompletedData, 'task.completed'>

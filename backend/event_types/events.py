@@ -156,6 +156,9 @@ class TaskCompletedData(BaseModel):
     tool_stats: dict[str, int] | None = None  # {"count","total_ms","failed"}
     # 逐次工具调用明细（完成时刻快照，真相源=账本；None=未聚合/无调用）
     tool_calls: list[dict[str, Any]] | None = None
+    # 产出标题（与 artifact.title / 消息 summary 同源）——前端实时覆盖时
+    # 用它做横条标题，不得用 output 首行原文（可能是过渡句/长句）
+    summary: str | None = None
 
 
 class TaskFailedData(BaseModel):

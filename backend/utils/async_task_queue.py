@@ -102,7 +102,14 @@ def _sync_save_wrapper(
     if thread_id:
         try:
             with Session(engine) as msg_session:
-                summary = (output_result or "").strip().splitlines()
+                # summary=产物标题（与 artifact.title 同源同值）：消息卡横条/
+                # 摘要行显示的是标题，不是产出首行原文——首行可能是模型过渡句
+                # 或长句，整段糊上去很乱（用户实报）。提取不到再按同一规则兜底。
+                from utils.title_extract import artifact_title_from_output
+
+                summary = (artifact_data or {}).get("title") or artifact_title_from_output(
+                    output_result or "", ""
+                )
                 msg = complete_expert_message(
                     msg_session,
                     thread_id=thread_id,
@@ -110,12 +117,13 @@ def _sync_save_wrapper(
                     run_id=run_id,
                     artifact_ids=[artifact_id] if artifact_id else [],
                     duration_ms=duration_ms,
-                    summary=summary[0][:120] if summary else None,
+                    summary=summary or None,
                 )
             if msg is not None:
                 payload["message_id"] = msg.id
                 payload["tool_stats"] = (msg.extra_data or {}).get("tool_stats")
                 payload["tool_calls"] = (msg.extra_data or {}).get("tool_calls")
+                payload["summary"] = (msg.extra_data or {}).get("summary")
         except Exception:
             logger.exception("[AsyncTaskQueue] 专家消息完成态更新失败 task=%s", task_id)
     return payload
@@ -244,6 +252,9 @@ async def async_save_expert_result(
                 task_completed_event.data["tool_stats"] = result["tool_stats"]
             if result.get("tool_calls") is not None:
                 task_completed_event.data["tool_calls"] = result["tool_calls"]
+            # 落库后的权威标题（前端横条/摘要行用它，不用 output 首行原文）
+            if result.get("summary") is not None:
+                task_completed_event.data["summary"] = result["summary"]
             await emit_event(task_completed_event)
         if artifact_event is not None:
             await emit_event(artifact_event)

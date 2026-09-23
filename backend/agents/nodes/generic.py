@@ -71,6 +71,7 @@ from utils.llm_factory import get_effective_model, get_expert_llm
 from utils.logger import logger
 from utils.prompt_utils import enhance_system_prompt_with_tools  # v3.6: 提取到工具函数
 from utils.time import utc_now
+from utils.title_extract import artifact_title_from_output
 
 # P0 优化: 本地内存缓存高频专家配置查询 (5分钟TTL, 最大200条)
 _generic_expert_cache = ConfigCache(maxsize=200, ttl=300, name="generic_expert")
@@ -733,7 +734,7 @@ async def expert_worker_node(
         artifact_type = _detect_artifact_type(response.content, expert_type)
 
         # ✅ 构建 artifact 对象（符合 ArtifactCreate 模型）
-        artifact_title = _artifact_title_from_output(response.content, f"{expert_name}结果")
+        artifact_title = artifact_title_from_output(response.content, f"{expert_name}结果")
         artifact = {
             "type": artifact_type,
             "title": artifact_title,
@@ -797,6 +798,7 @@ async def expert_worker_node(
                     duration_ms=duration_ms,
                     artifact_count=1,
                     artifact_ids=[artifact_id],
+                    summary=artifact_title,
                 )
                 # 使用后台线程异步保存，不阻塞 LLM 响应返回（持引用防 GC + 失败可见）
                 spawn_background(
@@ -912,38 +914,6 @@ def _format_input_data(data: dict) -> str:
         return "（无额外参数）"
 
     return "\n".join(f"- {key}: {value}" for key, value in data.items())
-
-
-def _artifact_title_from_output(content: str, fallback: str, max_len: int = 80) -> str:
-    """产物标题的提取规则（title 单一真相源在落库处，画廊/产物卡/预览/
-    下载文件名全部从这里读，不在展示层重复推导）：
-
-    1. 优先第一个 markdown 标题行（`#`/`##`…）——报告的正式标题；
-    2. 无标题行时，首非空行**仅当短（≤40 字符）且不含句读**才采用
-       （形如短语/文件名）；模型过渡句（"I have sufficient information.
-       Let me compile…"）特征就是完整长句，必须兜底；
-    3. 兜底「{专家}结果」。
-    """
-    first_line = ""
-    for line in (content or "").splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("#"):
-            cleaned = stripped.lstrip("#").strip()
-            if cleaned:
-                return cleaned[:max_len]
-        if not first_line:
-            first_line = stripped
-    if first_line:
-        candidate = first_line.strip("*").strip()
-        if (
-            candidate
-            and len(candidate) <= 40
-            and not any(ch in candidate for ch in "。．.！!？?；;，,")
-        ):
-            return candidate[:max_len]
-    return fallback
 
 
 def _detect_artifact_type(content: str, expert_type: str) -> str:
