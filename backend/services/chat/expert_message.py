@@ -77,6 +77,7 @@ def insert_expert_message_standalone(
     description: str,
     sort_order: int,
     total_steps: int,
+    run_id: str | None = None,
 ) -> int | None:
     """线程池形态的插入（独立 Session），返回 message id 供事件携带。"""
     from database import Session, engine
@@ -90,6 +91,7 @@ def insert_expert_message_standalone(
             description=description,
             sort_order=sort_order,
             total_steps=total_steps,
+            run_id=run_id,
         )
         return msg.id if msg else None
 
@@ -110,8 +112,14 @@ def _expert_extra(
     sort_order: int,
     total_steps: int,
     status: str,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
-    """专家消息的 extra_data 骨架（状态字段随生命周期更新）。"""
+    """专家消息的 extra_data 骨架（状态字段随生命周期更新）。
+
+    run_id 用于 run 异常终态时按轮收尾（close_orphaned_task_state）；
+    缺省 None 的旧行按 thread 维度收尾（一个 thread 同时只有一个
+    active run，409 互斥保证，语义安全）。
+    """
     return {
         "message_kind": EXPERT_MESSAGE_KIND,
         "expert_type": expert_type,
@@ -120,8 +128,10 @@ def _expert_extra(
         "sort_order": sort_order,
         "total_steps": total_steps,
         "status": status,
+        "run_id": run_id,
         "artifact_ids": [],
         "tool_stats": None,
+        "tool_calls": None,
         "duration_ms": None,
         "summary": None,
         "error": None,
@@ -137,6 +147,7 @@ def insert_expert_message(
     description: str,
     sort_order: int,
     total_steps: int,
+    run_id: str | None = None,
 ) -> Message | None:
     """task 开始：插入 running 态专家消息（同步调用，跑在线程池）。"""
     msg = Message(
@@ -150,6 +161,7 @@ def insert_expert_message(
             sort_order=sort_order,
             total_steps=total_steps,
             status="running",
+            run_id=run_id,
         ),
     )
     db.add(msg)
@@ -257,3 +269,35 @@ def fail_expert_message(
     db.commit()
     db.refresh(msg)
     return msg
+
+
+def fail_running_expert_messages_for_run(
+    db: Session, *, thread_id: str, run_id: str | None, error: str
+) -> int:
+    """run 异常终态的收尾（close_orphaned_task_state 调用）：把该轮仍挂
+    running 的专家执行消息置 failed——否则消息流的专家卡永远转圈，
+    刷新后也恢复不出结果。返回收尾行数。"""
+    rows = db.exec(
+        select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+    ).all()
+    closed = 0
+    for m in rows:
+        extra = m.extra_data or {}
+        if (
+            extra.get("message_kind") == EXPERT_MESSAGE_KIND
+            and extra.get("status") == "running"
+            and (run_id is None or extra.get("run_id") in (run_id, None))
+        ):
+            extra = dict(extra)
+            extra.update(status="failed", error=error[:300])
+            m.extra_data = extra
+            db.add(m)
+            closed += 1
+    if closed:
+        db.commit()
+        logger.warning(
+            "[ExpertMessage] run %s 终态收尾：%d 条 running 专家消息置 failed",
+            (run_id or "?")[:8],
+            closed,
+        )
+    return closed

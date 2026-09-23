@@ -229,3 +229,65 @@ def test_run_thinking_insert_shape_and_idempotency(monkeypatch):
     third = insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-2")
     assert third == 501
     assert len(messages) == 2
+
+
+def test_fail_running_expert_messages_for_run():
+    """run 异常终态收尾：只收 running 态、按 run_id 归属（旧行无 run_id 也收）。"""
+    from services.chat.expert_message import fail_running_expert_messages_for_run
+
+    messages: list = []
+    db = _SessionStub(messages)
+    insert_expert_message(
+        db,
+        thread_id="th-1",
+        task_id="task-1",
+        expert_type="search",
+        description="d",
+        sort_order=0,
+        total_steps=2,
+        run_id="run-A",
+    )
+    insert_expert_message(
+        db,
+        thread_id="th-1",
+        task_id="task-2",
+        expert_type="writer",
+        description="d",
+        sort_order=1,
+        total_steps=2,
+        run_id="run-A",
+    )
+    # 已完成的另一条 + 别的 run 的 running 条
+    done = insert_expert_message(
+        db,
+        thread_id="th-1",
+        task_id="task-3",
+        expert_type="search",
+        description="d",
+        sort_order=2,
+        total_steps=3,
+        run_id="run-A",
+    )
+    done.extra_data = {**done.extra_data, "status": "completed"}
+    insert_expert_message(
+        db,
+        thread_id="th-1",
+        task_id="task-4",
+        expert_type="coder",
+        description="d",
+        sort_order=3,
+        total_steps=3,
+        run_id="run-B",
+    )
+
+    closed = fail_running_expert_messages_for_run(
+        _SessionStub(messages), thread_id="th-1", run_id="run-A", error="运行超时终止"
+    )
+
+    assert closed == 2
+    by_task = {m.extra_data["task_id"]: m.extra_data for m in messages}
+    assert by_task["task-1"]["status"] == "failed"
+    assert "运行超时终止" in by_task["task-1"]["error"]
+    assert by_task["task-2"]["status"] == "failed"
+    assert by_task["task-3"]["status"] == "completed", "终态行不动"
+    assert by_task["task-4"]["status"] == "running", "别的 run 的行不动"

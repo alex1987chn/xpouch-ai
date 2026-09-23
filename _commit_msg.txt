@@ -1,0 +1,28 @@
+fix(run): 异常终态收尾缺失——会话永远提示"任务仍在执行中"（用户实报）
+
+现象：run 实际已 timed_out（卡在第一个搜索的工具调用，MCP 远端
+hang 吃满 deadline——工具层 per-call 超时 90s×2 次恰好 180s=
+run deadline，机制按设计工作），但前端一直显示"检测到页面曾切换
+到后台，任务仍在执行中"，统计页停在第一个搜索，会话无法继续。
+
+根因：mark_run_timed_out/failed/cancelled 的收尾只改 run 行——
+正在执行的 SubTask 与 running 态专家执行消息无人收尾。前端会话
+恢复读到"还有 running 任务"（hasRunningTask）就永远提示，专家
+卡永远转圈。
+
+修复：
+- crud/agent_run.close_orphaned_task_state 单一收尾转换点：把本
+  run 执行计划里仍挂 running 的 SubTask 置 failed + 该轮 running
+  专家消息置 failed（专家消息 extra 补 run_id 归属，旧行按 thread
+  维度收尾——单 active run 互斥保证语义安全）；接入三个终态函数。
+  收尾是附属义务：失败大声告警不阻断终态标记（run 行留 running
+  更糟——租约已释放会被当无主回收）
+- 迁移 20260923_000500 清洗存量僵尸行（SubTask join 终态 run 置
+  failed；专家消息 json 列 Python 侧改写），用户卡死会话已解锁
+  （迁移实测：running→failed、专家消息 failed、pending 保留）
+- 空库链（45 步到 head）+ 开发库双口径验证，alembic check 零漂移
+
+工具 hang 本身不修：per-call 超时+重试+deadline 兜底机制健全，
+重试预算与 run 预算的错配（90s×2=180s）属可接受的失败路径。
+
+测试：后端 499 绿（run 终态收尾契约 +1）。

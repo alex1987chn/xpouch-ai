@@ -299,6 +299,7 @@ async def expert_worker_node(
                     description=description,
                     sort_order=int(current_task.get("sort_order") or 0),
                     total_steps=int(branch_context.get("total_steps") or 0),
+                    run_id=run_id,
                 )
             except Exception as msg_err:
                 logger.warning(f"[GenericWorker] ⚠️ 专家消息插入失败（不影响执行）: {msg_err}")

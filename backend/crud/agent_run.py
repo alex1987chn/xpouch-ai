@@ -37,6 +37,53 @@ TERMINAL_RUN_STATUSES = {
     RunStatus.TIMED_OUT,
 }
 
+
+def close_orphaned_task_state(db: Session, run: AgentRun, *, reason: str) -> None:
+    """run 异常终态（failed/timed_out/cancelled）的**单一收尾转换点**：
+    把本 run 执行计划里仍挂 running 的 SubTask 置 failed，并把该轮
+    running 态的专家执行消息一并置 failed。
+
+    正常完成路径各自的收尾都完整；异常终止时正在执行的任务没有自己的
+    收尾路径——留在 running 会让前端会话恢复永远认为"还有任务在跑"
+    （"检测到页面曾切换到后台，任务仍在执行中"提示卡死、统计页停在
+    第一个搜索，实测），且消息流里该专家卡永远转圈。
+
+    收尾是附属义务：失败大声告警但**不阻断终态标记**（run 行留在
+    running 比收尾缺失更糟——租约已释放，会被 supervisor 当无主回收）。
+    """
+    from models.domain.execution_plan import ExecutionPlan
+    from models.domain.subtask import SubTask
+    from models.enums import TaskStatus
+    from services.chat.expert_message import fail_running_expert_messages_for_run
+    from utils.logger import logger
+
+    try:
+        rows = db.exec(
+            select(SubTask)
+            .join(ExecutionPlan, SubTask.execution_plan_id == ExecutionPlan.id)
+            .where(ExecutionPlan.run_id == run.id, SubTask.status == TaskStatus.RUNNING)
+        ).all()
+        for row in rows:
+            row.status = TaskStatus.FAILED
+            row.completed_at = utc_now()
+            row.updated_at = utc_now()
+            db.add(row)
+        if rows:
+            fail_running_expert_messages_for_run(
+                db, thread_id=run.thread_id, run_id=run.id, error=reason
+            )
+            logger.warning(
+                "[RunTerminal] run %s 终态收尾：%d 个 running 子任务与对应专家消息置 failed",
+                run.id[:8],
+                len(rows),
+            )
+    except Exception:
+        logger.exception(
+            "[RunTerminal] run %s 终态收尾失败（subtask/专家消息可能仍挂 running）",
+            run.id[:8],
+        )
+
+
 # 互斥判定时最多看这么多条活跃记录：过滤「租约是否有效」用同一个纯函数（见
 # get_active_run_for_thread 的注释），所以要在 Python 侧过滤，条数必须可控。
 # 一个会话同时存在多条活跃 run 只可能是「僵尸 + 新的」这种短暂并存。
@@ -350,6 +397,7 @@ def mark_run_failed_by_id(
     if run is None:
         return None
     mark_run_failed(db, run, error_message=error_message, error_code=error_code)
+    close_orphaned_task_state(db, run, reason=f"运行失败终止：{error_message}")
     return run
 
 
@@ -373,6 +421,7 @@ def mark_run_timed_out_by_id(
     run.updated_at = utc_now()
     _release_lease(run)
     db.add(run)
+    close_orphaned_task_state(db, run, reason=f"运行超时终止：{error_message}")
     emit_run_timed_out(
         db,
         run_id=run.id,
@@ -404,6 +453,7 @@ def mark_run_cancelled_by_id(
     run.updated_at = utc_now()
     _release_lease(run)
     db.add(run)
+    close_orphaned_task_state(db, run, reason="运行已取消")
     _sync_thread_status(db, run.thread_id, run.status)
     return run
 
