@@ -599,11 +599,7 @@ function ExpertResultCard({
   } | null>(null)
   const [loadingArtifact, setLoadingArtifact] = useState(false)
   const [toolsOpen, setToolsOpen] = useState(false)
-  const [outputOpen, setOutputOpen] = useState(false)
-  const [outputText, setOutputText] = useState<string | null>(null)
-  const [loadingOutput, setLoadingOutput] = useState(false)
-  // 展开全文的 markdown 渲染配置（无链接回调：卡片内不接管导航）
-  const outputComponents = useMemo(() => buildMarkdownComponents(), [])
+  const [descOpen, setDescOpen] = useState(false)
 
   const color = expertColor(extra.expert_type)
   const name = expertLabel(extra.expert_type, t)
@@ -613,7 +609,6 @@ function ExpertResultCard({
   const toolStats = extra.tool_stats
   // 明细：终态优先（服务端快照），实时态用运行时序列
   const detailCalls = !running ? extra.tool_calls : liveCalls
-  const primaryArtifactId = (extra.artifact_ids ?? [])[0]
 
   const openArtifact = async (artifactId: string) => {
     if (loadingArtifact) return
@@ -631,34 +626,21 @@ function ExpertResultCard({
     }
   }
 
-  // 产出全文就地展开（惰性拉首个 artifact；再次点击收起）
-  const toggleOutput = async () => {
-    if (outputOpen) {
-      setOutputOpen(false)
-      return
-    }
-    if (outputText == null && primaryArtifactId) {
-      if (loadingOutput) return
-      setLoadingOutput(true)
-      try {
-        const artifact = await getArtifactDetail(primaryArtifactId)
-        setOutputText(artifact.content ?? '')
-      } finally {
-        setLoadingOutput(false)
-      }
-    }
-    setOutputOpen(true)
-  }
-
   const formatMs = (ms?: number | null) =>
     ms == null ? null : ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
+
+  // 任务描述较长时提供展开/收起（默认一行截断，悬停 title 看全文的兜底保留）
+  const descLong = extra.task_description.length > 48
 
   // 实时活动：序列全部保留在状态里，渲染最近 3 条（旧的收进计数）
   const visibleLive = (liveCalls ?? []).slice(-3)
   const hiddenLiveCount = (liveCalls ?? []).length - visibleLive.length
 
   return (
-    <div className="flex w-full flex-col items-start select-text ai-message group">
+    <div
+      className="flex w-full flex-col items-start select-text ai-message group border-l-2 py-0.5 pl-3"
+      style={{ borderLeftColor: color }}
+    >
       {/* 署名行：专家识别色点 + 名称 + 步骤序号 + 耗时/状态 */}
       <div className="mb-1 flex items-center gap-1.5">
         <span className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: color }} />
@@ -680,16 +662,31 @@ function ExpertResultCard({
         {failed && <span className="text-nano text-accent-destructive">· {t('expertTaskFailed')}</span>}
       </div>
 
-      {/* 任务描述（一行截断，title 悬停看全文） */}
-      <p
-        className="w-full truncate text-sm text-content-secondary"
-        title={extra.task_description}
-      >
-        {extra.task_description}
-      </p>
+      {/* 任务描述：默认一行截断（悬停 title 兜底），长描述提供展开/收起 */}
+      <div className="flex w-full items-start gap-1">
+        <p
+          className={cn(
+            'min-w-0 flex-1 text-sm text-content-secondary',
+            descOpen ? 'whitespace-pre-wrap break-words' : 'truncate'
+          )}
+          title={!descOpen ? extra.task_description : undefined}
+        >
+          {extra.task_description}
+        </p>
+        {descLong && (
+          <button
+            type="button"
+            onClick={() => setDescOpen(v => !v)}
+            className="mt-0.5 shrink-0 text-content-muted transition-colors hover:text-content-secondary"
+            title={descOpen ? t('expertCollapseOutput') : t('expertExpandDesc')}
+          >
+            {descOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+        )}
+      </div>
 
-      {/* 完成摘要（1 行截断） */}
-      {!running && !failed && extra.summary && (
+      {/* 完成摘要（1 行截断）——有产物横条时不重复显示（横条标题=产出首行） */}
+      {!running && !failed && extra.summary && (extra.artifact_ids ?? []).length === 0 && (
         <p className="mt-0.5 w-full truncate text-xs text-content-muted">{extra.summary}</p>
       )}
 
@@ -773,57 +770,32 @@ function ExpertResultCard({
         </>
       )}
 
-      {/* 产出全文就地展开（惰性拉首个 artifact，markdown 渲染；再次点击收起） */}
-      {!running && !failed && primaryArtifactId && (
-        <button
-          type="button"
-          onClick={() => void toggleOutput()}
-          className="mt-1 flex items-center gap-1 text-xs text-content-muted transition-colors hover:text-content-secondary"
-        >
-          {outputOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          <span>{outputOpen ? t('expertCollapseOutput') : t('expertExpandOutput')}</span>
-          {loadingOutput && <Loader2 className="h-3 w-3 animate-spin" />}
-        </button>
-      )}
-      {outputOpen && outputText != null && (
-        <div className={cn(
-          'mt-1.5 max-h-96 w-full overflow-y-auto rounded-md border border-border-divider bg-surface-tint/40 px-3 py-2',
-          'text-body leading-[1.75] prose prose-sm max-w-none',
-          'prose-headings:text-sm prose-headings:font-bold prose-headings:text-content-primary',
-          'prose-p:text-body prose-p:leading-[1.75] prose-p:text-content-primary/90',
-          'prose-strong:text-content-primary prose-code:text-content-primary prose-pre:bg-surface-elevated/50',
-        )}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeKatex]}
-            components={outputComponents}
-          >
-            {outputText}
-          </ReactMarkdown>
-        </div>
-      )}
-
-      {/* artifact 横条：点击预览（详情即时拉取，loading 态防抖） */}
+      {/* artifact 横条：产物标题（取产出首行——通常是报告标题；无则默认文案）
+          + 预览入口（点击拉详情弹预览，loading 防抖） */}
       {(extra.artifact_ids ?? []).length > 0 && (
         <div className="mt-1.5 flex flex-col gap-1.5 w-full">
-          {(extra.artifact_ids ?? []).map(artifactId => (
-            <button
-              key={artifactId}
-              type="button"
-              onClick={() => openArtifact(artifactId)}
-              className="flex w-full items-center gap-2 rounded-md border border-border-divider bg-surface-tint/60 px-3 py-2 text-left transition-colors hover:border-border-hover hover:bg-surface-tint"
-            >
-              <FileText className="h-3.5 w-3.5 shrink-0 text-content-muted" />
-              <span className="min-w-0 flex-1 truncate text-sm text-content-secondary">
-                {t('expertArtifactPreview')}
-              </span>
-              {loadingArtifact ? (
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-content-muted" />
-              ) : (
-                <span className="shrink-0 text-nano text-content-muted">{t('expertPreviewAction')}</span>
-              )}
-            </button>
-          ))}
+          {(extra.artifact_ids ?? []).map((artifactId, i) => {
+            const barTitle =
+              i === 0 ? (extra.summary || '').replace(/^#+\s*/, '').trim() : ''
+            return (
+              <button
+                key={artifactId}
+                type="button"
+                onClick={() => openArtifact(artifactId)}
+                className="flex w-full items-center gap-2 rounded-md border border-border-divider bg-surface-tint/60 px-3 py-2 text-left transition-colors hover:border-border-hover hover:bg-surface-tint"
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0 text-content-muted" />
+                <span className="min-w-0 flex-1 truncate text-sm text-content-secondary">
+                  {barTitle || t('expertArtifactPreview')}
+                </span>
+                {loadingArtifact ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-content-muted" />
+                ) : (
+                  <span className="shrink-0 text-nano text-content-muted">{t('expertPreviewAction')}</span>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
 
