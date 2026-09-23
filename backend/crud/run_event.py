@@ -159,7 +159,7 @@ def emit_run_created(
     run_id: str,
     thread_id: str,
     entrypoint: str,
-    mode: str,
+    mode: str | None,
 ) -> RunEvent:
     """发送 RUN_CREATED 事件"""
     return append_run_event(

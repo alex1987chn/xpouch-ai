@@ -1,14 +1,14 @@
 """
 RunEvent 相关的 Pydantic DTO
 
-取值约定：event_type / status / mode 用 Literal / 枚举而非裸 str——
-它们经 openapi 生成前端联合类型（run.ts 的 RunEventType / RunStatus
-re-export 自 enums.generated），裸 str 会让契约退化成 string、失去
-编译期防漂移能力（SameShape 锚点会红）。
+取值约定：event_type / status 用枚举而非裸 str——它们经 openapi 生成前端
+联合类型（run.ts 的 RunEventType / RunStatus re-export 自 enums.generated），
+裸 str 会让契约退化成 string、失去编译期防漂移能力（SameShape 锚点会红）。
+mode 例外：可空 str（路由决策前为 NULL，simple/complex 由决策写入）。
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -40,7 +40,8 @@ class RunSummaryResponse(BaseModel):
     thread_id: str
     user_id: str
     entrypoint: str
-    mode: Literal["simple", "complex"]
+    # 可空：run 出生时路由决策尚未发生（此前占位值 "router" 被契约拒收炸列表）
+    mode: str | None
     status: RunStatus
     current_node: str | None = None
     error_code: str | None = None

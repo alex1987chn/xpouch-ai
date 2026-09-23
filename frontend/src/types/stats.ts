@@ -38,7 +38,8 @@ export interface RunListItem {
   thread_id: string
   user_id: string | null
   user_name: string | null
-  mode: 'simple' | 'complex'
+  /** 可空 str（跟随契约）：NULL=路由决策前终止；后端对存量 "router" 值宽容 */
+  mode: string | null
   status: RunStatus
   duration_ms: number | null
   created_at: string

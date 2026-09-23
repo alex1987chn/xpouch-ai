@@ -168,7 +168,8 @@ function RunTable({
       </span>
      )}
      <span className="shrink-0 rounded-full bg-surface-tint px-2 py-0.5 text-nano font-medium capitalize text-content-secondary">
-      {run.mode}
+      {/* mode 可空：路由决策前终止的 run 无模式（详见后端迁移 20260923_000100） */}
+      {run.mode ?? '—'}
      </span>
      <RunStatusBadge status={run.status} variant="simple" />
      <span className="ml-auto hidden shrink-0 font-display text-xs text-content-muted sm:inline">

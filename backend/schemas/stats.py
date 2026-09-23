@@ -5,7 +5,6 @@
 """
 
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel
 
@@ -43,7 +42,7 @@ class RunListItem(BaseModel):
     thread_id: str
     user_id: str | None  # 仅 admin 可见
     user_name: str | None  # 仅 admin 可见
-    mode: Literal["simple", "complex"]
+    mode: str | None  # 可空：路由决策前终止的 run 无模式（占位值 "router" 已废除）
     status: RunStatus
     duration_ms: int | None
     created_at: datetime

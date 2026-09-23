@@ -96,7 +96,7 @@ def create_agent_run(
     thread_id: str,
     user_id: str,
     entrypoint: str,
-    mode: str,
+    mode: str | None,
     idempotency_key: str | None = None,
     checkpoint_namespace: str | None = None,
 ) -> AgentRun:

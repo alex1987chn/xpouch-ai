@@ -32,7 +32,10 @@ class AgentRun(SQLModel, table=True):
     entrypoint: str = Field(
         default="chat", sa_column=Column(String(32), nullable=False, index=True)
     )
-    mode: str = Field(default="simple", sa_column=Column(String(32), nullable=False, index=True))
+    # 执行模式：simple / complex。可空——run 出生时路由决策尚未发生（此前写
+    # 占位值 "router"，决策前终止的 run 把它带进统计接口，被 Literal 契约拒收
+    # 炸整个列表；"还没定"如实存 NULL，见迁移 20260923_000100）
+    mode: str | None = Field(default=None, sa_column=Column(String(32), nullable=True, index=True))
 
     status: RunStatus = Field(
         default=RunStatus.QUEUED,

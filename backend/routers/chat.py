@@ -419,7 +419,7 @@ async def chat_endpoint(
         thread_id=thread_id,
         user_id=current_user.id,
         entrypoint="chat",
-        mode="router",
+        mode=None,
         checkpoint_namespace=thread_id,
     )
     session.commit()

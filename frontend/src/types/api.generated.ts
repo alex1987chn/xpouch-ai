@@ -2554,11 +2554,8 @@ export interface components {
             user_id: string | null;
             /** User Name */
             user_name: string | null;
-            /**
-             * Mode
-             * @enum {string}
-             */
-            mode: "simple" | "complex";
+            /** Mode */
+            mode: string | null;
             status: components["schemas"]["RunStatus"];
             /** Duration Ms */
             duration_ms: number | null;
@@ -2688,11 +2685,8 @@ export interface components {
             user_id: string;
             /** Entrypoint */
             entrypoint: string;
-            /**
-             * Mode
-             * @enum {string}
-             */
-            mode: "simple" | "complex";
+            /** Mode */
+            mode: string | null;
             status: components["schemas"]["RunStatus"];
             /** Current Node */
             current_node?: string | null;

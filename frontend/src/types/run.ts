@@ -79,7 +79,8 @@ export interface RunSummary {
   thread_id: string
   user_id: string
   entrypoint: string
-  mode: 'simple' | 'complex'
+  /** 可空 str（跟随契约）：NULL=路由决策前终止；后端对存量 "router" 值宽容 */
+  mode: string | null
   status: RunStatus
   current_node?: string | null
   error_code?: string | null
