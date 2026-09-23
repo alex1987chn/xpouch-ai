@@ -5,7 +5,7 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2026-09-23] - v3.5.6 专家执行消息化、MCP 认知通道与运行时收尾
 
 ### 变更
 

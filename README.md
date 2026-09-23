@@ -38,7 +38,8 @@ The current stable baseline includes:
 - Artifact persistence, restored rendering, and **wave-based parallel execution** (dependency-ordered waves fan out same-layer ready tasks; the concurrency cap is admin-configurable)
 - **Run lease**: a run is a leased, durable job — one mechanism decides whether it still owns its thread
 - **Durable SSE frames**: frames are persisted per run, so a reconnect replays from storage instead of losing the stream
-- **Expert-grouped thinking panel**: adjacent steps from the same expert collapse into a group header showing who is working
+- **Expert execution as first-class messages**: each expert's run renders as its own message card (identity color, step i/N, task description, expandable per-call tool details, artifact bar with the real report title) — the message table is the source of truth, so refreshing mid-run restores the live scene
+- **Full tool visibility**: every tool call streams in real time (calling spinner → result with duration & status), lands in the run-event ledger for timeline replay, and folds into a per-expert summary you can expand afterwards
 - Cross-turn artifact continuity (follow-ups like "turn the chart above into a sequence diagram" can reference prior artifacts)
 - **Artifact center**: browse every artifact across sessions with search & type filters, one-click public share links, and one-click jump to the source conversation
 - **Dual login** (SMS code + password) with a standalone Account & Security dialog, incl. forgot-password reset
@@ -113,7 +114,8 @@ The current stable baseline includes:
 ### MCP dynamic tools
 
 - Supports `sse` / `streamable_http`
-- Generic Worker binds `BASE_TOOLS + MCP_TOOLS` at runtime
+- Generic Worker binds `BASE_TOOLS + MCP_TOOLS` at runtime, and each expert's prompt carries the **live tool manifest** (real names, descriptions, source badges, and selection guidance — e.g. prefer POI/map tools for location tasks), so newly connected MCP servers need zero curriculum changes
+- Servers are fetched independently — one dead server is skipped with a warning instead of dragging down the rest
 - MCP servers are managed from the admin UI
 
 ### Skill templates
