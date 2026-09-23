@@ -66,7 +66,10 @@ async function attachThinkingFromTimeline(
   const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')
   if (!lastAssistant) return messages
   if ((lastAssistant.metadata?.thinking?.length ?? 0) > 0) return messages
-  if (messageTimeMs(lastAssistant.timestamp) < toLocalDate(run.started_at).getTime()) return messages
+  // 服务端消息的时间字段是 created_at（词汇收敛后 timestamp 已退役，那是本地
+  // 运行时字段）——此前读 timestamp 恒为 undefined→0，守卫永远成立，
+  // 账本重建从未执行过（刷新后思考卡消失的根因之一）。
+  if (messageTimeMs(lastAssistant.created_at ?? undefined) < toLocalDate(run.started_at).getTime()) return messages
 
   try {
     const timeline = await getRunTimeline(run.id, 200)
@@ -209,7 +212,7 @@ export function useSessionRestore(
         // 🔥🔥🔥 前端排序：按 timestamp 升序。走 messageTimeMs（naive-UTC 解析口径），
         // 与本文件其余时间处理一致——裸 new Date() 一旦混入带时区的实时时间戳会错序（评审低危 L5）
         const sortedMessages = [...thread.messages].sort(
-          (a, b) => messageTimeMs(a.timestamp) - messageTimeMs(b.timestamp)
+          (a, b) => messageTimeMs(a.created_at ?? undefined) - messageTimeMs(b.created_at ?? undefined)
         )
         // 思考面板随刷新消失（步骤只在内存里）→ 从事件账本重建骨架挂回
         const restoredMessages = await attachThinkingFromTimeline(sortedMessages, latestRun, {
@@ -225,7 +228,25 @@ export function useSessionRestore(
               mode: t(mode === 'simple' ? 'modeSimple' : 'modeComplex'),
             }),
         })
-        setMessages(restoredMessages)
+        // 流式刚积累的思考步骤防冲刷：服务端消息从不持久化 thinking，
+        // 恢复/刷新替换时按 id 把本地已有步骤并回——否则 done 后的
+        // invalidate→refetch 会把刚迁移到正文消息上的步骤再冲掉一次
+        // （切会话时 id 全不同，此合并天然无副作用）。
+        const existingThinking = new Map(
+          useChatStore
+            .getState()
+            .messages.filter(m => (m.metadata?.thinking?.length ?? 0) > 0)
+            .map(m => [String(m.id), m.metadata!.thinking!]),
+        )
+        const merged =
+          existingThinking.size > 0
+            ? restoredMessages.map(m =>
+                existingThinking.has(String(m.id)) && (m.metadata?.thinking?.length ?? 0) === 0
+                  ? { ...m, metadata: { ...m.metadata, thinking: existingThinking.get(String(m.id)) } }
+                  : m,
+              )
+            : restoredMessages
+        setMessages(merged)
       }
       setCurrentThreadId(threadId)
 

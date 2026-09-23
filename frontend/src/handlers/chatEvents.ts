@@ -10,7 +10,7 @@
 import type { MessageDeltaEvent, MessageDoneEvent, MessageThinkingEvent } from './types'
 import type { HandlerContext } from './types'
 import { logger } from '@/utils/logger'
-import { findMessageById } from '@/utils/normalize'
+import { findMessageById, isSameId } from '@/utils/normalize'
 import { useChatStore } from '@/store/chatStore'
 import { t } from '@/i18n'
 import type { ThinkingStep } from '@/types'
@@ -187,6 +187,33 @@ export function handleMessageDone(
   if (!message) {
     logger.warn('[ChatEvents] message.done: 找不到消息:', event.data.message_id)
     return
+  }
+
+  // 🔥 中断-恢复链路的思考步骤迁移：规划/任务/工具步骤挂在流①的占位消息上
+  // （当时的最后一条 AI 消息），而正文落在流②的新消息（resume 生成新
+  // message_id）。done 时把占位消息的步骤迁到正文消息——否则历史 refetch
+  // 用服务端列表整体替换后，从未落库的占位消息连同步骤一起蒸发，
+  // 表现为「聚合内容出来后思考块消失」。
+  const doneTarget = findMessageById(messages, event.data.message_id)
+  if (doneTarget && (doneTarget.metadata?.thinking?.length ?? 0) === 0) {
+    const donorIndex = messages.findIndex(
+      m =>
+        m.role === 'assistant' &&
+        !isSameId(m.id, event.data.message_id) &&
+        (m.metadata?.thinking?.length ?? 0) > 0 &&
+        !(m.content || '').trim()
+    )
+    if (donorIndex >= 0) {
+      const donor = messages[donorIndex]
+      updateMessageMetadata(event.data.message_id, {
+        thinking: donor.metadata?.thinking ?? [],
+      })
+      // 步骤已迁走，空占位残留只会多渲染一个重复块——一并移除
+      useChatStore.getState().setMessages(prev => prev.filter(m => m !== donor))
+      if (debug) {
+        logger.debug('[ChatEvents] message.done: 已迁移占位消息的思考步骤到正文消息')
+      }
+    }
   }
 
   // 🔥 最终校准：用后端返回的完整内容覆盖前端累积内容
