@@ -657,23 +657,32 @@ async def expert_worker_node(
             # user_id 由 Send payload 的 branch_context 带过来，默认 default_user
             user_id = branch_context.get("user_id") or "default_user"
 
-            if memory_content:
-                logger.info(f"[GenericWorker] 正在保存记忆: {memory_content}")
+            # 教材约定「一行一条记忆、无值得记录时只输出：无」（见
+            # expert_config.memorize_expert）——逐行入库（分条存储检索精度更高），
+            # 「无」/空行不是记忆，跳过。曾把整段输出（含 JSON 数组形态的
+            # 结构包裹）当一条 content 存：结构字段无人承接，空数组 [] 也是垃圾记忆。
+            memory_lines = [
+                ln.strip()
+                for ln in memory_content.splitlines()
+                if ln.strip() and ln.strip() != "无"
+            ]
+            if memory_lines:
+                logger.info(f"[GenericWorker] 正在保存 {len(memory_lines)} 条记忆")
                 try:
-                    # 异步调用 memory_manager 保存 (内部使用了 to_thread)
-                    await memory_manager.add_memory(
-                        user_id=user_id,
-                        content=memory_content,
-                        source="conversation",
-                        memory_type="fact",
-                    )
+                    for line in memory_lines:
+                        await memory_manager.add_memory(
+                            user_id=user_id,
+                            content=line,
+                            source="conversation",
+                            memory_type="fact",
+                        )
                     logger.info("[GenericWorker] 记忆保存成功!")
-                    # 修改返回给用户的 output，让反馈更自然
-                    response_content_original = response.content
-                    response.content = f"已为您记录：{response_content_original}"
+                    response.content = "已为您记录：\n" + "\n".join(memory_lines)
                 except (RuntimeError, ValueError) as mem_err:
                     logger.warning(f"[GenericWorker] 记忆保存失败: {mem_err}")
                     response.content = f"记录时遇到问题，但我会记住：{memory_content}"
+            else:
+                response.content = "本次对话没有需要记住的内容。"
         # -------------------------------------------------------------
 
         # 🔥 输出截断检测：finish_reason=length 说明内容被 max_tokens 掐断，

@@ -6,12 +6,18 @@ Create Date: 2026-09-23
 
 教材修复内容（代码侧 EXPERT_DEFAULTS 已改，本迁移把已部署库同步到同款）：
 1. search：删除死占位符 {current_time}（generic worker 从不替换它；时间由
-   执行框架头部注入【当前系统时间】，教材改为指向该头部——消除双通道）
+   执行框架头部注入【当前系统时间】，教材改为指向该头部——消除双通道）；
+   One-Shot 禁令改为与框架工具循环协议一致化的表述（原措辞与执行框架
+   注入的"多轮工具/防偷懒"指令互相矛盾）
+1b. memorize_expert：输出协议从 JSON 数组改为「一行一条记忆、无可记输出
+   无」——记忆存储是纯 content 文本 + 向量检索，category/validity 无人承接，
+   空数组 [] 还会被整段存成垃圾记忆；消费端（generic.py）配套逐行入库
 2. router / aggregator：EXPERT_DEFAULTS 新增种子（此前只在手工造的 DB 行里
    存在，空库初始化后这两个专家缺失，运行时走 constants 静态兜底——而静态
    版规则与 DB 版脑裂且无占位符注入点）。本迁移对全部内置专家做
    INSERT IF NOT EXISTS：已部署库只实际补种 router/aggregator，空库一次种齐
-3. 存量内置标记修复：把 10 个系统专家的 is_dynamic/is_system 归位（f/t——
+   （内置清单不含 story_writer——题材型创作专家不属系统内置，用户可按需自建）
+3. 存量内置标记修复：把系统专家的 is_dynamic/is_system 归位（f/t——
    此前空库灌入走模型默认 t/f，管理台可删核心专家）
 
 不动的东西：is_dynamic=true 的行（用户在管理台自建的专家，如本库的
@@ -34,9 +40,9 @@ down_revision: str | None = "20260923_000100"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# 教材有实质修复、需要覆盖下发的内置专家（story_writer 不在其列：现网行是
-# 用户自建动态专家；代码侧种子已修，仅惠及空库）
-_PROMPT_SYNC_TARGETS = {"search"}
+# 教材有实质修复、需要覆盖下发的内置专家（story_writer 不在其列：题材型
+# 创作专家已移出内置清单）
+_PROMPT_SYNC_TARGETS = {"search", "memorize_expert"}
 # 内置标记归位的专家（is_dynamic=true 的行除外）
 _SYSTEM_TYPES = {
     "search",
