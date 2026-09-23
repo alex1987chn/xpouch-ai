@@ -52,39 +52,72 @@ def inject_current_time(system_prompt: str) -> str:
     return enhanced_prompt
 
 
-def enhance_system_prompt_with_tools(system_prompt: str) -> str:
+def format_tool_manifest(bindable_tools: list, builtin_names: set[str], max_tools: int = 30) -> str:
+    """生成本次执行实际绑定的工具清单（真名 + 首行描述 + 来源标注）。
+
+    这是专家"认知"MCP 工具的唯一通道：bind_tools 只把 schema 给了模型，
+    若 prompt 里不列清单、不给选择指引，教材只教过内置工具的专家
+    （如 search 教材定向到网页搜索）永远不会主动翻 schema 用 maps_*。
+    动态生成的好处：新接 MCP 服务器零教材改动，清单永远是真名——
+    此前指令层硬编码 `search_web`/`read_webpage`，与实际绑定的
+    `asearch_web`/`aread_webpage` 对不上，模型全靠猜（实测漏洞）。
     """
-    【增强版】System Prompt 注入
+    lines = []
+    for tool in bindable_tools[:max_tools]:
+        name = getattr(tool, "name", None) or getattr(tool, "__name__", str(tool))
+        description = (getattr(tool, "description", "") or "").strip()
+        first_line = description.splitlines()[0][:80] if description else "（无描述）"
+        source = "内置" if name in builtin_names else "MCP"
+        lines.append(f"- {name}（{source}）：{first_line}")
+    if len(bindable_tools) > max_tools:
+        lines.append(f"…（其余 {len(bindable_tools) - max_tools} 个工具见调用规范）")
+    return "\n".join(lines)
 
-    功能: 注入时间 + 强制工具使用指令 + 防偷懒逻辑
 
-    用于 Generic Worker 节点，强制模型使用工具而非脑补答案。
+def enhance_system_prompt_with_tools(
+    system_prompt: str,
+    bindable_tools: list | None = None,
+    builtin_names: set[str] | None = None,
+) -> str:
+    """
+    【增强版】System Prompt 注入（Generic Worker 专用）
+
+    注入：当前时间 + **本次实际绑定的工具清单**（真名动态生成）+ 工具选择
+    指引 + 防偷懒协议。bindable_tools 缺省（禁用工具/熔断收尾路径）时
+    不注入清单段，保持时间与容错指令。
     """
     now = display_now()
     time_str = format_display_datetime(now)
     date_str = now.strftime("%Y-%m-%d")
 
-    # 🔥 核心增强：给模型洗脑，强制它使用工具，禁止脑补
+    manifest_section = ""
+    if bindable_tools:
+        manifest = format_tool_manifest(bindable_tools, builtin_names or set())
+        manifest_section = f"""
+【可用工具清单】（本次执行实际绑定，调用时必须使用这里的准确名称）：
+{manifest}
+
+【工具选择指引】：
+- 任务与某个 MCP 工具的领域强相关时（如地点/POI/餐厅点评/路线 → maps_* 类），
+  **优先使用该 MCP 工具**而非通用网页搜索——结构化数据比网页摘要更准。
+- 通用网络信息、技术调研 → 网页搜索工具；给定 URL 的全文阅读 → 网页阅读工具。
+"""
+
     enhanced_prompt = f"""【当前系统时间】：{time_str}
 【当前日期】：{date_str}
 
 {system_prompt}
-
-【工具使用强制指令 (Mandatory Tool Usage)】：
-你拥有强大的外部工具，针对以下情况 **必须** 调用工具，**严禁** 仅凭训练数据回答：
-1. **涉及具体 URL**：如果任务包含 http/https 链接（如 GitHub, 技术博客），**必须** 调用 `read_webpage` 读取全文。
-2. **涉及参数对比/最新技术**：如果任务要求"研究 DeepSeek-V3"、"参数对比"，**必须** 调用 `search_web` 或 `read_webpage` 获取一手数据。
-
+{manifest_section}
 【防偷懒协议 (Anti-Laziness Protocol)】：
-1. **禁止复用上下文**：即使你觉得之前的对话里好像提到过相关信息，针对当前的具体任务（特别是 GitHub 阅读任务），你依然**必须**重新执行工具调用。
-2. **看到 URL 就去读**：不要盯着 URL 发呆，不要猜测 URL 里的内容。直接调用 `read_webpage`！
+1. **禁止复用上下文**：即使之前的对话里好像提到过相关信息，针对当前任务你依然**必须**重新执行工具调用。
+2. **看到 URL 就去读**：任务包含 http/https 链接时，直接调用网页阅读工具读取全文，不要猜测内容。
 3. **一步一动**：不要试图在一个回合里把所有事做完。先调工具 -> 拿到结果 -> 再分析。
 
 【执行逻辑】：
-检测到任务需求 -> 决定工具 (Search 或 Read) -> **输出 Tool Call** -> (等待执行) -> 获取 Artifact -> 生成回答。
+检测到任务需求 -> 从【可用工具清单】选择最合适的工具 -> **输出 Tool Call** -> (等待执行) -> 获取结果 -> 生成回答。
 
 【容错处理指令 (Fault Tolerance)】：
-如果参考上下文中提到某些上游任务（如代码生成、数据分析等）的输出，但这些内容缺失或为空，
+如果参考上下文中提到某些上游任务的输出，但这些内容缺失或为空，
 请不要抱怨或询问，而是基于你已有的知识和当前可用信息，尽最大努力完成任务。
 忽略对缺失内容的引用，专注于完成核心任务目标。
 """

@@ -94,7 +94,7 @@ class MCPToolsService:
                     return tools
 
                 # 🔥 P2: 计算当前服务器配置哈希
-                current_servers_hash = hashlib.md5(
+                current_servers_hash = hashlib.sha256(
                     json.dumps(
                         [{"name": s.name, "url": str(s.sse_url)} for s in active_servers],
                         sort_keys=True,
@@ -117,29 +117,45 @@ class MCPToolsService:
                     transport = getattr(server, "transport", None) or "sse"
                     mcp_config[server.name] = {"url": str(server.sse_url), "transport": transport}
 
-                # P0 修复: 使用超时控制（streamable_http 需要更长时间）
-                # 注意: 0.2.1 版本不支持 async with，使用直接实例化
+                # 逐服务器独立拉取（partial failure isolation）：MultiServerMCPClient
+                # 的整体 get_tools 用 TaskGroup 并发连接，一个服务器失败（key 失效/
+                # 服务端故障）会把整个 TaskGroup 连坐炸掉——其余健康服务器（实测
+                # 高德被 ModelScope 的 USER_NOT_IN_ORG 拖死）的工具一并归零。
+                # 单点故障只跳过自己，警告暴露凭证/服务端问题。
                 timeout_seconds = (
                     30
                     if any(cfg.get("transport") == "streamable_http" for cfg in mcp_config.values())
                     else 15
                 )
-                async with asyncio.timeout(timeout_seconds):
-                    client = MultiServerMCPClient(mcp_config)
-                    tools = await client.get_tools()
-                    logger.info(
-                        f"[MCP] 已加载 {len(tools)} 个 MCP 工具 from {len(active_servers)} 个服务器"
-                    )
+                failed_servers: list[str] = []
+                for server_name, cfg in mcp_config.items():
+                    try:
+                        async with asyncio.timeout(timeout_seconds):
+                            client = MultiServerMCPClient({server_name: cfg})
+                            tools.extend(await client.get_tools())
+                    except Exception as e:
+                        failed_servers.append(server_name)
+                        logger.warning(
+                            "[MCP] 服务器 %s 工具拉取失败（跳过，不影响其余服务器）: %s",
+                            server_name,
+                            e,
+                        )
+                logger.info(
+                    "[MCP] 已加载 %d 个 MCP 工具 from %d 个服务器%s",
+                    len(tools),
+                    len(mcp_config) - len(failed_servers),
+                    f"（失败: {', '.join(failed_servers)}）" if failed_servers else "",
+                )
 
-                    # 🔥 P2: 计算服务器配置哈希并更新缓存
-                    current_servers_hash = hashlib.md5(
-                        json.dumps(
-                            [{"name": s.name, "url": str(s.sse_url)} for s in active_servers],
-                            sort_keys=True,
-                        ).encode()
-                    ).hexdigest()
-                    async with self._cache_lock:
-                        self._cache = (tools, utc_now(), current_servers_hash)
+                # 🔥 P2: 计算服务器配置哈希并更新缓存
+                current_servers_hash = hashlib.sha256(
+                    json.dumps(
+                        [{"name": s.name, "url": str(s.sse_url)} for s in active_servers],
+                        sort_keys=True,
+                    ).encode()
+                ).hexdigest()
+                async with self._cache_lock:
+                    self._cache = (tools, utc_now(), current_servers_hash)
 
         except TimeoutError:
             logger.error("[MCP] 获取 MCP 工具超时 (10秒)")

@@ -57,7 +57,7 @@ from agents.plan_waves import task_key
 from agents.routing_policy import should_trip_tool_loop_guard
 from agents.services.expert_manager import get_expert_config_cached
 from agents.task_outcome import DEPENDENCY_CONTEXT_LIMIT, build_task_outcome
-from agents.tool_policy import filter_tools_for_binding
+from agents.tool_policy import filter_tools_for_binding, get_builtin_tool_names
 from config import settings
 from event_types.events import TaskFailedData, TaskStartedData
 from models.enums import GraphTaskStatus
@@ -402,26 +402,10 @@ async def expert_worker_node(
         # 绑定模型和温度参数
         llm_with_config = llm.bind(model=actual_model, temperature=temperature)
 
-        # 🔥🔥🔥 GenericWorker 2.0: 占位符填充 + System Prompt 增强
-        # 填充 {input} 占位符（任务描述）
-        if "{input}" in system_prompt:
-            system_prompt = system_prompt.replace("{input}", description)
-            logger.info(f"[GenericWorker] 已注入占位符: {{input}} = {description[:50]}...")
-
-        # 增强 System Prompt (注入时间 + 工具指令)
-        enhanced_system_prompt = enhance_system_prompt_with_tools(system_prompt)
-
-        # 🔥 关键修复（v3.4.4）：仅当最后一条是 ToolMessage（工具续跑）时才沿用
-        # 现有 messages；否则一律走首次执行分支（任务描述 + 依赖上下文进 prompt）。
-        # 此前条件是 `if existing_messages:`——聊天历史恒非空，导致多任务执行时
-        # 任务描述/依赖上下文从未进入 prompt，同专家的每个任务都在回答原始请求
-        # （表现为多个任务的 artifact 内容雷同）。
-        # 注：现在的 `existing_messages` 是**本分支**的工具草稿（不再是全会话历史），
-        # 所以「恒非空」这个坑在本分支里天然不存在；判断逻辑保持不变以防回归。
-        has_tool_message = bool(existing_messages) and isinstance(
-            existing_messages[-1], ToolMessage
-        )
-
+        # ---------------------------------------------------------------------------
+        # 工具收集（在 System Prompt 增强之前：清单要注入 prompt，专家才"知道"
+        # 自己有哪些 MCP 工具可用——bind_tools 只给 schema，认知靠 prompt）
+        # ---------------------------------------------------------------------------
         # 工具循环守卫：此前在路由函数里「熔断 → 直接跳 aggregator」，等于一个任务
         # 的工具失控会**终结整轮计划**（其余任务不再执行），而且它数的是全会话历史里
         # 的工具往返，别的任务的调用会把本任务误判成循环。现在收敛到分支内、只看本
@@ -435,6 +419,94 @@ async def expert_worker_node(
         # 熔断 = 本任务转入无工具收尾：模型基于已获得的工具结果直接作答，
         # 其余任务照常（评审 H3：恢复多轮工具循环后，这里就是循环的有界性来源之一）
         finish_only = guard_tripped
+
+        # ENABLE_TOOL_CALLING=false 可禁用工具调用（平滑升级兼容）
+        enable_tools = settings.enable_tool_calling and not finish_only
+        bindable_tools: list = []
+        builtin_names: set[str] = set()
+        if enable_tools:
+            # 工具集的收集与治理过滤**不放在宽 try 里**——它们读的是 DB 配置
+            # （工具治理覆盖）与注入的 MCP 工具，失败属程序/数据层问题。
+            # 此前整段被一个 `except Exception` 包住降级为「无工具执行」，
+            # 于是 tool_policy_service 的时区比较异常（naive vs aware）被
+            # 吞成一句误导性警告，**所有专家的工具调用静默失效数月**。
+            # 现在这类错误直接上抛（失败可见），只有「模型确实不支持工具
+            # 调用」才允许降级。
+            # 🔥 MCP: 从 config 获取动态注入的工具
+            mcp_tools = []
+            if config and hasattr(config, "get"):
+                mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
+
+            # 🔥 MCP: 合并基础工具和动态 MCP 工具
+            runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+            policy_overrides = await tool_policy_service.get_overrides()
+            bindable_tools, blocked_tools = filter_tools_for_binding(
+                runtime_tools,
+                expert_type=expert_type,
+                overrides=policy_overrides,
+            )
+            builtin_names = get_builtin_tool_names()
+
+            # 🔥 警告：如果 MCP 工具为空但预期应该有
+            if not mcp_tools and settings.mcp_servers:
+                logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
+
+            try:
+                llm_to_use = llm_with_config.bind_tools(bindable_tools)
+            except (NotImplementedError, TypeError) as bind_err:
+                # 仅「该模型实例不支持绑定工具」这一情形可降级：无工具但仍能对话。
+                logger.error(
+                    "[GenericWorker] ⚠️ 模型不支持工具调用，专家将**无工具**执行: %s",
+                    bind_err,
+                    exc_info=True,
+                )
+                llm_to_use = llm_with_config
+            else:
+                logger.info(
+                    "[GenericWorker] 🔧 工具已绑定: %s 个工具 (基础: %s, MCP: %s, 被治理层过滤: %s)",
+                    len(bindable_tools),
+                    len(BASE_TOOLS),
+                    len(mcp_tools),
+                    len(blocked_tools),
+                )
+                for blocked in blocked_tools:
+                    logger.info(
+                        "[GenericWorker] 工具未暴露给当前 expert | expert=%s tool=%s action=%s reason=%s",
+                        expert_type,
+                        blocked.tool_name,
+                        blocked.action,
+                        blocked.reason,
+                    )
+        elif finish_only:
+            logger.info("[GenericWorker] 🔒 工具已熔断，本任务转无工具收尾: %s", task_id)
+            llm_to_use = llm_with_config
+        else:
+            logger.info("[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
+            llm_to_use = llm_with_config
+
+        # 🔥🔥🔥 GenericWorker 2.0: 占位符填充 + System Prompt 增强
+        # 填充 {input} 占位符（任务描述）
+        if "{input}" in system_prompt:
+            system_prompt = system_prompt.replace("{input}", description)
+            logger.info(f"[GenericWorker] 已注入占位符: {{input}} = {description[:50]}...")
+
+        # 增强 System Prompt (注入时间 + 本次绑定的工具清单与选择指引)
+        enhanced_system_prompt = enhance_system_prompt_with_tools(
+            system_prompt,
+            bindable_tools=bindable_tools if enable_tools else None,
+            builtin_names=builtin_names,
+        )
+
+        # 🔥 关键修复（v3.4.4）：仅当最后一条是 ToolMessage（工具续跑）时才沿用
+        # 现有 messages；否则一律走首次执行分支（任务描述 + 依赖上下文进 prompt）。
+        # 此前条件是 `if existing_messages:`——聊天历史恒非空，导致多任务执行时
+        # 任务描述/依赖上下文从未进入 prompt，同专家的每个任务都在回答原始请求
+        # （表现为多个任务的 artifact 内容雷同）。
+        # 注：现在的 `existing_messages` 是**本分支**的工具草稿（不再是全会话历史），
+        # 所以「恒非空」这个坑在本分支里天然不存在；判断逻辑保持不变以防回归。
+        has_tool_message = bool(existing_messages) and isinstance(
+            existing_messages[-1], ToolMessage
+        )
 
         if has_tool_message:
             # 工具重入：沿用分支草稿（AIMessage(tool_calls) + ToolMessage），
@@ -491,73 +563,6 @@ async def expert_worker_node(
                 SystemMessage(content=enhanced_system_prompt),
                 HumanMessage(content=task_prompt),
             ]
-
-        # 🔥 工具绑定：**每一轮都重新绑定**（评审 H3：恢复多轮工具循环）。
-        # 多步工具链（search → read → 计算）依赖每轮都能再发起工具调用；此前
-        # 「工具续跑一律不再绑工具」把循环砍成单轮，多步链路第二轮即被强制收尾，
-        # 熔断守卫也因此不可达。循环的有界性由两级兜底：
-        #   1. should_trip_tool_loop_guard（分支内、只看本任务）→ 熔断转无工具收尾
-        #   2. 子图 recursion_limit 硬上限
-        # ENABLE_TOOL_CALLING=false 可禁用工具调用（平滑升级兼容）
-        enable_tools = settings.enable_tool_calling and not finish_only
-        if enable_tools:
-            # 工具集的收集与治理过滤**不放在宽 try 里**——它们读的是 DB 配置
-            # （工具治理覆盖）与注入的 MCP 工具，失败属程序/数据层问题。
-            # 此前整段被一个 `except Exception` 包住降级为「无工具执行」，
-            # 于是 tool_policy_service 的时区比较异常（naive vs aware）被
-            # 吞成一句误导性警告，**所有专家的工具调用静默失效数月**。
-            # 现在这类错误直接上抛（失败可见），只有「模型确实不支持工具
-            # 调用」才允许降级。
-            # 🔥 MCP: 从 config 获取动态注入的工具
-            mcp_tools = []
-            if config and hasattr(config, "get"):
-                mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
-
-            # 🔥 MCP: 合并基础工具和动态 MCP 工具
-            runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
-            policy_overrides = await tool_policy_service.get_overrides()
-            bindable_tools, blocked_tools = filter_tools_for_binding(
-                runtime_tools,
-                expert_type=expert_type,
-                overrides=policy_overrides,
-            )
-
-            # 🔥 警告：如果 MCP 工具为空但预期应该有
-            if not mcp_tools and settings.mcp_servers:
-                logger.warning("[GenericWorker] ⚠️ MCP 工具为空！请检查 MCP 服务器连接")
-
-            try:
-                llm_to_use = llm_with_config.bind_tools(bindable_tools)
-            except (NotImplementedError, TypeError) as bind_err:
-                # 仅「该模型实例不支持绑定工具」这一情形可降级：无工具但仍能对话。
-                logger.error(
-                    "[GenericWorker] ⚠️ 模型不支持工具调用，专家将**无工具**执行: %s",
-                    bind_err,
-                    exc_info=True,
-                )
-                llm_to_use = llm_with_config
-            else:
-                logger.info(
-                    "[GenericWorker] 🔧 工具已绑定: %s 个工具 (基础: %s, MCP: %s, 被治理层过滤: %s)",
-                    len(bindable_tools),
-                    len(BASE_TOOLS),
-                    len(mcp_tools),
-                    len(blocked_tools),
-                )
-                for blocked in blocked_tools:
-                    logger.info(
-                        "[GenericWorker] 工具未暴露给当前 expert | expert=%s tool=%s action=%s reason=%s",
-                        expert_type,
-                        blocked.tool_name,
-                        blocked.action,
-                        blocked.reason,
-                    )
-        elif finish_only:
-            logger.info("[GenericWorker] 🔒 工具已熔断，本任务转无工具收尾: %s", task_id)
-            llm_to_use = llm_with_config
-        else:
-            logger.info("[GenericWorker] ⏭️ 工具调用已禁用（ENABLE_TOOL_CALLING=false）")
-            llm_to_use = llm_with_config
 
         # 熔断收尾：在消息末尾追加显式指令，让模型停止发起工具调用、直接作答。
         # （has_tool_message 本身**不再**注入「不要再调用工具」——那是单轮时代的
