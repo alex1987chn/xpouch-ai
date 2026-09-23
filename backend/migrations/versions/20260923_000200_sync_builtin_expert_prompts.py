@@ -40,9 +40,10 @@ down_revision: str | None = "20260923_000100"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# 教材有实质修复、需要覆盖下发的内置专家（story_writer 不在其列：题材型
-# 创作专家已移出内置清单）
-_PROMPT_SYNC_TARGETS = {"search", "memorize_expert"}
+# 教材有实质修复/形态统一、需要覆盖下发的内置专家（story_writer 不在其列：
+# 题材型创作专家已移出内置清单）。router/aggregator 的存量行与种子仅差
+# 行尾/引号形态（CRLF vs LF、弯引号 vs 直引号），一并归一让对账可全绿
+_PROMPT_SYNC_TARGETS = {"search", "memorize_expert", "router", "aggregator"}
 # 内置标记归位的专家（is_dynamic=true 的行除外）
 _SYSTEM_TYPES = {
     "search",
