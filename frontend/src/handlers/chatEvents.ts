@@ -10,7 +10,7 @@
 import type { MessageDeltaEvent, MessageDoneEvent, MessageThinkingEvent } from './types'
 import type { HandlerContext } from './types'
 import { logger } from '@/utils/logger'
-import { findMessageById, isSameId } from '@/utils/normalize'
+import { findMessageById } from '@/utils/normalize'
 import { useChatStore } from '@/store/chatStore'
 import { t } from '@/i18n'
 import type { ThinkingStep } from '@/types'
@@ -56,7 +56,9 @@ export function handleMessageDelta(
   const message = findMessageById(messages, event.data.message_id)
 
   if (!message) {
-    // v3.1: 如果找不到消息（例如复杂模式下 aggregator 延迟），自动创建消息
+    // v3.1: 如果找不到消息（复杂模式的聚合消息 = 服务端自造 id），自动创建。
+    // content 置空：正文写入由 useChatCore 的 RAF 批处理层负责（makeStreamCallback
+    // 对同一事件先建消息再 retarget），此处写入首帧会造成同帧内容双写
     if (debug)
       logger.debug(
         '[ChatEvents] message.delta: 消息不存在，自动创建:',
@@ -67,7 +69,7 @@ export function handleMessageDelta(
     addMessage({
       id: event.data.message_id,
       role: 'assistant',
-      content: event.data.content,
+      content: '',
       timestamp: Date.now()
     })
     return
@@ -189,32 +191,9 @@ export function handleMessageDone(
     return
   }
 
-  // 🔥 中断-恢复链路的思考步骤迁移：规划/任务/工具步骤挂在流①的占位消息上
-  // （当时的最后一条 AI 消息），而正文落在流②的新消息（resume 生成新
-  // message_id）。done 时把占位消息的步骤迁到正文消息——否则历史 refetch
-  // 用服务端列表整体替换后，从未落库的占位消息连同步骤一起蒸发，
-  // 表现为「聚合内容出来后思考块消失」。
-  const doneTarget = findMessageById(messages, event.data.message_id)
-  if (doneTarget && (doneTarget.metadata?.thinking?.length ?? 0) === 0) {
-    const donorIndex = messages.findIndex(
-      m =>
-        m.role === 'assistant' &&
-        !isSameId(m.id, event.data.message_id) &&
-        (m.metadata?.thinking?.length ?? 0) > 0 &&
-        !(m.content || '').trim()
-    )
-    if (donorIndex >= 0) {
-      const donor = messages[donorIndex]
-      updateMessageMetadata(event.data.message_id, {
-        thinking: donor.metadata?.thinking ?? [],
-      })
-      // 步骤已迁走，空占位残留只会多渲染一个重复块——一并移除
-      useChatStore.getState().setMessages(prev => prev.filter(m => m !== donor))
-      if (debug) {
-        logger.debug('[ChatEvents] message.done: 已迁移占位消息的思考步骤到正文消息')
-      }
-    }
-  }
+  // （占位消息思考步骤迁移逻辑已退役：复杂模式的思考载体消息由 commander
+  // 落库、plan.created 事件把占位原位改写成它——刷新后步骤由账本重建挂回
+  // 同一条，不再需要 done 时把步骤从占位搬到正文消息）
 
   // 🔥 最终校准：用后端返回的完整内容覆盖前端累积内容
   // 这可以纠正流式传输中可能的数据丢失或乱序问题

@@ -49,7 +49,7 @@ def _task(task_id: str, *, db_id: str | None = None, deps=None, status="pending"
 def _apply(current: list[dict], updated: list[dict]) -> dict:
     service = StreamService.__new__(StreamService)  # 不触碰 db
     graph = _FakeGraph({"task_list": current, "expert_results": []})
-    asyncio.run(service._apply_updated_plan(graph, {}, updated, message_id="m1"))
+    asyncio.run(service._apply_updated_plan(graph, {}, updated))
     assert graph.updated is not None, "必须写回状态"
     return graph.updated
 
@@ -139,13 +139,16 @@ class TestCompletedTaskPreserved:
         assert decision.blocked == [] and decision.deadlocked == []
         assert merged[0]["depends_on"] is None, "指向已删任务的依赖在合并时被剔除"
 
-    def test_message_id_propagates(self):
+    def test_only_plan_state_is_written(self):
+        """计划合并只写 task_list/expert_results：消息 id 贯通已随 resume
+        message_id 链拆除（聚合消息 id 由 run 创建时的 state 承载，见
+        test_transform_langgraph_event），此处不得再写。"""
         current = [_task("task_1"), _task("task_2")]
         updated = [_task("task_1"), _task("task_2")]
 
         state = _apply(current, updated)
 
-        assert state["message_id"] == "m1"
+        assert set(state.keys()) == {"task_list", "expert_results"}
 
     def test_no_human_message_is_injected(self):
         """不再伪造 HumanMessage：续跑由 Command(resume=) 触发。"""

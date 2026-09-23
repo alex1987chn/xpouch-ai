@@ -66,6 +66,8 @@ export interface PlanCreatedData {
   estimated_steps: number
   execution_mode: 'sequential' | 'parallel'
   tasks: TaskInfo[]
+  /** 思考载体消息的库内 id：前端把本地占位消息改写成它（两态同源锚点） */
+  message_id?: number | null
 }
 
 export type PlanCreatedEvent = SSEEvent<PlanCreatedData, 'plan.created'>

@@ -609,6 +609,10 @@ class ChatThreadService:
                     content = f"{content}{doc_blocks}"
                 langchain_messages.append(HumanMessage(content=content))
             elif msg.role == "assistant":
+                # 思考载体消息（content 恒空，仅承载前端思考卡的落库锚点）：
+                # 注入空轮次会污染对话上下文，跳过
+                if (msg.extra_data or {}).get("message_kind") == "run_thinking":
+                    continue
                 langchain_messages.append(AIMessage(content=msg.content))
 
         return langchain_messages

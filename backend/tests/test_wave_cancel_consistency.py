@@ -274,7 +274,6 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
             stream_queue=asyncio.Queue(),
             sse_queue=asyncio.Queue(),
             realtime_queue=asyncio.Queue(),
-            message_id="m1",
             run_id="r1",
         )
 

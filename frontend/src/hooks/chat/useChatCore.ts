@@ -20,7 +20,7 @@ import {
 } from '@/services/chat'
 import type { ApiMessage, StreamCallback, StreamRuntimeMeta } from '@/types'
 import { generateUUID } from '@/utils'
-import { isSameId } from '@/utils/normalize'
+import { isSameId, findMessageById } from '@/utils/normalize'
 import { SYSTEM_AGENTS } from '@/constants/agents'
 import type { Message } from '@/types'
 import { errorHandler, logger } from '@/utils/logger'
@@ -115,7 +115,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
 
   const { setMode, setActiveRunId, clearActiveRunId } = useTaskActions()
 
-  const { reset: resetStreamHandler, createChunkHandler, forceFlush, markFinalized } =
+  const { reset: resetStreamHandler, createChunkHandler, retarget: retargetChunk, forceFlush, markFinalized } =
     useStreamHandler()
 
   /**
@@ -154,6 +154,8 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     handlers: {
       onThreadId?: (threadId: string) => void
       onDone?: () => void
+      /** message.delta 到达时切换写入目标（复杂模式聚合消息 = 服务端 id，尾部创建） */
+      retarget?: (messageId: string) => void
     } = {}
   ): StreamCallback => {
     const ownerThreadId: { current: string | null } = {
@@ -193,6 +195,24 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         }
       }
       if (expertEvent?.type === 'message.done') handlers.onDone?.()
+      // delta 目标路由：正文挂在事件自己的 message_id 上（复杂模式聚合消息
+      // 是服务端 id，与发送时的占位不同——按 id 尾部创建后切换写入目标，
+      // 聚合正文因此排在所有专家消息之后；简单模式目标=占位，切换为空操作）
+      if (expertEvent?.type === 'message.delta') {
+        const target = expertEvent.data?.message_id
+        if (target != null) {
+          const targetId = String(target)
+          if (!findMessageById(useChatStore.getState().messages, targetId)) {
+            useChatStore.getState().addMessage({
+              id: targetId,
+              role: 'assistant',
+              content: '',
+              timestamp: Date.now(),
+            })
+          }
+          handlers.retarget?.(targetId)
+        }
+      }
       if (chunk) handleChunk(chunk)
     }
   }, [setActiveRunId, queryClient, artifactFlushRef])
@@ -336,6 +356,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       const handleChunk = createChunkHandler(assistantMessageId, onChunk)
 
       const streamCallback = makeStreamCallback(handleChunk, {
+        retarget: retargetChunk,
         onThreadId: (threadId) => {
           if (threadId !== actualThreadId) {
             actualThreadId = threadId
@@ -481,31 +502,18 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setGenerating(true)
     abortControllerRef.current = new AbortController()
 
-    // 🔥 创建助手消息来接收 resume 的流式内容
-    const assistantMessageId = generateUUID()
-    addMessage({
-      id: assistantMessageId,
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
-      metadata: {
-        thinking: []
-      }
-    })
-
+    // 不再预建占位消息：HITL 恢复恒为复杂模式，聚合正文挂服务端自造的
+    // 聚合消息 id（首个 message.delta 到达时尾部创建，排在所有专家消息
+    // 之后）；思考步骤留在规划期已落库的思考载体消息上（占位已改写成它）
     resetStreamHandler()
 
-    const handleChunk = createChunkHandler(assistantMessageId, onChunk)
+    const handleChunk = createChunkHandler('', onChunk)
 
     try {
-      const streamCallback = makeStreamCallback(handleChunk)
+      const streamCallback = makeStreamCallback(handleChunk, { retarget: retargetChunk })
 
-      // 把上面那条占位消息的 id 一并交给后端：后端用它作为本轮聚合消息的 id
-      // （落库 + message.done + 每条 delta），前端才能把流式内容写回同一条消息。
-      // 漏传的后果实测过——后端自造 id，前端 store 里找不到 →
-      // handleMessageDelta 的兜底再建一条 → 界面上两条一模一样的回答。
       const fullContent = await apiResumeChat(
-        { ...params, messageId: assistantMessageId },
+        params,
         streamCallback,
         abortControllerRef.current.signal
       )
@@ -527,7 +535,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     } finally {
       finalizeStream()
     }
-  }, [isGenerating, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, finalizeStream, makeStreamCallback])
+  }, [isGenerating, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, retargetChunk, finalizeStream, makeStreamCallback])
 
   /**
    * 重新生成指定 AI 消息的回复

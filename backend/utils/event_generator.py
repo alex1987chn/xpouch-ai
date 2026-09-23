@@ -59,6 +59,7 @@ class EventGenerator:
         estimated_steps: int,
         execution_mode: str,
         tasks: list[dict[str, Any]],
+        message_id: int | None = None,
     ) -> SSEEvent:
         """
         生成 plan.created 事件
@@ -69,6 +70,7 @@ class EventGenerator:
             estimated_steps: 预计步骤数
             execution_mode: 执行模式 (sequential/parallel)
             tasks: 任务列表，每项包含 id, expert_type, description, sort_order
+            message_id: 思考载体消息的库内 id（前端据此刻把占位消息改写成它）
         """
         task_infos = [
             TaskInfo(
@@ -89,6 +91,7 @@ class EventGenerator:
             estimated_steps=estimated_steps,
             execution_mode=execution_mode,
             tasks=task_infos,
+            message_id=message_id,
         )
 
         return build_sse_event(EventType.PLAN_CREATED, data, self._next_event_id())

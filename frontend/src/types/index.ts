@@ -48,6 +48,16 @@ export interface ExpertMessageData {
 }
 
 /**
+ * 思考载体消息（后端 message.extra_data，message_kind='run_thinking'）：
+ * 复杂执行轮的思考过程锚点行——commander 规划时插入、排在专家消息之前，
+ * content 恒空（思考步骤不入库，刷新时由 runevent 账本重建挂回本条）。
+ */
+export interface RunThinkingData {
+  message_kind: 'run_thinking'
+  run_id?: string | null
+}
+
+/**
  * 基础消息接口 - 用于 UI 组件
  */
 export interface Message {
@@ -60,7 +70,7 @@ export interface Message {
   /** 服务端落库时间（历史消息；词汇收敛后 timestamp 已退役为本地字段） */
   created_at?: string | null
   metadata?: MessageMetadata
-  extra_data?: MessageAttachmentData | ExpertMessageData
+  extra_data?: MessageAttachmentData | ExpertMessageData | RunThinkingData
 }
 
 /**

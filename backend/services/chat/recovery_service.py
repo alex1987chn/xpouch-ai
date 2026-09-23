@@ -76,7 +76,6 @@ class RecoveryService:
         approved: bool,
         updated_plan: list[dict[str, Any]] | None = None,
         plan_version: int | None = None,
-        message_id: str | None = None,
         idempotency_key: str | None = None,
         feedback: str | None = None,
         action: str | None = None,
@@ -102,7 +101,6 @@ class RecoveryService:
                 - status: str 状态
                 - depends_on: Optional[List[str]] 依赖任务ID列表
             plan_version: 客户端当前看到的计划版本号（乐观锁）
-            message_id: 前端传入的消息ID（用于关联流式输出）
             idempotency_key: 幂等键（推荐传入，防止重复恢复请求）
             feedback: 驳回/修订反馈（落库为 user 消息；revise 必填）
 
@@ -177,7 +175,6 @@ class RecoveryService:
             run_id,
             updated_plan,
             plan_version,
-            message_id,
             idempotency_key,
         )
         await self._audit_plan_decision(
@@ -477,7 +474,6 @@ class RecoveryService:
         run_id: str,
         updated_plan: list[dict[str, Any]] | None = None,
         plan_version: int | None = None,
-        message_id: str | None = None,
         idempotency_key: str | None = None,
     ) -> StreamingResponse:
         """
@@ -489,15 +485,12 @@ class RecoveryService:
             thread_id: 线程ID
             updated_plan: 用户修改后的计划
             plan_version: 客户端当前看到的计划版本号
-            message_id: 前端传入的消息ID（用于关联流式输出）
             idempotency_key: 幂等键（推荐传入，防止重复恢复请求）
 
         Returns:
             StreamingResponse SSE流
         """
-        import uuid
-
-        resume_key = self._build_resume_key(run_id, plan_version, message_id, idempotency_key)
+        resume_key = self._build_resume_key(run_id, plan_version, idempotency_key)
         self._enter_inflight_resume(run_id, resume_key)
         try:
             logger.info("[HITL RESUME] 用户批准，开始流式恢复")
@@ -536,9 +529,6 @@ class RecoveryService:
             )
             self.db.commit()
 
-            # 生成 message_id（如果没有提供）
-            actual_message_id = message_id or str(uuid.uuid4())
-
             # 创建队列
             stream_queue = asyncio.Queue()  # 用于 artifact 收集
             sse_queue = asyncio.Queue()  # 用于 SSE 事件收集
@@ -555,7 +545,6 @@ class RecoveryService:
                         sse_queue=sse_queue,
                         realtime_queue=realtime_queue,
                         updated_plan=updated_plan,
-                        message_id=actual_message_id,
                         run_id=run_id,
                     ):
                         yield event
@@ -635,14 +624,11 @@ class RecoveryService:
     def _build_resume_key(
         run_id: str,
         plan_version: int | None,
-        message_id: str | None,
         idempotency_key: str | None,
     ) -> str:
         """构建恢复请求幂等键。"""
         if idempotency_key:
             return idempotency_key
-        if message_id:
-            return f"msg:{message_id}"
         return f"{run_id}:{plan_version}"
 
     def _get_run_or_raise(self, run_id: str, thread_id: str) -> AgentRun:

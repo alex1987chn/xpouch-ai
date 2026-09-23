@@ -113,9 +113,27 @@ class TestMessageDeltaGating:
         assert collector == ["part1"]
 
     def test_message_id_propagates(self):
-        token = _make_stream_token(node_type="aggregator", langgraph_node="aggregator", content="x")
-        out = self.service.transform_langgraph_event(token, message_id="mid-9")
-        assert out is not None and '"message_id": "mid-9"' in out
+        """目标 id 路由：aggregator 挂聚合消息 id（与落库同源）、direct_reply 挂
+        请求侧 message_id——聚合正文因此排在所有专家消息之后，简单模式不变。"""
+        agg_token = _make_stream_token(
+            node_type="aggregator", langgraph_node="aggregator", content="x"
+        )
+        agg_out = self.service.transform_langgraph_event(
+            agg_token, message_id="mid-9", aggregate_message_id="agg-1"
+        )
+        assert agg_out is not None and '"message_id": "agg-1"' in agg_out
+
+        # 未传聚合 id 时退回请求侧 id（老调用方/测试桩兼容）
+        fallback_out = self.service.transform_langgraph_event(agg_token, message_id="mid-9")
+        assert fallback_out is not None and '"message_id": "mid-9"' in fallback_out
+
+        simple_token = _make_stream_token(
+            node_type="direct_reply", langgraph_node="direct_reply", content="y"
+        )
+        simple_out = self.service.transform_langgraph_event(
+            simple_token, message_id="mid-9", aggregate_message_id="agg-1"
+        )
+        assert simple_out is not None and '"message_id": "mid-9"' in simple_out
 
 
 class TestSimpleModeStreamingWiring:

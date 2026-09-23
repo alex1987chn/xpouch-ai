@@ -16,7 +16,7 @@
 - **品牌**：唯一品牌图形=卡片进口袋（黄卡+蓝袋，The4DPocketLogo）；字标 [XPOUCH]；slogan "initial minds, one pouch" 只落品牌触点（登录/分享/首跑空态/关于），不进工作台。禁止自创几何块当品牌标记。
 - **题材型专家不内置（2026-09-23）**：内置=系统能力型专家（search/coder/researcher/analyzer/writer/planner/commander/router/aggregator/memorize_expert，共 11）；story_writer（小说家）已移出种子——需要者经管理台自建。判据：内置清单里的每个专家都必须有消费链路承接。
 - **image_analyzer 暂缓（2026-09-23 审计）**：图片只附在初始消息（router 可见），专家执行无图片传递管道——教材虽好但收不到图。管道做之前该专家保持现状（未移出内置、不投入），见 BACKLOG。
-- **专家执行形态=独立助手消息（2026-09-23 终局）**：thinking 卡只留路由判断与任务规划两个里程碑；每个专家的执行产出是消息流里的独立消息卡（署名/步骤 i/N/描述/摘要/工具区/产物横条），用户上滚即见全部专家做了什么。**消息表是专家执行状态的一等真相源**（task 开始插 running 态、终态原位更新），执行中刷新可恢复现场；工具明细真相源仍是 runevent 账本，消息上的 tool_stats 是聚合快照（派生数据）。对照过 DeepSeek/Kimi/Claude/ChatGPT/Manus：单思考块是单 agent 形态，Manus 是过程消息独立成条的先例——多专家+产物形态取后者。**旧机制已删净勿复燃**：thinking 卡 execution 渲染/专家分组/账本重建 task·tool 分支/toolHistory 字段全部退役。
+- **专家执行形态=独立助手消息（2026-09-23 终局）**：thinking 卡只留路由判断与任务规划两个里程碑；每个专家的执行产出是消息流里的独立消息卡（署名/步骤 i/N/描述/摘要/工具区/产物横条），用户上滚即见全部专家做了什么。**消息表是专家执行状态的一等真相源**（task 开始插 running 态、终态原位更新），执行中刷新可恢复现场；工具明细真相源仍是 runevent 账本，消息上的 tool_stats 是聚合快照（派生数据）。**消息表行序=因果序**：思考载体行（commander 插入、content 恒空、幂等按 run_id）→ 专家行 → 聚合行（id 由 run 创建时的 state.aggregate_message_id 承载，与前端占位解耦）；前端占位消息经 plan.created 事件原位改写成载体行——实时流与刷新回放同序同源。对照过 DeepSeek/Kimi/Claude/ChatGPT/Manus：单思考块是单 agent 形态，Manus 是过程消息独立成条的先例——多专家+产物形态取后者。**旧机制已删净勿复燃**：thinking 卡 execution 渲染/专家分组/账本重建 task·tool 分支/toolHistory 字段全部退役；resume 的 message_id 贯通链（请求字段→recovery/stream→state）与 done 时的占位步骤迁移块一并退役。
 
 ## 工程
 

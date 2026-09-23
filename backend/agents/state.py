@@ -62,7 +62,10 @@ class AgentState(TypedDict):
     # 必须声明在此——LangGraph 会过滤未声明的键，此前它未声明导致每次
     # 执行都新生成 uuid，"plan.started 事件 id 与落库计划 id 一致" 从未成立。
     preview_execution_plan_id: str | None
-    message_id: str | None  # 本次消息 ID（SSE 事件与 DB 消息关联，贯穿全图）
+    # 聚合消息 id：run 创建时生成（单一来源），随 checkpoint 贯穿全图。
+    # 复杂模式聚合正文的消息 id 由它决定（aggregator 落库 + delta/done 事件 +
+    # 流式转换层三者同源）；简单模式不消费（direct_reply 用请求侧 message_id）
+    aggregate_message_id: str | None
     # 人工审批裁决（plan_approval 节点写入）：approve / revise / terminate
     approval_action: str | None
     # Stage 3 跨轮产物连续性：本会话最近产物的有界摘要（id/type/title/expert/内容头），

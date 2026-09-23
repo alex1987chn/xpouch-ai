@@ -2490,8 +2490,6 @@ export interface components {
             action?: string | null;
             /** Feedback */
             feedback?: string | null;
-            /** Message Id */
-            message_id?: string | null;
             /** Idempotency Key */
             idempotency_key?: string | null;
         };

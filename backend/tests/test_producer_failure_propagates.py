@@ -21,7 +21,18 @@ from services.chat.stream_service import StreamService
 
 
 class _BoomGraph:
-    """astream_events 一调用就抛错的假图。"""
+    """astream_events 一调用就抛错的假图。
+
+    aget_state/aupdate_state 是驱动前置步骤（读聚合消息 id），提供最小实现。
+    """
+
+    async def aget_state(self, *_args: Any, **_kwargs: Any):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(values={})
+
+    async def aupdate_state(self, *_args: Any, **_kwargs: Any):
+        return None
 
     async def astream_events(self, *args: Any, **kwargs: Any):
         raise RuntimeError("producer 内部故障")
@@ -67,6 +78,14 @@ class TestProducerFailurePropagates:
         """AppError 同样上抛（此前显式 re-raise，改为统一不捕获后仍须成立）。"""
 
         class _AppErrGraph:
+            async def aget_state(self, *_args: Any, **_kwargs: Any):
+                from types import SimpleNamespace
+
+                return SimpleNamespace(values={})
+
+            async def aupdate_state(self, *_args: Any, **_kwargs: Any):
+                return None
+
             async def astream_events(self, *args: Any, **kwargs: Any):
                 from utils.error_codes import ErrorCode
                 from utils.exceptions import AppError

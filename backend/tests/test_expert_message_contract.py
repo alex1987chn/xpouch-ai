@@ -174,3 +174,41 @@ def test_missing_message_degrades_to_none(monkeypatch, fresh):
         fail_expert_message(_SessionStub(messages), thread_id="th-1", task_id="ghost", error="x")
         is None
     )
+
+
+# ---------------------------------------------------------------------------
+# 思考载体消息（run_thinking）：复杂执行轮的思考锚点行
+# ---------------------------------------------------------------------------
+
+
+def test_run_thinking_insert_shape_and_idempotency(monkeypatch):
+    from services.chat.expert_message import insert_run_thinking_message
+
+    messages: list = []
+    counter = {"id": 500}
+    _orig_add = _SessionStub.add
+
+    def _add_with_id(self, obj):
+        _orig_add(self, obj)
+        if getattr(obj, "id", None) is None:
+            obj.id = counter["id"]
+            counter["id"] += 1
+
+    monkeypatch.setattr(_SessionStub, "add", _add_with_id)
+
+    first = insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-1")
+    assert first == 500
+    msg = messages[0]
+    assert msg.role == "assistant"
+    assert msg.content == "", "思考载体恒空正文——步骤不入库，由账本重建挂回"
+    assert msg.extra_data == {"message_kind": "run_thinking", "run_id": "run-1"}
+
+    # 幂等：驳回修订重跑 commander 时同 run 不得插第二行
+    second = insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-1")
+    assert second == 500
+    assert len(messages) == 1
+
+    # 不同 run 各有一行（多轮对话）
+    third = insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-2")
+    assert third == 501
+    assert len(messages) == 2

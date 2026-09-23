@@ -165,7 +165,6 @@ class ResumeRequest(BaseModel):
     # terminate（终止任务）。缺省按 approved 推导，保持旧客户端兼容。
     action: str | None = Field(default=None, pattern="^(approve|revise|terminate)$")
     feedback: str | None = Field(default=None, max_length=4000)  # 驳回反馈（落库为 user 消息）
-    message_id: str | None = None  # 前端传入的消息ID，用于关联流式输出
     idempotency_key: str | None = Field(default=None, min_length=8, max_length=128)
 
 
@@ -442,8 +441,11 @@ async def chat_endpoint(
         get_effective_model(user_preferences.get("simple_model")),
     )
 
-    # 消息 ID 贯通：state 与 SSE 事件/落库共用同一 ID（aggregator 不再随机 uuid）
+    # 消息 ID 贯通：请求侧 message_id 供简单模式（direct_reply 流式与落库）；
+    # 复杂模式的聚合消息 id 在 run 创建时独立生成（state.aggregate_message_id，
+    # 与本轮开头的思考载体消息分离——聚合正文必须排在所有专家消息之后）
     actual_message_id = request.message_id or str(uuid4())
+    aggregate_message_id = str(uuid4())
 
     # Stage 3 跨轮产物连续性：注入本会话最近产物摘要（有界，失败静默跳过）
     try:
@@ -465,7 +467,7 @@ async def chat_endpoint(
         "thread_id": thread_id,
         "run_id": agent_run.id,
         "user_id": thread.user_id,
-        "message_id": actual_message_id,
+        "aggregate_message_id": aggregate_message_id,
         "recent_artifacts": recent_artifacts,
         "simple_model": user_preferences.get("simple_model"),
         "simple_thinking": user_preferences.get("simple_thinking", "auto"),
@@ -487,6 +489,7 @@ async def chat_endpoint(
             thread=thread,
             agent_run=agent_run,
             user_message=request.message,
+            message_id=actual_message_id,
         )
 
 
@@ -519,7 +522,6 @@ async def resume_chat(
         approved=request.approved,
         updated_plan=request.updated_plan,
         plan_version=request.plan_version,
-        message_id=request.message_id,
         idempotency_key=request.idempotency_key,
         feedback=request.feedback,
         action=request.action,

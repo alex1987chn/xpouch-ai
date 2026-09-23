@@ -21,6 +21,7 @@ import type {
 } from './types'
 import type { HandlerContext } from './types'
 import { getLastAssistantMessage } from './utils'
+import { isSameId } from '@/utils/normalize'
 import { t } from '@/i18n'
 import { logger } from '@/utils/logger'
 
@@ -36,12 +37,24 @@ export function handlePlanCreated(
   // 本地任务副本已删除（见 store/taskStore.ts 的说明）：这里只需标记「已初始化 +
   // 复杂模式」，任务清单本身由服务端与 pendingPlan 承载
   const { setMode } = taskStore
-  const { updateMessageMetadata } = chatStore
+  const { updateMessageMetadata, renameMessageId } = chatStore
 
   setMode('complex')
 
   // 🔥 性能优化：使用缓存 ID 查找最后一条助手消息
   const lastAi = getLastAssistantMessage(chatStore)
+
+  // 思考载体消息改写：commander 已把本轮思考载体落库（排在专家消息之前），
+  // 事件携带其库内 id——占位消息原位改写成它，此后实时流与刷新回放共用
+  // 同一条消息（两态同序的锚点）。无 id（插入失败的兜底）则保留占位
+  let thinkingTargetId = lastAi?.id
+  if (event.data.message_id != null && lastAi?.id) {
+    const carrierId = String(event.data.message_id)
+    if (!isSameId(lastAi.id, carrierId)) {
+      renameMessageId(lastAi.id, carrierId)
+      thinkingTargetId = carrierId
+    }
+  }
 
   if (lastAi?.message.metadata?.thinking) {
     const thinking = [...lastAi.message.metadata.thinking]
@@ -53,7 +66,7 @@ export function handlePlanCreated(
         status: 'completed',
         content: t('thinkingPlanDone')
       }
-      updateMessageMetadata(lastAi.id, { thinking })
+      updateMessageMetadata(thinkingTargetId ?? '', { thinking })
     }
   }
 

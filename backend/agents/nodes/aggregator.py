@@ -45,8 +45,10 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
 
     # 获取 execution_plan_id 和其他状态
     execution_plan_id = state.get("execution_plan_id")
-    # v3.0: 获取前端传递的 message_id（如果有的话）
-    message_id = state.get("message_id", str(uuid.uuid4()))
+    # 聚合消息独立成行：不复用本轮开头的占位/思考载体语义——聚合正文必须落
+    # 在**所有专家消息之后**（消息表顺序=因果顺序）。id 的单一来源是 run
+    # 创建时写进 state 的 aggregate_message_id（流式转换层用同一个）
+    message_id = state.get("aggregate_message_id") or str(uuid.uuid4())
     thread_id = state.get("thread_id")  # 🔥 用于保存消息到正确线程
 
     if not expert_results:
@@ -141,13 +143,13 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
             if not thread_id:
                 return
             with Session(engine) as db_session:
-                # 统一走 thread_service 同步核心（think 标签清洗 +
-                # frontend_message_id 写入，与 simple 模式一致）
+                # 统一走 thread_service 同步核心（think 标签清洗）；
+                # message_id 用本节点自造的聚合 id（与 delta/done 同源）
                 save_assistant_message_sync(
                     db_session,
                     thread_id,
                     final_response,
-                    message_id=state.get("message_id"),
+                    message_id=message_id,
                 )
 
         def _mark_run_completed() -> None:

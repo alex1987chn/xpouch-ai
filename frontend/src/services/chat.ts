@@ -214,7 +214,9 @@ function runSSEStream({
             handleServerEvent(fullEvent, eventScope)
             const content = eventData.content
             if (content && typeof content === 'string' && onChunk) {
-              await onChunk(content, activeThreadId, undefined, undefined, undefined, runtimeMeta)
+              // fullEvent 一并透传：useChatCore 靠事件里的 message_id 路由写入
+              // 目标（复杂模式聚合消息=服务端 id，需在尾部创建并 retarget）
+              await onChunk(content, activeThreadId, fullEvent, undefined, undefined, runtimeMeta)
               fullContent += content
             }
           } else {
@@ -526,20 +528,10 @@ export interface ResumeChatParams {
   updatedPlan?: TaskInfo[] // 🔥 任务依赖关系（depends_on 关键字段）
   approved: boolean
   /** 显式动作：approve（批准）/ revise（驳回+反馈 → 专家修订 v(n+1)）/ terminate（终止）。
-   *  缺省按 approved 推导，保持旧语义。 */
+   * 缺省按 approved 推导，保持旧语义。 */
   action?: 'approve' | 'revise' | 'terminate'
   /** 驳回反馈（revise/terminate 时提交，后端落库为会话 user 消息） */
   feedback?: string
-  /**
-   * 本次流式回复在**前端**的消息 id（useChatCore 建占位消息时生成的 UUID）。
-   *
-   * 必须传：后端会用它作为本轮聚合消息的 id（落库 + message.done + 每条 delta），
-   * 前端据此把流式内容写进那条占位消息。不传的话后端自造 id，前端在 store 里
-   * 找不到它 → `handleMessageDelta` 的兜底会**再建一条** → 界面上出现两条一模
-   * 一样的回答（刷新后被服务端数据替换成一条）。sendMessage 一直传了这个字段，
-   * resume 这条链路此前漏了。
-   */
-  messageId?: string
 }
 
 export async function resumeChat(
@@ -562,8 +554,7 @@ export async function resumeChat(
         updated_plan: params.updatedPlan,
         approved: params.approved,
         action: params.action,
-        feedback: params.feedback,
-        message_id: params.messageId
+        feedback: params.feedback
       }),
       signal: abortSignal,
       // P0 修复: 允许携带 Cookie
@@ -584,8 +575,7 @@ export async function resumeChat(
       updated_plan: params.updatedPlan,
       approved: params.approved,
       action: params.action,
-      feedback: params.feedback,
-      message_id: params.messageId
+      feedback: params.feedback
     },
     errorContext: 'chat.ts resume',
     logPrefix: 'Resume ',

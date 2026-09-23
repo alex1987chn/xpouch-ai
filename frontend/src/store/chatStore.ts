@@ -44,6 +44,8 @@ interface ChatActions {
   updateMessage: (id: string, content: string, append?: boolean) => void
   updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => void
   updateMessageExtra: (id: string, extra: Partial<ExpertMessageData>) => void
+  /** 原位改写消息 id（占位 → 服务端落库 id），同步 lastAssistantMessageId 缓存 */
+  renameMessageId: (fromId: string, toId: string) => void
   
   // 输入状态
   setInputMessage: (input: string) => void
@@ -139,6 +141,25 @@ export const useChatStore = create<ChatStore>()(
             : msg
         ),
       })),
+
+      renameMessageId: (fromId, toId) => set((state) => {
+        let renamed = false
+        const messages = state.messages.map((msg) => {
+          if (isSameId(msg.id, fromId)) {
+            renamed = true
+            return { ...msg, id: toId }
+          }
+          return msg
+        })
+        if (!renamed) return {}
+        return {
+          messages,
+          lastAssistantMessageId:
+            state.lastAssistantMessageId && isSameId(state.lastAssistantMessageId, fromId)
+              ? toId
+              : state.lastAssistantMessageId,
+        }
+      }),
 
       // ========== 输入状态 ==========
       

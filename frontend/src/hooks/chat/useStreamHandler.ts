@@ -285,6 +285,17 @@ export function useStreamHandler() {
   const markFinalized = useCallback(() => {
     finalizedRef.current = true
   }, [])
+
+  /**
+   * 把后续 chunk 的写入目标切换到另一条消息（复杂模式聚合正文的服务端 id
+   * 在首个 delta 才到达）。切换前先冲刷旧目标的缓冲——RAF 批处理层按 ref
+   * 记目标，不冲刷会把旧内容写进新消息。
+   */
+  const retarget = useCallback((messageId: string) => {
+    forceFlush()
+    currentMessageIdRef.current = messageId
+    thinkingIdRef.current = `streaming-think-${messageId}`
+  }, [forceFlush])
   
   /**
    * 工厂方法：创建特定消息的处理器
@@ -329,6 +340,7 @@ export function useStreamHandler() {
   return {
     reset,
     createChunkHandler,
+    retarget,
     forceFlush,  // 暴露强制刷新方法，供流式结束时调用
     markFinalized,  // message.done 校准后调用，防 flush 追加造成尾部重复
     // 暴露获取当前状态的方法（用于调试）

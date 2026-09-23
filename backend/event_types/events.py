@@ -88,6 +88,9 @@ class PlanCreatedData(BaseModel):
     estimated_steps: int
     execution_mode: Literal["sequential", "parallel"]  # 见 models.enums.ExecutionMode
     tasks: list[TaskInfo]
+    # 思考载体消息的库内 id：前端把本地占位消息改写成它，此后实时流与
+    # 刷新回放共用同一条消息（顺序=插入顺序=因果顺序）。None=未落库兜底
+    message_id: int | None = None
 
 
 # 🔥 新增：Commander 流式思考事件数据模型

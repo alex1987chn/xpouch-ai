@@ -486,6 +486,26 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 session_source = "复用" if is_reused else "新建"
                 logger.info(f"[COMMANDER] ExecutionPlan {session_source}: {execution_plan_id}")
 
+                # 思考载体消息（消息表=执行状态真相源）：content 恒空的助手行，
+                # 排在专家消息之前——刷新回放时思考卡（账本重建挂回本条）自然
+                # 位于专家卡与聚合正文之前，实时/刷新两态同序。幂等（按 run_id），
+                # 驳回修订重跑 commander 不产生第二行。
+                thinking_message_id: int | None = None
+                try:
+                    from services.chat.expert_message import (
+                        insert_run_thinking_message_standalone,
+                    )
+
+                    thinking_message_id = await asyncio.to_thread(
+                        insert_run_thinking_message_standalone,
+                        thread_id=thread_id,
+                        run_id=state.get("run_id"),
+                    )
+                except Exception as thinking_row_err:
+                    logger.warning(
+                        f"[COMMANDER] ⚠️ 思考载体消息插入失败（不影响执行）: {thinking_row_err}"
+                    )
+
                 # 🔥🔥🔥 更新 thread.execution_plan_id，确保前端能查询到
                 # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
                 from models import Thread
@@ -533,6 +553,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                         execution_mode=plan_execution_mode,
                         # 同一份 canonical 计划 → 事件 payload（键集与 TaskInfo 由测试钉住）
                         tasks=[plan_task.to_event_task_dict() for plan_task in plan_tasks],
+                        message_id=thinking_message_id,
                     )
                 )
 

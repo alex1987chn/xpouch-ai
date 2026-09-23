@@ -42,6 +42,7 @@ export interface PlanCreatedData {
   estimated_steps: number
   execution_mode: 'sequential' | 'parallel'
   tasks: TaskInfo[]
+  message_id?: number | null
 }
 
 export interface PlanStartedData {

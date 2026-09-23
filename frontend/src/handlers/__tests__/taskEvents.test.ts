@@ -36,6 +36,7 @@ describe('Task Events', () => {
       chatStore: {
         messages: [],
         updateMessageMetadata: vi.fn(),
+        renameMessageId: vi.fn(),
         lastAssistantMessageId: null
       } as any,
       debug: false
@@ -56,6 +57,45 @@ describe('Task Events', () => {
       handlePlanCreated(event, mockContext)
 
       expect(mockContext.taskStore.setMode).toHaveBeenCalledWith('complex')
+    })
+
+    it('携带载体 message_id 时把占位消息原位改写成库内 id（两态同源锚点）', () => {
+      const event = {
+        id: 'evt-2',
+        type: 'plan.created' as const,
+        data: {
+          execution_plan_id: 'session-2',
+          tasks: [{ id: 'task-1', description: 'test' }],
+          message_id: 2470
+        }
+      }
+      mockContext.chatStore.messages = [
+        { id: 'local-placeholder', role: 'assistant', content: '', metadata: { thinking: [] } }
+      ]
+      mockContext.chatStore.lastAssistantMessageId = 'local-placeholder'
+
+      handlePlanCreated(event, mockContext)
+
+      expect(mockContext.chatStore.renameMessageId).toHaveBeenCalledWith('local-placeholder', '2470')
+    })
+
+    it('无载体 id（插入失败兜底）不改写占位消息', () => {
+      const event = {
+        id: 'evt-3',
+        type: 'plan.created' as const,
+        data: {
+          execution_plan_id: 'session-3',
+          tasks: [{ id: 'task-1', description: 'test' }]
+        }
+      }
+      mockContext.chatStore.messages = [
+        { id: 'local-placeholder', role: 'assistant', content: '', metadata: { thinking: [] } }
+      ]
+      mockContext.chatStore.lastAssistantMessageId = 'local-placeholder'
+
+      handlePlanCreated(event, mockContext)
+
+      expect(mockContext.chatStore.renameMessageId).not.toHaveBeenCalled()
     })
   })
 

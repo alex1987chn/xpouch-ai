@@ -147,20 +147,15 @@ class TestResumeInflightDedup:
         RecoveryService._enter_inflight_resume("r2", "key-a")  # 不应抛出
 
     @pytest.mark.parametrize(
-        ("idempotency_key", "message_id", "plan_version", "expected"),
+        ("idempotency_key", "plan_version", "expected"),
         [
-            ("explicit", "msg", 3, "explicit"),
-            (None, "msg", 3, "msg:msg"),
-            (None, None, 3, "r1:3"),
+            ("explicit", 3, "explicit"),
+            (None, 3, "r1:3"),
+            (None, None, "r1:None"),
         ],
     )
-    def test_resume_key_derivation_priority(
-        self, idempotency_key, message_id, plan_version, expected
-    ):
-        assert (
-            RecoveryService._build_resume_key("r1", plan_version, message_id, idempotency_key)
-            == expected
-        )
+    def test_resume_key_derivation_priority(self, idempotency_key, plan_version, expected):
+        assert RecoveryService._build_resume_key("r1", plan_version, idempotency_key) == expected
 
 
 # ---------------------------------------------------------------------------

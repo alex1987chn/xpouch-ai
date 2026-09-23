@@ -46,14 +46,18 @@ function messageTimeMs(ts: number | string | undefined): number {
 }
 
 /**
- * 用运行事件账本给最后一条助手消息补回「思考过程」步骤骨架。
+ * 用运行事件账本补回「思考过程」步骤骨架。
+ *
+ * 挂载点优先级：该 run 的思考载体消息（extra_data.message_kind='run_thinking'
+ * 且 run_id 匹配——commander 在专家消息之前插入的空正文行，实时流期间步骤
+ * 就挂在它上面）；老会话没有载体行时退回最后一条助手消息（迁移前的行为）。
  *
  * 背景：思考步骤只活在前端内存（流式期间由 SSE 事件拼出），服务端只持久化正文，
  * 所以刷新后面板必然消失。骨架一直躺在事件账本里，这里取回来挂上即可
  * （映射规则与差异见 lib/thinkingStepsFromTimeline）。
  *
- * 只在「这条助手消息确实由本次 run 产出」时挂：run 开始时间晚于消息时间的，
- * 说明那是上一轮的消息（本轮还在规划/等审批，还没有产出）。
+ * 退回路径只在「这条助手消息确实由本次 run 产出」时挂：run 开始时间晚于消息
+ * 时间的，说明那是上一轮的消息（本轮还在规划/等审批，还没有产出）。
  * 取数失败一律静默降级——面板没有就没有，绝不因为一次额外请求影响会话恢复。
  */
 async function attachThinkingFromTimeline(
@@ -63,13 +67,21 @@ async function attachThinkingFromTimeline(
 ): Promise<Message[]> {
   if (!run?.id || !run.started_at) return messages
 
-  const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')
-  if (!lastAssistant) return messages
-  if ((lastAssistant.metadata?.thinking?.length ?? 0) > 0) return messages
-  // 服务端消息的时间字段是 created_at（词汇收敛后 timestamp 已退役，那是本地
-  // 运行时字段）——此前读 timestamp 恒为 undefined→0，守卫永远成立，
-  // 账本重建从未执行过（刷新后思考卡消失的根因之一）。
-  if (messageTimeMs(lastAssistant.created_at ?? undefined) < toLocalDate(run.started_at).getTime()) return messages
+  const carrier = messages.find((m) => {
+    const extra = m.extra_data as { message_kind?: string; run_id?: string | null } | undefined
+    return extra?.message_kind === 'run_thinking' && extra.run_id === run.id
+  })
+
+  let target: Message | undefined = carrier
+  if (!target) {
+    target = [...messages].reverse().find((m) => m.role === 'assistant')
+    if (!target) return messages
+    // 服务端消息的时间字段是 created_at（词汇收敛后 timestamp 已退役，那是本地
+    // 运行时字段）——此前读 timestamp 恒为 undefined→0，守卫永远成立，
+    // 账本重建从未执行过（刷新后思考卡消失的根因之一）。
+    if (messageTimeMs(target.created_at ?? undefined) < toLocalDate(run.started_at).getTime()) return messages
+  }
+  if ((target.metadata?.thinking?.length ?? 0) > 0) return messages
 
   try {
     const timeline = await getRunTimeline(run.id, 200)
@@ -77,7 +89,7 @@ async function attachThinkingFromTimeline(
     if (steps.length === 0) return messages
     logger.debug('[useSessionRestore] 已从事件账本重建思考步骤:', steps.length, '步')
     return messages.map((m) =>
-      m === lastAssistant ? { ...m, metadata: { ...m.metadata, thinking: steps } } : m,
+      m === target ? { ...m, metadata: { ...m.metadata, thinking: steps } } : m,
     )
   } catch (error) {
     logger.warn('[useSessionRestore] 思考步骤重建失败（面板留空，不影响会话恢复）:', error)

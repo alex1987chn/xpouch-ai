@@ -24,6 +24,49 @@ from models.enums import RunEventType
 from utils.logger import logger
 
 EXPERT_MESSAGE_KIND = "expert_result"
+RUN_THINKING_MESSAGE_KIND = "run_thinking"
+
+
+def insert_run_thinking_message(db: Session, *, thread_id: str, run_id: str | None) -> int | None:
+    """插入本轮复杂执行的「思考载体」消息（content 恒空——思考步骤不入库，
+    真相源是 runevent 账本，前端刷新时重建挂回本条）。
+
+    行顺序即因果顺序：插在专家消息之前（commander 规划落库时），刷新回放
+    时思考卡自然位于专家卡与聚合正文之前。幂等（同 run 已有思考行即返回
+    其 id）：驳回修订会重跑 commander，不得产生第二行。
+    """
+    rows = db.exec(
+        select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+    ).all()
+    for m in rows:
+        extra = m.extra_data or {}
+        if extra.get("message_kind") == RUN_THINKING_MESSAGE_KIND and extra.get("run_id") == run_id:
+            return m.id
+    msg = Message(
+        thread_id=thread_id,
+        role="assistant",
+        content="",
+        extra_data={
+            "message_kind": RUN_THINKING_MESSAGE_KIND,
+            "run_id": run_id,
+        },
+    )
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    return msg.id
+
+
+def insert_run_thinking_message_standalone(
+    *,
+    thread_id: str,
+    run_id: str | None,
+) -> int | None:
+    """线程池形态（独立 Session），commander 经 asyncio.to_thread 调用。"""
+    from database import Session, engine
+
+    with Session(engine) as db:
+        return insert_run_thinking_message(db, thread_id=thread_id, run_id=run_id)
 
 
 def insert_expert_message_standalone(

@@ -35,7 +35,7 @@ describe('Chat Events', () => {
   })
 
   describe('handleMessageDelta', () => {
-    it('当消息不存在时应该自动创建消息', () => {
+    it('当消息不存在时应该自动创建消息（content 置空——正文由 RAF 批处理层写入，防同帧双写）', () => {
       const event = {
         id: 'evt-1',
         type: 'message.delta' as const,
@@ -54,7 +54,7 @@ describe('Chat Events', () => {
         expect.objectContaining({
           id: 'msg-new',
           role: 'assistant',
-          content: 'delta content'
+          content: ''
         })
       )
     })

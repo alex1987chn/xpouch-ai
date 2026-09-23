@@ -169,6 +169,9 @@ class StreamService(EventBuildersMixin):
 
         async def _run_graph():
             actual_message_id = message_id or str(uuid.uuid4())
+            # 复杂模式聚合消息 id（run 创建时生成，随 state 贯穿）：流式 delta
+            # 与 aggregator 落库同源；简单模式（direct_reply）不消费
+            aggregate_message_id = initial_state.get("aggregate_message_id") or str(uuid.uuid4())
             full_response = ""
             router_decision = "simple"
             await self._update_agent_run_status(
@@ -237,7 +240,7 @@ class StreamService(EventBuildersMixin):
 
                     # 处理消息流、task 事件等
                     event_str = self.transform_langgraph_event(
-                        token, actual_message_id, reasoning_parts
+                        token, actual_message_id, reasoning_parts, aggregate_message_id
                     )
                     if event_str:
                         await pipeline.emit(event_str)
@@ -464,6 +467,7 @@ class StreamService(EventBuildersMixin):
         thread: Thread,
         agent_run: AgentRun,
         user_message: str,
+        message_id: str | None = None,
     ) -> dict:
         """LangGraph 非流式处理（内部使用流式）。
 
@@ -530,7 +534,7 @@ class StreamService(EventBuildersMixin):
                 router_decision=router_decision,
                 task_list=result.get("task_list", []),
                 expert_artifacts={},
-                message_id=initial_state.get("message_id") or str(uuid.uuid4()),
+                message_id=message_id or str(uuid.uuid4()),
                 run_id=agent_run.id,
             )
             await self._update_agent_run_status(
@@ -653,7 +657,7 @@ class StreamService(EventBuildersMixin):
 
         if router_decision == "complex":
             # 复杂模式的**唯一写入者**是 aggregator 节点：它是图内最后一个节点，
-            # 无条件写入助手消息（save_assistant_message_sync，带 state.message_id）
+            # 无条件写入助手消息（save_assistant_message_sync，带请求侧 message_id）
             # 与计划的 final_response。
             #
             # 因此这里必须提前返回、不重复保存，否则同一轮会出现**两条内容不同的
@@ -772,7 +776,6 @@ class StreamService(EventBuildersMixin):
         sse_queue: asyncio.Queue,
         realtime_queue: asyncio.Queue,
         updated_plan: list[dict] | None = None,
-        message_id: str | None = None,
         run_id: str | None = None,
     ) -> AsyncGenerator[str]:
         """
@@ -786,7 +789,6 @@ class StreamService(EventBuildersMixin):
             sse_queue: SSE 事件队列
             realtime_queue: 实时推送队列
             updated_plan: 用户修改后的计划（可选）
-            message_id: 前端传入的消息ID（用于关联流式输出）
             run_id: 关联的 AgentRun ID（可选）
 
         Yields:
@@ -821,9 +823,19 @@ class StreamService(EventBuildersMixin):
         }
         logger.info(f"[StreamService] 恢复流程使用隔离的 thread_id: {isolated_thread_id}")
 
+        # 聚合消息 id：从 checkpoint 读（run 创建时写进 state，单一来源）；
+        # 极老的中断 run（字段未出生前打的断点）读不到 → 现生成并回写，
+        # 保证流式 delta 与 aggregator 落库同 id（两处各造会重复成两条消息）
+        snapshot = await graph.aget_state(config)
+        aggregate_message_id = (snapshot.values or {}).get("aggregate_message_id") or str(
+            uuid.uuid4()
+        )
+        if "aggregate_message_id" not in (snapshot.values or {}):
+            await graph.aupdate_state(config, {"aggregate_message_id": aggregate_message_id})
+
         # 如果提供了更新后的计划，应用它
         if updated_plan:
-            await self._apply_updated_plan(graph, config, updated_plan, message_id)
+            await self._apply_updated_plan(graph, config, updated_plan)
             if run_id:
                 execution_plan = self._get_execution_plan_by_run(run_id)
                 if execution_plan:
@@ -836,12 +848,6 @@ class StreamService(EventBuildersMixin):
                         task_count=len(updated_plan),
                     )
                     self.db.commit()
-        else:
-            # 普通批准（未修改计划）：图从中断点直接续跑，state 不会经过
-            # _apply_updated_plan——单独补写 message_id，保证聚合阶段
-            # message.done 与本次流式 delta 使用同一 ID
-            if message_id:
-                await graph.aupdate_state(config, {"message_id": message_id})
         # 单次驱动整个计划：interrupt() 把「暂停点」变成原生状态，一次
         # astream_events 即可从审批点续跑到聚合完成。旧式 interrupt_before
         # 每次到达 dispatcher（含任务切换）都中断，才需要外层 while 反复
@@ -920,7 +926,9 @@ class StreamService(EventBuildersMixin):
                         aggregator_executed = True
                         logger.info("[Producer] aggregator 执行完成")
 
-                event_str = self.transform_langgraph_event(token, message_id)
+                # HITL 恢复恒为复杂模式：请求侧 message_id 不存在（None），
+                # 正文流只来自 aggregator（挂聚合消息 id）
+                event_str = self.transform_langgraph_event(token, None, None, aggregate_message_id)
                 if event_str:
                     await pipeline.emit(event_str)
 
@@ -965,9 +973,7 @@ class StreamService(EventBuildersMixin):
         # message.done 由 aggregator_node 通过 event_queue 发送
         # 这里不再重复发送
 
-    async def _apply_updated_plan(
-        self, graph, config: dict, updated_plan: list[dict], message_id: str | None = None
-    ):
+    async def _apply_updated_plan(self, graph, config: dict, updated_plan: list[dict]):
         """把用户在审批页编辑过的计划合并进图状态。
 
         合并语义（业务规则，不属于脚手架）：
@@ -1043,9 +1049,6 @@ class StreamService(EventBuildersMixin):
             "task_list": merged_plan,
             "expert_results": current_expert_results,  # 保留已有结果，而不是清空
         }
-        # 恢复流的消息 ID 贯通：聚合阶段的 message.done 与本次流式 delta 使用同一 ID
-        if message_id:
-            state_update["message_id"] = message_id
         await graph.aupdate_state(config, state_update)
 
     # ============================================================================
@@ -1053,7 +1056,11 @@ class StreamService(EventBuildersMixin):
     # ============================================================================
 
     def transform_langgraph_event(
-        self, token, message_id: str | None = None, reasoning_collector: list | None = None
+        self,
+        token,
+        message_id: str | None = None,
+        reasoning_collector: list | None = None,
+        aggregate_message_id: str | None = None,
     ) -> str | None:
         """将 LangGraph 事件转换为 SSE 格式
 
@@ -1066,6 +1073,10 @@ class StreamService(EventBuildersMixin):
         只有白名单节点允许产生 message.delta / message.thinking；其余节点
         （commander/expert/router）的产出经 sse_event 通道直达前端。
         本函数不处理 task/plan/artifact 等事件（那些由 emit_event 直达）。
+
+        目标 id 路由：aggregator 的流式正文挂聚合消息（aggregate_message_id，
+        与 aggregator 落库同源——聚合行必须排在所有专家消息之后）；
+        direct_reply（简单模式）挂请求侧 message_id（占位=正文同一行）。
         """
         import json
 
@@ -1093,6 +1104,12 @@ class StreamService(EventBuildersMixin):
             if effective_node not in _DELTA_ALLOWED_NODES:
                 return None
 
+            # 目标 id 路由（见 docstring）：聚合正文挂聚合消息 id（未传时退回
+            # 请求侧 id——正常链路恒有，测试桩/直调场景不至发出无主事件）
+            target_id = message_id
+            if effective_node == "aggregator" and aggregate_message_id:
+                target_id = aggregate_message_id
+
             # 思考过程流式块（DeepSeek reasoning_content；思考 chunk 通常没有正文内容，
             # 必须在 content 判空之前处理，否则会被整体丢弃）
             reasoning = getattr(chunk, "additional_kwargs", {}).get("reasoning_content", "")
@@ -1100,16 +1117,16 @@ class StreamService(EventBuildersMixin):
                 if reasoning_collector is not None:
                     reasoning_collector.append(reasoning)
                 event_data = {"content": reasoning}
-                if message_id:
-                    event_data["message_id"] = message_id
+                if target_id:
+                    event_data["message_id"] = target_id
                 return f"event: message.thinking\ndata: {json.dumps(event_data)}\n\n"
 
             content = getattr(chunk, "content", None)
             if content:
                 # 只发送纯净数据，包含 message_id 用于前端消息关联
                 event_data = {"content": content}
-                if message_id:
-                    event_data["message_id"] = message_id
+                if target_id:
+                    event_data["message_id"] = target_id
                 return f"event: message.delta\ndata: {json.dumps(event_data)}\n\n"
 
         # 协议 v2：task.started / task.completed / task.failed / artifact 均由节点

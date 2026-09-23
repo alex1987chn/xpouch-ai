@@ -15,20 +15,18 @@ def test_build_resume_key_prefers_idempotency_key():
     key = RecoveryService._build_resume_key(
         run_id="r1",
         plan_version=3,
-        message_id="m1",
         idempotency_key="idem-1",
     )
     assert key == "idem-1"
 
 
-def test_build_resume_key_falls_back_to_message_id():
+def test_build_resume_key_falls_back_to_run_and_version():
     key = RecoveryService._build_resume_key(
         run_id="r1",
         plan_version=3,
-        message_id="m1",
         idempotency_key=None,
     )
-    assert key == "msg:m1"
+    assert key == "r1:3"
 
 
 def test_inflight_same_key_is_rejected_as_duplicate():
@@ -73,7 +71,6 @@ async def test_handle_approval_releases_inflight_when_preflight_fails(monkeypatc
             run_id="run-1",
             updated_plan=None,
             plan_version=1,
-            message_id="msg-1",
             idempotency_key="resume-key-1",
         )
 
