@@ -1,0 +1,28 @@
+feat(chat): 专家执行产出独立成条，消息表成为执行状态一等真相源
+
+产品形态重构（对照 DeepSeek/Kimi/Claude/ChatGPT/Manus 后定向：
+多专家+产物形态取 Manus 式过程消息独立成条）：
+
+- thinking 卡只留路由判断与任务规划两个里程碑
+- task.started 时在消息表插入 running 态骨架（expert_message.py 新建），
+  完成/失败原位更新为终态（摘要/产物引用/工具统计/耗时）——
+  执行中刷新页面也能从库恢复现场（E2E 三态验证通过）
+- 前端实时流按 message_id 追加与覆盖同一条消息；消息卡 =
+  专家识别色署名 + 步骤 i/N + 描述 + 摘要 + 工具区 + 产物横条（弹预览）
+- task.completed 事件挪进保存协程：消息终态落库后才发射，
+  事件载荷即消息终态（与 artifact.generated 同一条时序纪律）
+- 工具明细真相源仍是 runevent 账本（时间线页），消息 tool_stats 为聚合快照
+
+顺手修复：
+- async_save_expert_result 调用漏传 artifact_id——事件载荷带产物引用
+  但消息表落成 []，刷新即丢横条（E2E 刷新回放抓出）
+- task.started 的 sort_order=0 被 "or None" 吃成 None
+- 专家卡署名错用 expertDisplayName（智能体 ID 映射）→ expertLabel（专家词条）；
+  RunTimelinePage 同病同修；步骤序号显示改 1 起数
+
+旧机制删净：thinking 卡 execution 渲染/专家分组/产物行/工具明细行、
+thinkingGroups 分组（退化平铺）、thinkingStepsFromTimeline 的 task/tool
+重建分支、ThinkingStep.toolActivity/toolHistory 字段全部退役。
+
+测试：后端 495 绿（新增 expert_message 契约 3 条）、前端 95 绿、
+tsc/build 绿；真实 LLM E2E 实时态/完成态/刷新回放三态通过。

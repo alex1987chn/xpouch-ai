@@ -115,9 +115,42 @@ describe('Task Events', () => {
   })
 
   describe('handleTaskStarted', () => {
-    it('应该启动任务并添加 running task ID', () => {
+    it('应该启动任务并添加 running task ID（有 message_id 时外加专家消息）', () => {
       const event = {
         id: 'evt-1',
+        type: 'task.started' as const,
+        data: {
+          task_id: 'task-1',
+          expert_type: 'coder',
+          description: 'write code',
+          started_at: new Date().toISOString(),
+          message_id: 101,
+          sort_order: 1,
+          total_steps: 2
+        }
+      }
+
+      mockContext.chatStore.addMessage = vi.fn()
+
+      handleTaskStarted(event, mockContext)
+
+      expect(mockContext.taskStore.addRunningTaskId).toHaveBeenCalledWith('task-1')
+      expect(mockContext.chatStore.addMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: '101',
+          role: 'assistant',
+          extra_data: expect.objectContaining({
+            message_kind: 'expert_result',
+            task_id: 'task-1',
+            status: 'running'
+          })
+        })
+      )
+    })
+
+    it('message_id 为空时不加专家消息（后端插入失败时不造双轨数据）', () => {
+      const event = {
+        id: 'evt-2',
         type: 'task.started' as const,
         data: {
           task_id: 'task-1',
@@ -127,15 +160,11 @@ describe('Task Events', () => {
         }
       }
 
-      mockContext.chatStore.messages = [
-        { id: 'msg-1', role: 'assistant', metadata: { thinking: [] } }
-      ]
-      mockContext.chatStore.lastAssistantMessageId = 'msg-1'
+      mockContext.chatStore.addMessage = vi.fn()
 
       handleTaskStarted(event, mockContext)
 
-      expect(mockContext.taskStore.addRunningTaskId).toHaveBeenCalledWith('task-1')
-      expect(mockContext.chatStore.updateMessageMetadata).toHaveBeenCalled()
+      expect(mockContext.chatStore.addMessage).not.toHaveBeenCalled()
     })
 
     it('不应该重复添加已存在的 thinking step', () => {
@@ -169,39 +198,35 @@ describe('Task Events', () => {
   })
 
   describe('handleTaskCompleted', () => {
-    it('应该释放运行中标记并收尾思考步骤（不再维护本地进度副本）', () => {
+    it('应该释放运行中标记并把专家消息覆盖为终态（事件载荷=库内终态）', () => {
       const event = {
         id: 'evt-1',
         type: 'task.completed' as const,
         data: {
           task_id: 'task-1',
+          expert_type: 'coder',
+          description: 'write code',
           output: 'completed result',
-          completed_at: new Date().toISOString()
+          duration_ms: 5000,
+          completed_at: new Date().toISOString(),
+          message_id: 101,
+          artifact_ids: ['art-1'],
+          tool_stats: { count: 3, total_ms: 2100, failed: 0 }
         }
       }
 
-      mockContext.chatStore.messages = [
-        {
-          id: 'msg-1',
-          role: 'assistant',
-          metadata: {
-            thinking: [
-              { id: 'task-1', type: 'execution', status: 'running', content: '' }
-            ]
-          }
-        }
-      ]
-      mockContext.chatStore.lastAssistantMessageId = 'msg-1'
+      mockContext.chatStore.updateMessageExtra = vi.fn()
 
       handleTaskCompleted(event, mockContext)
 
       expect(mockContext.taskStore.removeRunningTaskId).toHaveBeenCalledWith('task-1')
-      expect(mockContext.chatStore.updateMessageMetadata).toHaveBeenCalledWith(
-        'msg-1',
+      expect(mockContext.chatStore.updateMessageExtra).toHaveBeenCalledWith(
+        '101',
         expect.objectContaining({
-          thinking: expect.arrayContaining([
-            expect.objectContaining({ id: 'task-1', status: 'completed' })
-          ])
+          status: 'completed',
+          artifact_ids: ['art-1'],
+          tool_stats: { count: 3, total_ms: 2100, failed: 0 },
+          duration_ms: 5000
         })
       )
     })

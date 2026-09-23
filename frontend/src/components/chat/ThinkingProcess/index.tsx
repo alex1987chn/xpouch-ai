@@ -30,22 +30,14 @@ import {
   Brain,
   ChevronDown,
   ChevronUp,
-  ChevronRight,
   Check,
   XCircle,
   Loader2,
   ExternalLink,
-  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { expertColor, expertDotStyle } from '@/lib/expertIdentity'
-import { useExpertLabel } from '@/hooks/useExpertLabel'
-import { expertGroupStatus, groupThinkingSteps } from '@/lib/thinkingGroups'
-import {
-  ARTIFACT_TYPE_LABEL_KEY,
-  artifactTypeColor,
-  artifactTypeIcon,
-} from '@/lib/artifactPresentation'
+import { expertColor } from '@/lib/expertIdentity'
+import { groupThinkingSteps } from '@/lib/thinkingGroups'
 import type { ThinkingStep } from '@/types'
 
 // ============================================================================
@@ -59,10 +51,6 @@ interface ThinkingProcessProps {
   isThinking: boolean
   /** 自定义类名 */
   className?: string
-  /** 固定的总步骤数（从 plan.created 获取） */
-  totalSteps?: number
-  /** 打开某条产物的查看器（复用 ArtifactViewerModal）；不传则卡片不可点 */
-  onOpenArtifact?: (artifactId: string) => void
   /** 初始是否展开（历史消息传 false，避免"展开→自动收起"的闪烁） */
   defaultExpanded?: boolean
 }
@@ -103,65 +91,9 @@ const StatusDot = ({ status }: { status: ThinkingStep['status'] }) => {
 interface StepItemProps {
   step: ThinkingStep
   index: number
-  onOpenArtifact?: (artifactId: string) => void
-  /** 是否渲染在专家组内：组内不重复画专家色点（组头已有），行标题改用任务描述 */
-  inExpertGroup?: boolean
 }
 
-/** 步骤产出的产物卡片：点击交给调用方打开查看器（复用 ArtifactViewerModal）。
-    形态刻意比画廊卡更轻——它嵌在紧凑的步骤区里，重卡片会显得突兀。 */
-const StepArtifactCard = ({
-  artifact,
-  onOpen,
-}: {
-  artifact: NonNullable<ThinkingStep['artifacts']>[number]
-  onOpen?: (artifactId: string) => void
-}) => {
-  const { t } = useTranslation()
-  const Icon = artifactTypeIcon(artifact.type)
-  const labelKey = ARTIFACT_TYPE_LABEL_KEY[artifact.type]
-  const typeLabel = labelKey ? t(labelKey as Parameters<typeof t>[0]) : artifact.type
-  const title = artifact.title || typeLabel
-  const clickable = !!onOpen
-
-  const inner = (
-    <>
-      <span
-        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded"
-        style={{ backgroundColor: `${artifactTypeColor(artifact.type)}1f` }}
-      >
-        <Icon className="h-3 w-3" style={{ color: artifactTypeColor(artifact.type) }} />
-      </span>
-      <span className="min-w-0 flex-1 truncate text-caption text-content-primary">{title}</span>
-      <span className="flex-shrink-0 text-nano text-content-muted">{typeLabel}</span>
-      {clickable && (
-        <ChevronRight className="h-3 w-3 flex-shrink-0 text-content-muted transition-transform duration-200 group-hover:translate-x-0.5" />
-      )}
-    </>
-  )
-
-  const base =
-    'flex w-full items-center gap-2 rounded-md border border-border-divider bg-surface-card px-2.5 py-1.5 text-left'
-
-  if (!clickable) {
-    return <div className={base}>{inner}</div>
-  }
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen!(artifact.id)}
-      title={t('preview')}
-      className={cn(
-        base,
-        'group cursor-pointer transition-colors hover:border-border-hover hover:bg-surface-tint/40'
-      )}
-    >
-      {inner}
-    </button>
-  )
-}
-
-const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepItemProps) => {
+const StepItem = ({ step, index }: StepItemProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const typeLabels: Record<NonNullable<ThinkingStep['type']>, string> = {
@@ -173,48 +105,18 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
     writing: t('thinkingWriting'),
     artifact: t('thinkingArtifact'),
     memory: t('thinkingMemory'),
-    execution: t('thinkingExecution'),
     default: t('thinkingDefault')
   }
-  // 组内任务行：标题是任务本身（描述）。计划里的 description 常是整句长文，
-  // 一行全量渲染会让整个面板显得「字很大」——行名只取前 30 字（详情/摘要就在下方，
-  // 不丢信息）；蓝图 run-card 的步骤也是短名（「读取现有认证流程」）而非全文。
-  const description = inExpertGroup ? step.taskDescription : undefined
-  const label = description
-    ? description.length > 30
-      ? `${description.slice(0, 30)}…`
-      : description
-    : typeLabels[step.type || 'default']
-  const hasDetail =
-    !!step.content || !!step.url || (step.toolHistory?.length ?? 0) > 0
-  // 组内少了专家色点（8px + 12px 间距），详情/产物块的缩进随之左移
-  const indent = inExpertGroup ? 'pl-[46px]' : 'pl-[66px]'
-
-  // 工具可见性：calling 中显示实时活动行；否则显示终态汇总行（完成后保留——
-  // 工具痕迹是结果可信度的证据，对齐主流 agent 产品的活动日志）
-  const callingActivity =
-    step.status === 'running' && step.toolActivity?.state === 'calling' ? step.toolActivity : null
-  const toolStats = step.toolHistory?.length
-    ? {
-        count: step.toolHistory.length,
-        totalMs: step.toolHistory.reduce((sum, h) => sum + (h.durationMs || 0), 0),
-        failed: step.toolHistory.filter(h => !h.success).length,
-      }
-    : null
-
-  // 格式化耗时
-  const formatDuration = (ms?: number) => {
-    if (!ms) return null
-    if (ms < 1000) return `${ms}ms`
-    return `${(ms / 1000).toFixed(1)}s`
-  }
+  const label = typeLabels[step.type || 'default']
+  const hasDetail = !!step.content || !!step.url
+  const indent = 'pl-[66px]'
 
   return (
     <div
       style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
       className={cn('stagger-item', index > 0 && 'border-t border-border-divider')}
     >
-      {/* 步骤行：状态圆标 + 专家色点 + 名称 + 耗时 + 展开箭头 */}
+      {/* 步骤行：状态圆标 + 专家色点 + 名称 + 展开箭头 */}
       <button
         onClick={() => hasDetail && setOpen(v => !v)}
         className={cn(
@@ -224,12 +126,10 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
         )}
       >
         <StatusDot status={step.status} />
-        {!inExpertGroup && (
-          <span
-            className="h-2 w-2 flex-shrink-0 rounded-full"
-            style={{ backgroundColor: expertColor(step.expertType || step.type || 'default') }}
-          />
-        )}
+        <span
+          className="h-2 w-2 flex-shrink-0 rounded-full"
+          style={{ backgroundColor: expertColor(step.expertType || step.type || 'default') }}
+        />
         <span
           className={cn(
             'min-w-0 flex-1 truncate text-xs text-content-primary',
@@ -237,110 +137,29 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
           )}
         >
           {label}
-          {/* 组内不重复署名（组头已写着是谁）；编排类步骤保留署名（智能路由/任务规划） */}
-          {!inExpertGroup && step.expertName && (
+          {step.expertName && (
             <span className="font-normal text-content-muted"> · {step.expertName}</span>
           )}
         </span>
         {step.status === 'running' && <span className="shimmer shrink-0" />}
         {step.duration && (
           <span className="shrink-0 text-caption text-content-muted">
-            {formatDuration(step.duration)}
+            {step.duration < 1000 ? `${step.duration}ms` : `${(step.duration / 1000).toFixed(1)}s`}
           </span>
         )}
         {hasDetail && (
-          <ChevronRight
+          <ChevronUp
             className={cn(
               'h-3 w-3 shrink-0 text-content-muted transition-transform duration-200',
-              open && 'rotate-90'
+              open && 'rotate-180'
             )}
           />
         )}
       </button>
 
-      {/* 产出摘要：默认可见（3 行截断），点击展开全文。
-          此前 step.content 只在 open 时渲染 —— 执行期间每个任务的产出必须点击
-          才能看到，用户感知就是「一直转圈、页面没内容」。现改为摘要常驻，
-          正文随执行逐任务长出来。 */}
-      {hasDetail && !open && step.content && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className={cn(
-            'block w-full cursor-pointer px-4 pb-2.5 pt-1 text-left transition-colors hover:bg-surface-tint/50',
-            indent
-          )}
-        >
-          <p className="line-clamp-3 whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
-            {step.content}
-          </p>
-        </button>
-      )}
-
-      {/* 工具行（calling 中）：实时「正在调什么工具」——微转圈区分
-          「模型在想」与「在等工具」。 */}
-      {callingActivity && (
-        <div
-          className={cn(
-            'flex items-center gap-1.5 pb-1.5 pt-0.5 text-caption text-content-muted',
-            indent
-          )}
-        >
-          <Wrench className="h-3 w-3 shrink-0" />
-          <span className="truncate font-mono">{callingActivity.tool}</span>
-          {callingActivity.source === 'mcp' && (
-            <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
-          )}
-          <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-          <span>
-            {(callingActivity.attempt ?? 1) > 1
-              ? t('thinkingToolRetrying')
-              : t('thinkingToolCalling')}
-          </span>
-        </div>
-      )}
-
-      {/* 工具行（终态汇总）：任务执行期间/完成后保留「共调了几次工具、花了多久」。
-          有失败时标红计数；逐次明细在展开区。 */}
-      {!callingActivity && toolStats && (
-        <div
-          className={cn(
-            'flex items-center gap-1.5 pb-1.5 pt-0.5 text-caption text-content-muted',
-            indent
-          )}
-        >
-          <Wrench className="h-3 w-3 shrink-0" />
-          <span>
-            {toolStats.count} {t('thinkingToolCalls')}
-            {toolStats.failed > 0 && (
-              <span className="text-status-offline">（{toolStats.failed} ✗）</span>
-            )}
-          </span>
-          <span>· {formatDuration(toolStats.totalMs)}</span>
-        </div>
-      )}
-
-      {/* 展开详情：工具调用明细 / 过程文本 / 链接 */}
+      {/* 展开详情：过程文本 / 链接 */}
       {open && (
         <div className={cn('pb-3 pr-4 pt-1', indent)}>
-          {step.toolHistory && step.toolHistory.length > 0 && (
-            <div className="mb-2 space-y-1 border-l border-border-divider pl-3">
-              {step.toolHistory.map((call, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-tiny text-content-muted">
-                  <span
-                    className={call.success ? 'text-status-online' : 'text-status-offline'}
-                  >
-                    {call.success ? '✓' : '✗'}
-                  </span>
-                  <span className="truncate font-mono">{call.tool}</span>
-                  {call.source === 'mcp' && (
-                    <span className="shrink-0 rounded-sm border border-border-divider px-1">MCP</span>
-                  )}
-                  <span>{formatDuration(call.durationMs)}</span>
-                </div>
-              ))}
-            </div>
-          )}
           {step.content && (
             <p className="whitespace-pre-wrap text-xs leading-relaxed text-content-secondary">
               {step.content}
@@ -359,70 +178,6 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
           )}
         </div>
       )}
-
-      {/* 该步骤产出的产物卡片（常驻可见，点击打开查看器）。
-          放在内容下方：用户既看到「这一步产出了什么」（内容摘要），
-          也能直接点开成品——此前产物只能去右栏画布/画廊找。 */}
-      {step.artifacts && step.artifacts.length > 0 && (
-        <div className={cn('flex flex-col gap-1.5 pb-2.5 pr-4', indent)}>
-          {step.artifacts.map(a => (
-            <StepArtifactCard key={a.id} artifact={a} onOpen={onOpenArtifact} />
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ============================================================================
-// 专家组头（一位专家一段活：识别色 + 名字 + 任务数 + 状态）
-// ============================================================================
-
-const ExpertGroupHeader = ({
-  expertType,
-  steps,
-  index,
-}: {
-  expertType: string
-  steps: ThinkingStep[]
-  index: number
-}) => {
-  const { t } = useTranslation()
-  const expertLabelOf = useExpertLabel()
-  const status = expertGroupStatus(steps)
-
-  return (
-    <div
-      style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
-      className={cn(
-        // 无底色条：层级靠「字号 + 字重」（面板头 14 bold > 组头 12 semibold > 步骤 12 regular），
-        // 与蓝图 run-card 的普通行 + 分隔线同一思路——此前的 tint 全宽色带视觉权重压过了面板头
-        'stagger-item flex items-center gap-2 px-4 py-1.5',
-        index > 0 && 'border-t border-border-divider'
-      )}
-    >
-      <span className="h-2 w-2 flex-shrink-0 rounded-full" style={expertDotStyle(expertType)} />
-      <span className="min-w-0 truncate text-xs font-semibold text-content-primary">
-        {expertLabelOf(expertType)}
-      </span>
-      {/* 单个任务不报数（"1 个任务"是纯噪音），多任务时才说明这位专家分了几个 */}
-      {steps.length > 1 && (
-        <span className="flex-shrink-0 text-caption text-content-muted">
-          {t('thinkingGroupTasks', { count: steps.length })}
-        </span>
-      )}
-      {status === 'running' && (
-        <span className="flex items-center gap-1 text-caption text-accent-warning">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          {t('running')}
-        </span>
-      )}
-      {status === 'failed' && (
-        <span className="flex items-center gap-1 text-caption text-status-offline">
-          <XCircle className="h-3 w-3" />
-          {t('thinkingTaskFailed')}
-        </span>
-      )}
     </div>
   )
 }
@@ -435,8 +190,6 @@ export default function ThinkingProcess({
   steps,
   isThinking,
   className,
-  totalSteps: fixedTotalSteps,
-  onOpenArtifact,
   defaultExpanded = true,
 }: ThinkingProcessProps) {
   const { t } = useTranslation()
@@ -449,17 +202,12 @@ export default function ThinkingProcess({
   // 滚动容器 ref，用于自动滚动到底部
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  // 统计：只数**任务**步骤（路由/规划不算"第几个任务"）。
-  // 分母优先用计划的预估任务数（任务还没开始跑时也能显示 0/6），任务数超过预估时
-  // 以实际为准——此前分子数的是全部步骤、分母是计划任务数，出现过「2/1」这种读数。
-  const taskSteps = steps.filter(s => s.type === 'execution')
-  const completedTasks = taskSteps.filter(s => s.status === 'completed').length
-  const totalTasks = Math.max(fixedTotalSteps ?? 0, taskSteps.length)
   const runningSteps = steps.filter(s => s.status === 'running').length
   const failedSteps = steps.filter(s => s.status === 'failed').length
   const isAllDone = steps.length > 0 && runningSteps === 0
 
-  // 按专家分组（纯函数，见 lib/thinkingGroups.ts）
+  // 按专家分组（纯函数，见 lib/thinkingGroups.ts）——execution 步骤已随交互
+  // 重构退役（专家执行改为独立消息），这里只剩编排步骤（路由/规划/思考）
   const rows = groupThinkingSteps(steps)
 
   // 自动展开/折叠逻辑
@@ -524,12 +272,6 @@ export default function ThinkingProcess({
         <div className="flex items-center gap-2.5">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-tint"><Brain className="h-3 w-3 text-content-secondary" /></span>
           <span className="font-bold text-content-primary">{t('thinkingProcess')}</span>
-          {/* 任务进度：还没规划出任务时不显示（0/0 无意义） */}
-          {totalTasks > 0 && (
-            <span className="text-xs font-medium text-content-muted">
-              {completedTasks}/{totalTasks}
-            </span>
-          )}
           {runningSteps > 0 && (
             <span className="flex items-center gap-1 text-xs text-accent-warning">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -570,33 +312,9 @@ export default function ThinkingProcess({
             ref={scrollContainerRef}
             className="max-h-[300px] overflow-y-auto border-t border-border-divider"
           >
-            {rows.map((row, rowIndex) =>
-              row.kind === 'expert' ? (
-                <div key={`expert-${row.expertType}-${rowIndex}`}>
-                  <ExpertGroupHeader
-                    expertType={row.expertType}
-                    steps={row.steps}
-                    index={rowIndex}
-                  />
-                  {row.steps.map((step, stepIndex) => (
-                    <StepItem
-                      key={step.id}
-                      step={step}
-                      index={stepIndex + 1}
-                      inExpertGroup
-                      onOpenArtifact={onOpenArtifact}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <StepItem
-                  key={`${row.step.id}-${rowIndex}`}
-                  step={row.step}
-                  index={rowIndex}
-                  onOpenArtifact={onOpenArtifact}
-                />
-              )
-            )}
+            {rows.map((row, rowIndex) => (
+              <StepItem key={`${row.step.id}-${rowIndex}`} step={row.step} index={rowIndex} />
+            ))}
           </div>
         </div>
       </div>

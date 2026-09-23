@@ -57,89 +57,6 @@ describe('buildThinkingStepsFromTimeline', () => {
     expect(steps[0].content).toBe('意图分析完成：已选择复杂模式')
   })
 
-  it('计划与任务步骤带上专家名 / 耗时 / 状态', () => {
-    const steps = buildThinkingStepsFromTimeline(
-      [
-        ev({ id: 1, event_type: 'plan_created', execution_plan_id: 'p1', created_at: '2026-09-13T09:00:01' }),
-        ev({
-          id: 2,
-          event_type: 'task_started',
-          task_id: 'task_1',
-          created_at: '2026-09-13T09:00:10',
-          event_data: { expert_type: 'writer', description: '写一份对比报告' },
-        }),
-        ev({
-          id: 3,
-          event_type: 'task_completed',
-          task_id: 'task_1',
-          created_at: '2026-09-13T09:00:30',
-          event_data: { expert_type: 'writer', has_artifact: true, duration_ms: 29300 },
-        }),
-      ],
-      LABELS,
-    )
-
-    expect(steps.map(s => s.type)).toEqual(['planning', 'execution'])
-    expect(steps[0]).toMatchObject({ id: 'plan-p1', content: '任务规划完成' })
-    expect(steps[1]).toMatchObject({
-      id: 'task_1',
-      expertName: 'writer',
-      expertType: 'writer',
-      // 任务描述来自 task_started，与实时面板进行中显示的一致
-      content: '写一份对比报告',
-      status: 'completed',
-      duration: 29300,
-    })
-  })
-
-  it('同一任务的 started 重复出现时只保留一步（账本曾重复写 task_started）', () => {
-    const steps = buildThinkingStepsFromTimeline(
-      [
-        ev({ id: 1, event_type: 'task_started', task_id: 't1', created_at: '2026-09-13T09:00:00', event_data: { expert_type: 'search', description: '第一版描述' } }),
-        ev({ id: 2, event_type: 'task_started', task_id: 't1', created_at: '2026-09-13T09:00:05', event_data: { expert_type: 'search', description: '第一版描述' } }),
-        ev({ id: 3, event_type: 'task_completed', task_id: 't1', created_at: '2026-09-13T09:00:20', event_data: { expert_type: 'search', duration_ms: 20000 } }),
-      ],
-      LABELS,
-    )
-
-    expect(steps).toHaveLength(1)
-    expect(steps[0]).toMatchObject({ id: 't1', content: '第一版描述', duration: 20000, status: 'completed' })
-  })
-
-  it('只有 task_completed（缺 started）时也能成步', () => {
-    const steps = buildThinkingStepsFromTimeline(
-      [ev({ id: 5, event_type: 'task_completed', task_id: 't5', event_data: { expert_type: 'coder', duration_ms: 1200 } })],
-      LABELS,
-    )
-    expect(steps[0]).toMatchObject({ id: 't5', content: '任务执行完成', duration: 1200 })
-  })
-
-  it('失败任务落 failed 并用失败文案（账本今天不一定有，防御性覆盖）', () => {
-    const steps = buildThinkingStepsFromTimeline(
-      [ev({ id: 3, event_type: 'task_failed', task_id: 't9', event_data: { expert_type: 'coder' } })],
-      LABELS,
-    )
-    expect(steps[0]).toMatchObject({ status: 'failed', content: '任务执行失败', expertName: 'coder' })
-  })
-
-  it('tool_result 归并进对应任务的 toolHistory（恢复路径与实时面板同款数据）', () => {
-    const steps = buildThinkingStepsFromTimeline(
-      [
-        ev({ id: 1, event_type: 'task_started', task_id: 't1', event_data: { expert_type: 'search', description: '调研' } }),
-        ev({ id: 2, event_type: 'tool_result', task_id: 't1', event_data: { tool: 'asearch_web', source: 'builtin', success: true, duration_ms: 2100 } }),
-        ev({ id: 3, event_type: 'tool_result', task_id: 't1', event_data: { tool: 'maps_geo', source: 'mcp', success: false, duration_ms: 300 } }),
-        ev({ id: 4, event_type: 'task_completed', task_id: 't1', event_data: { duration_ms: 5000 } }),
-      ],
-      LABELS,
-    )
-
-    expect(steps).toHaveLength(1)
-    expect(steps[0].toolHistory).toEqual([
-      { tool: 'asearch_web', source: 'builtin', durationMs: 2100, success: true },
-      { tool: 'maps_geo', source: 'mcp', durationMs: 300, success: false },
-    ])
-  })
-
   it('孤儿 tool_result（任务步骤不存在）不产生步骤也不抛错', () => {
     const steps = buildThinkingStepsFromTimeline(
       [ev({ id: 1, event_type: 'tool_result', task_id: 'ghost', event_data: { tool: 'x', success: true, duration_ms: 1 } })],
@@ -172,15 +89,20 @@ describe('buildThinkingStepsFromTimeline', () => {
       ],
       LABELS,
     )
-    expect(steps.map(s => s.id)).toEqual(['router-2', 'plan-3', 't2'])
+    // 2026-09-23 交互重构：task 系事件不再重建为步骤（专家执行=独立消息）
+    expect(steps.map(s => s.id)).toEqual(['router-2', 'plan-3'])
   })
 
-  it('缺字段的事件不炸：专家名兜底、耗时缺省、id 用事件 id', () => {
+  it('缺字段的事件不炸：路由缺 mode 也能成步、id 用事件 id 兜底', () => {
     const steps = buildThinkingStepsFromTimeline(
-      [ev({ id: 7, event_type: 'task_completed', task_id: null as unknown as string })],
+      [ev({ id: 9, event_type: 'router_decided', event_data: {} })],
       LABELS,
     )
-    expect(steps[0]).toMatchObject({ id: 'task-7', expertName: 'expert', status: 'completed' })
-    expect(steps[0].duration).toBeUndefined()
+    expect(steps).toHaveLength(1)
+    expect(steps[0]).toMatchObject({
+      expertType: 'router',
+      status: 'completed',
+      type: 'analysis',
+    })
   })
 })

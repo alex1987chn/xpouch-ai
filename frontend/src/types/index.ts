@@ -28,6 +28,26 @@ export interface MessageAttachmentData {
 }
 
 /**
+ * 专家执行消息的元数据（后端 message.extra_data，message_kind='expert_result'）。
+ * 消息表是专家执行状态的一等真相源：task 开始插入 running 态，完成/失败原位
+ * 更新；刷新会话直接从这里读，不再有前端拼装的中间态。
+ */
+export interface ExpertMessageData {
+  message_kind: 'expert_result'
+  expert_type: string
+  task_id: string
+  task_description: string
+  sort_order: number
+  total_steps: number
+  status: 'running' | 'completed' | 'failed'
+  artifact_ids?: string[]
+  tool_stats?: { count: number; total_ms: number; failed: number } | null
+  duration_ms?: number | null
+  summary?: string | null
+  error?: string | null
+}
+
+/**
  * 基础消息接口 - 用于 UI 组件
  */
 export interface Message {
@@ -35,9 +55,12 @@ export interface Message {
   role: 'user' | 'assistant' | 'system'
   content: string
   isTyping?: boolean
+  /** 本地运行时时间戳（前端创建时）；服务端消息的时间字段是 created_at */
   timestamp?: number | string
+  /** 服务端落库时间（历史消息；词汇收敛后 timestamp 已退役为本地字段） */
+  created_at?: string | null
   metadata?: MessageMetadata
-  extra_data?: MessageAttachmentData
+  extra_data?: MessageAttachmentData | ExpertMessageData
 }
 
 /**
@@ -48,39 +71,8 @@ export interface ThinkingStep {
   expertType: string
   expertName: string
   content: string
-  /**
-   * 任务步骤（type='execution'）的**任务描述**，即"这一步在做什么"。
-   *
-   * 为什么不复用 content：任务完成时 content 会被产出正文覆盖（那是给用户读的结果），
-   * 描述就没了——而按专家分组的面板上，行标题必须是任务本身，否则一屏全是「任务执行」。
-   * 非任务步骤不填。
-   */
-  taskDescription?: string
   timestamp: string
   status: 'pending' | 'running' | 'completed' | 'failed'
-  /**
-   * 任务步骤（type='execution'）执行期间的**当前工具活动**——实时可见
-   * 「正在调什么工具」。只保留最新一次调用中/刚完成的状态。
-   */
-  toolActivity?: {
-    tool: string
-    source: 'builtin' | 'mcp'
-    state: 'calling' | 'done'
-    attempt?: number
-    durationMs?: number
-    success?: boolean
-  }
-  /**
-   * 该步骤的**工具调用终态记录**（append-only，任务完成后仍保留——对齐
-   * 主流 agent 产品：工具痕迹是结果可信度的证据，执行完恰是最该回看的
-   * 时候）。汇总行（N 次 · 总耗时）与展开明细都从它渲染。
-   */
-  toolHistory?: Array<{
-    tool: string
-    source: 'builtin' | 'mcp'
-    durationMs: number
-    success: boolean
-  }>
   /**
    * 步骤类型，用于 UI 区分显示图标
    * - search: 联网搜索
@@ -93,7 +85,7 @@ export interface ThinkingStep {
    * - memory: 记忆检索
    * - default: 默认/其他
    */
-  type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'artifact' | 'memory' | 'execution' | 'default'
+  type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'artifact' | 'memory' | 'default'
   /**
    * 执行耗时（毫秒）
    */
@@ -120,6 +112,16 @@ export interface MessageMetadata {
   reasoningContent?: string
   /** 发起该消息的会话 ID（P4-1 会话归属守卫：切换会话后不再追加旧会话消息） */
   threadId?: string
+  /** 专家消息（extra_data.message_kind='expert_result'）执行期间的当前工具活动
+   * ——纯前端运行时态：完成后由 extra_data.tool_stats 终态取代渲染 */
+  toolActivity?: {
+    tool: string
+    source: 'builtin' | 'mcp'
+    state: 'calling' | 'done'
+    attempt?: number
+    durationMs?: number
+    success?: boolean
+  }
 }
 
 /**

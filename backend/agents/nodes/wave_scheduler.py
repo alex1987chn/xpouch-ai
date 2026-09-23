@@ -98,6 +98,9 @@ def build_branch_payload(state: dict[str, Any], task: dict[str, Any]) -> dict[st
             "run_id": state.get("run_id"),
             "execution_plan_id": state.get("execution_plan_id"),
             "user_id": state.get("user_id"),
+            # 计划任务总数：专家消息「步骤 i/N」的分母（分支读不到主图 task_list，
+            # 必须随 payload 带入）
+            "total_steps": len(state.get("task_list") or []),
         },
     }
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { type Message } from '@/types'
+import { type ExpertMessageData, type Message } from '@/types'
 import { generateUUID } from '@/utils/uuid'
 import { isSameId } from '@/utils/normalize'
 
@@ -43,6 +43,7 @@ interface ChatActions {
   addMessage: (message: Message) => void
   updateMessage: (id: string, content: string, append?: boolean) => void
   updateMessageMetadata: (id: string, metadata: Partial<Message['metadata']>) => void
+  updateMessageExtra: (id: string, extra: Partial<ExpertMessageData>) => void
   
   // 输入状态
   setInputMessage: (input: string) => void
@@ -130,6 +131,13 @@ export const useChatStore = create<ChatStore>()(
           }
           return msg
         })
+      })),
+      updateMessageExtra: (id: string, extra: Partial<ExpertMessageData>) => set((state) => ({
+        messages: state.messages.map((msg) =>
+          isSameId(msg.id, id)
+            ? { ...msg, extra_data: { ...(msg.extra_data as Record<string, unknown>), ...extra } as Message['extra_data'] }
+            : msg
+        ),
       })),
 
       // ========== 输入状态 ==========

@@ -50,10 +50,19 @@ def _sync_save_wrapper(
     output_result: str,
     artifact_data: dict[str, Any] | None = None,
     duration_ms: int | None = None,
+    thread_id: str | None = None,
+    run_id: str | None = None,
+    artifact_id: str | None = None,
 ) -> bool:
-    """在独立线程中保存专家执行结果。返回是否成功。"""
+    """在独立线程中保存专家执行结果，并把专家消息更新为终态。返回是否成功。
+
+    消息表是专家执行状态的真相源：产物落库成功后原位更新消息（completed +
+    产物引用 + 工具统计快照）；落库失败则如实标 failed（error="结果保存失败"），
+    不留 running 态僵尸。
+    """
     from agents.services.task_manager import save_expert_execution_result
     from database import Session, engine
+    from services.chat.expert_message import complete_expert_message, fail_expert_message
 
     # 🔥 核心修复：在后台线程里创建全新的同步 Session
     # Session 的生命周期完全由这个后台线程控制，与主线程无关
@@ -67,7 +76,6 @@ def _sync_save_wrapper(
                 artifact_data,
                 duration_ms,
             )
-            return True
         except Exception:
             new_session.rollback()  # 回滚防止脏数据
             # 专家结果/artifact 落库失败必须可见（此前静默吞掉，产出丢失无从排查）
@@ -76,7 +84,40 @@ def _sync_save_wrapper(
                 task_id,
                 expert_type,
             )
-            return False
+            if thread_id:
+                try:
+                    fail_expert_message(
+                        new_session,
+                        thread_id=thread_id,
+                        task_id=str(task_id),
+                        error="结果保存失败（持久化异常）",
+                    )
+                except Exception:
+                    new_session.rollback()
+                    logger.exception("[AsyncTaskQueue] 失败态专家消息更新失败 task=%s", task_id)
+            return {"ok": False}
+
+    # 产物已落库：专家消息更新为 completed（含工具统计快照）
+    payload: dict[str, Any] = {"ok": True}
+    if thread_id:
+        try:
+            with Session(engine) as msg_session:
+                summary = (output_result or "").strip().splitlines()
+                msg = complete_expert_message(
+                    msg_session,
+                    thread_id=thread_id,
+                    task_id=str(task_id),
+                    run_id=run_id,
+                    artifact_ids=[artifact_id] if artifact_id else [],
+                    duration_ms=duration_ms,
+                    summary=summary[0][:120] if summary else None,
+                )
+            if msg is not None:
+                payload["message_id"] = msg.id
+                payload["tool_stats"] = (msg.extra_data or {}).get("tool_stats")
+        except Exception:
+            logger.exception("[AsyncTaskQueue] 专家消息完成态更新失败 task=%s", task_id)
+    return payload
 
 
 def _sync_mark_subtask_running(task_id: str) -> bool:
@@ -153,25 +194,32 @@ async def async_save_expert_result(
     artifact_data: dict[str, Any] | None = None,
     duration_ms: int | None = None,
     artifact_event: SSEEvent | None = None,
+    task_completed_event: SSEEvent | None = None,
+    thread_id: str | None = None,
+    run_id: str | None = None,
+    artifact_id: str | None = None,
 ) -> None:
-    """异步保存专家执行结果（线程池执行同步 DB 写入）。
+    """异步保存专家执行结果（线程池执行同步 DB 写入），并把专家消息推到终态。
 
-    artifact_event：随本次保存产出的 artifact.generated 事件。它的协议语义是
-    「产物已持久化，收到即可查」——前端收到后会立即拉 /artifacts 列表，所以
-    必须在**落库成功之后**发射（保存失败则不发：产物不存在，宣称"已生成"
-    只会让刷新扑空）。落库失败时经 emit_event 告知前端（本协程运行在事件
-    循环、继承节点的图上下文）；无图上下文（如单测直调）时 emit_event 为
-    no-op，日志兜底。
+    artifact_event / task_completed_event：都遵循「产物/终态已持久化，收到即可查」
+    ——必须在**落库成功之后**发射（保存失败则不发：不存在的东西不宣称完成）。
+    task_completed_event 在发射前补上消息终态字段（message_id / tool_stats），
+    前端用它覆盖同 id 的专家消息，与库保持一字不差。落库失败时经 emit_event
+    告知前端（本协程运行在事件循环、继承节点的图上下文）；无图上下文
+    （如单测直调）时 emit_event 为 no-op，日志兜底。
     """
-    saved = await asyncio.to_thread(
+    result = await asyncio.to_thread(
         _sync_save_wrapper,
         task_id=task_id,
         expert_type=expert_type,
         output_result=output_result,
         artifact_data=artifact_data,
         duration_ms=duration_ms,
+        thread_id=thread_id,
+        run_id=run_id,
+        artifact_id=artifact_id,
     )
-    if not saved:
+    if not result.get("ok"):
         try:
             from agents.event_stream import emit_event
             from utils.event_generator import event_error
@@ -185,13 +233,19 @@ async def async_save_expert_result(
         except Exception:
             logger.debug("[AsyncTaskQueue] 持久化失败通知未送达 task_id=%s", task_id)
         return
-    if artifact_event is not None:
-        try:
-            from agents.event_stream import emit_event
+    try:
+        from agents.event_stream import emit_event
 
+        if task_completed_event is not None:
+            if result.get("message_id") is not None:
+                task_completed_event.data["message_id"] = result["message_id"]
+            if result.get("tool_stats") is not None:
+                task_completed_event.data["tool_stats"] = result["tool_stats"]
+            await emit_event(task_completed_event)
+        if artifact_event is not None:
             await emit_event(artifact_event)
-        except Exception:
-            logger.exception("[AsyncTaskQueue] artifact.generated 事件未送达 task_id=%s", task_id)
+    except Exception:
+        logger.exception("[AsyncTaskQueue] 完成事件未送达 task_id=%s", task_id)
 
 
 async def async_append_run_event(

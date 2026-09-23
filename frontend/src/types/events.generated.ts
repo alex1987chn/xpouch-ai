@@ -61,6 +61,9 @@ export interface TaskStartedData {
   expert_type: string
   description: string
   started_at: string
+  message_id?: number | null
+  sort_order?: number | null
+  total_steps?: number | null
 }
 
 export interface TaskProgressData {
@@ -79,6 +82,9 @@ export interface TaskCompletedData {
   duration_ms: number
   completed_at: string
   artifact_count: number
+  message_id?: number | null
+  artifact_ids?: string[]
+  tool_stats?: Record<string, number> | null
 }
 
 export interface TaskFailedData {
@@ -87,6 +93,7 @@ export interface TaskFailedData {
   description: string
   error: string
   failed_at: string
+  message_id?: number | null
 }
 
 export interface ToolCallingData {

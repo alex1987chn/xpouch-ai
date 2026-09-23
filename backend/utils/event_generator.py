@@ -120,13 +120,24 @@ class EventGenerator:
     # 任务执行阶段事件
     # ========================================================================
 
-    def task_started(self, task_id: str, expert_type: str, description: str) -> SSEEvent:
+    def task_started(
+        self,
+        task_id: str,
+        expert_type: str,
+        description: str,
+        message_id: int | None = None,
+        sort_order: int | None = None,
+        total_steps: int | None = None,
+    ) -> SSEEvent:
         """生成 task.started 事件"""
         data = TaskStartedData(
             task_id=task_id,
             expert_type=expert_type,
             description=description,
             started_at=utc_now().isoformat(),
+            message_id=message_id,
+            sort_order=sort_order,
+            total_steps=total_steps,
         )
         return build_sse_event(EventType.TASK_STARTED, data, self._next_event_id())
 
@@ -150,6 +161,9 @@ class EventGenerator:
         output: str | None,
         duration_ms: int,
         artifact_count: int = 0,
+        message_id: int | None = None,
+        artifact_ids: list[str] | None = None,
+        tool_stats: dict[str, int] | None = None,
     ) -> SSEEvent:
         """生成 task.completed 事件"""
         data = TaskCompletedData(
@@ -161,10 +175,20 @@ class EventGenerator:
             duration_ms=duration_ms,
             completed_at=utc_now().isoformat(),
             artifact_count=artifact_count,
+            message_id=message_id,
+            artifact_ids=artifact_ids or [],
+            tool_stats=tool_stats,
         )
         return build_sse_event(EventType.TASK_COMPLETED, data, self._next_event_id())
 
-    def task_failed(self, task_id: str, expert_type: str, description: str, error: str) -> SSEEvent:
+    def task_failed(
+        self,
+        task_id: str,
+        expert_type: str,
+        description: str,
+        error: str,
+        message_id: int | None = None,
+    ) -> SSEEvent:
         """生成 task.failed 事件"""
         data = TaskFailedData(
             task_id=task_id,
@@ -172,6 +196,7 @@ class EventGenerator:
             description=description,
             error=error,
             failed_at=utc_now().isoformat(),
+            message_id=message_id,
         )
         return build_sse_event(EventType.TASK_FAILED, data, self._next_event_id())
 

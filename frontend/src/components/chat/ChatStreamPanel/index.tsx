@@ -64,7 +64,6 @@ import {
   useTaskMode,
   useIsWaitingForApproval,
   useRunningTaskIds,
-  usePendingPlan,
 } from '@/hooks/useTaskSelectors'
 
 interface ChatStreamPanelProps {
@@ -179,14 +178,12 @@ export default function ChatStreamPanel({
   const mode = useTaskMode()
   const isWaitingForApproval = useIsWaitingForApproval()
   const runningTaskIds = useRunningTaskIds()
-  const pendingPlan = usePendingPlan()
   
   // 从 TaskStore 计算状态
   const isExecuting = mode === 'complex' && runningTaskIds.size > 0
   const isPlanning = mode === 'complex' && !isExecuting && !isWaitingForApproval
 
   // 获取计划步骤数
-  const estimatedSteps = pendingPlan.length || 0
 
   // Auto-scroll to bottom —— 尊重阅读位置：
   // 流式输出时默认跟随滚底；用户主动上滑（距底 > 阈值）即停止跟随并浮现
@@ -346,13 +343,7 @@ export default function ChatStreamPanel({
                     <ThinkingProcess
                       steps={thinkingSteps}
                       isThinking={isThinkingNow}
-                      // 只有当前运行的那条传计划的预估任务数当分母；历史消息不传——
-                      // 它会拿自己的**任务步数**当分母（estimatedSteps 来自本轮 pendingPlan，
-                      // 套到旧消息上会算错；而历史那条的 thinkingSteps.length 含路由/规划步，
-                      // 拿它当分母会读出「6/8」这种把两个口径混在一起的数）
-                      totalSteps={isLiveThinking && estimatedSteps > 0 ? estimatedSteps : undefined}
                       defaultExpanded={isLiveThinking}
-                      onOpenArtifact={setViewArtifactId}
                     />
                   </div>
                 )}

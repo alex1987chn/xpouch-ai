@@ -31,7 +31,7 @@ import { getEventDisplayName, getEventCategory, ACTIVE_RUN_STATUSES } from '@/ty
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PayloadDrawer } from './PayloadDrawer'
-import { expertColor, expertDisplayName } from '@/lib/expertIdentity'
+import { expertColor, expertLabel } from '@/lib/expertIdentity'
 
 // ============================================
 // 事件图标（沿用原配色：类别身份色，阶段 3 统一）
@@ -125,7 +125,7 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
      {expertType && (
       <span className="flex items-center gap-1.5 text-xs" style={{ color: expertColor(expertType) }}>
        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: expertColor(expertType) }} />
-       {expertDisplayName(expertType)}
+       {expertLabel(expertType, t)}
       </span>
      )}
      <span className={cn('text-sm', expertType ? 'text-content-secondary' : 'font-medium text-content-primary')}>
@@ -169,7 +169,7 @@ function TimelineEventItem({ event, isLast, isSelected, onClick }: TimelineEvent
       {event.event_type === 'artifact_generated' && (
        <span>{t('artifactTypeLabel')} {String(event.event_data.artifact_type || 'unknown')}</span>
       )}
-      {event.event_type === 'tool_result' && event.event_data?.error && (
+      {event.event_type === 'tool_result' && event.event_data?.error != null && (
        <span className="text-accent-destructive">{String(event.event_data.error)}</span>
       )}
      </div>

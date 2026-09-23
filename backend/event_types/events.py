@@ -121,6 +121,10 @@ class TaskStartedData(BaseModel):
     expert_type: str
     description: str
     started_at: str
+    # 专家执行消息（消息表=执行状态真相源）：前端据此外加/定位助手消息
+    message_id: int | None = None
+    sort_order: int | None = None
+    total_steps: int | None = None
 
 
 class TaskProgressData(BaseModel):
@@ -143,6 +147,10 @@ class TaskCompletedData(BaseModel):
     duration_ms: int
     completed_at: str
     artifact_count: int  # 产物数量（发射器一定传）
+    # 专家执行消息的终态载荷：前端用它覆盖同 id 消息（与库一致）
+    message_id: int | None = None
+    artifact_ids: list[str] = []
+    tool_stats: dict[str, int] | None = None  # {"count","total_ms","failed"}
 
 
 class TaskFailedData(BaseModel):
@@ -153,6 +161,7 @@ class TaskFailedData(BaseModel):
     description: str
     error: str
     failed_at: str
+    message_id: int | None = None
 
 
 # ============================================================================

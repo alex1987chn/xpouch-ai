@@ -96,6 +96,10 @@ export interface TaskStartedData {
   expert_type: string
   description: string
   started_at: string
+  /** 专家消息 id（消息表=执行状态真相源）；空=后端插入失败，前端不加消息 */
+  message_id?: number | null
+  sort_order?: number | null
+  total_steps?: number | null
 }
 
 
@@ -110,6 +114,10 @@ export interface TaskCompletedData {
   duration_ms: number
   completed_at: string
   artifact_count: number
+  /** 消息终态载荷：前端用它覆盖同 id 的专家消息（与库一致） */
+  message_id?: number | null
+  artifact_ids?: string[]
+  tool_stats?: Record<string, number> | null
 }
 
 export type TaskCompletedEvent = SSEEvent<TaskCompletedData, 'task.completed'>
@@ -120,6 +128,7 @@ export interface TaskFailedData {
   description: string
   error: string
   failed_at: string
+  message_id?: number | null
 }
 
 export type TaskFailedEvent = SSEEvent<TaskFailedData, 'task.failed'>
@@ -313,6 +322,8 @@ export type ProtocolConformanceAnchors = [
   _TaskProgress,
   _TaskCompleted,
   _TaskFailed,
+  _ToolCalling,
+  _ToolResult,
   _ArtifactInfo,
   _ArtifactGenerated,
   _MessageDelta,

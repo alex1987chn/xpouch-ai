@@ -23,7 +23,6 @@ import type { HandlerContext } from './types'
 import { getLastAssistantMessage } from './utils'
 import { t } from '@/i18n'
 import { logger } from '@/utils/logger'
-import type { ThinkingStep } from '@/types'
 
 /**
  * 处理 plan.created 事件
@@ -157,41 +156,33 @@ export function handleTaskStarted(
 ): void {
   const { taskStore, chatStore, debug } = context
   const { addRunningTaskId } = taskStore
-  const { updateMessageMetadata } = chatStore
+  const { addMessage } = chatStore
 
   addRunningTaskId(event.data.task_id)
 
-  // 🔥 性能优化：使用缓存 ID 查找最后一条助手消息
-  const lastAi = getLastAssistantMessage(chatStore)
-
-  if (lastAi) {
-    const existingThinking = lastAi.message.metadata?.thinking || []
-    // 检查是否已存在该 task 的 step
-    const existingIndex = existingThinking.findIndex(
-      (s: ThinkingStep) => s.id === event.data.task_id
-    )
-
-    if (existingIndex < 0) {
-      const newStep = {
-        id: event.data.task_id,
-        expertType: event.data.expert_type,
-        expertName: event.data.expert_type,
-        content: event.data.description,
-        // 描述单独留一份：完成时 content 会被产出覆盖，而按专家分组的行标题要的是任务本身
-        taskDescription: event.data.description,
-        timestamp: event.data.started_at,
-        status: 'running' as const,
-        type: 'execution' as const
-      }
-      updateMessageMetadata(lastAi.id, {
-        thinking: [...existingThinking, newStep]
-      })
-      if (debug) {
-        logger.debug(
-          '[TaskEvents] task.started: 添加 task step 到 thinking:',
-          event.data.task_id
-        )
-      }
+  // 专家执行消息（真相源=消息表）：事件携带后端插入的 message_id 与载荷，
+  // 前端外加同一条消息——与刷新后从库读到的完全一致。
+  // message_id 为空（插入失败/旧后端）时不加：宁可没有，不加双轨数据。
+  if (event.data.message_id != null) {
+    addMessage({
+      id: String(event.data.message_id),
+      role: 'assistant',
+      content: event.data.description,
+      extra_data: {
+        message_kind: 'expert_result',
+        expert_type: event.data.expert_type,
+        task_id: event.data.task_id,
+        task_description: event.data.description,
+        sort_order: event.data.sort_order ?? 0,
+        total_steps: event.data.total_steps ?? 0,
+        status: 'running',
+      },
+    })
+    if (debug) {
+      logger.debug(
+        '[TaskEvents] task.started: 专家消息已加入消息流:',
+        event.data.message_id
+      )
     }
   }
 
@@ -229,36 +220,25 @@ export function handleTaskCompleted(
 ): void {
   const { taskStore, chatStore, debug } = context
   const { removeRunningTaskId } = taskStore
-  const { updateMessageMetadata } = chatStore
+  const { updateMessageExtra } = chatStore
 
   removeRunningTaskId(event.data.task_id)
 
-  // 🔥 性能优化：使用缓存 ID 查找最后一条助手消息
-  const lastAi = getLastAssistantMessage(chatStore)
-
-  if (lastAi?.message.metadata?.thinking) {
-    const thinking = [...lastAi.message.metadata.thinking]
-    const taskStepIndex = thinking.findIndex(
-      (s: ThinkingStep) => s.id === event.data.task_id
-    )
-
-    if (taskStepIndex >= 0) {
-      thinking[taskStepIndex] = {
-        ...thinking[taskStepIndex],
-        status: 'completed',
-        content: event.data.output || t('thinkingTaskDone'),
-        // 耗时此前从未赋值（ThinkingProcess 有渲染逻辑但拿不到数据），
-        // 于是「这一步花了多久」在执行期间完全不可见
-        duration: event.data.duration_ms ?? thinking[taskStepIndex].duration
-      }
-      updateMessageMetadata(lastAi.id, { thinking })
-      if (debug) {
-        logger.debug(
-          '[TaskEvents] task.completed: task step 已标记为 completed:',
-          event.data.task_id
-        )
-      }
-    }
+  // 事件载荷=消息终态（后端在专家消息更新完成后才发射），前端原位覆盖
+  if (event.data.message_id != null) {
+    updateMessageExtra(String(event.data.message_id), {
+      status: 'completed',
+      artifact_ids: event.data.artifact_ids ?? [],
+      tool_stats: event.data.tool_stats
+        ? {
+            count: event.data.tool_stats.count ?? 0,
+            total_ms: event.data.tool_stats.total_ms ?? 0,
+            failed: event.data.tool_stats.failed ?? 0,
+          }
+        : null,
+      duration_ms: event.data.duration_ms,
+      summary: (event.data.output || '').slice(0, 120) || null,
+    })
   }
 
   if (debug) {
@@ -274,10 +254,20 @@ export function handleTaskFailed(
   event: TaskFailedEvent,
   context: HandlerContext
 ): void {
-  const { taskStore } = context
+  const { taskStore, chatStore, debug } = context
   const { removeRunningTaskId } = taskStore
+  const { updateMessageExtra } = chatStore
 
   removeRunningTaskId(event.data.task_id)
 
-  logger.error('[TaskEvents] 任务失败:', event.data.task_id, event.data.error)
+  if (event.data.message_id != null) {
+    updateMessageExtra(String(event.data.message_id), {
+      status: 'failed',
+      error: event.data.error,
+    })
+  }
+
+  if (debug) {
+    logger.debug('[TaskEvents] 任务失败:', event.data.task_id, event.data.error)
+  }
 }

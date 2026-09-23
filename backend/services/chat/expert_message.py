@@ -1,0 +1,204 @@
+"""专家执行消息：消息表是专家执行状态的一等真相源（2026-09-23 交互重构）。
+
+形态（对齐 Manus 的过程消息流；决策见 docs/DECISIONS.md）：
+- task 开始时插入 running 态的助手消息，完成/失败时**原位更新**（产物引用、
+  工具统计快照、摘要）——执行中刷新会话也能从库里读到完整现场；
+- task.* SSE 事件携带同一条消息的 id 与载荷，前端实时流与库是同一份数据，
+  不再有「前端拼装执行史」的中间态；
+- 工具明细的真相源仍是 runevent 账本；消息 extra_data 里的 tool_stats 是
+  完成时刻的聚合快照（派生数据，与 task.completed 的 duration 同性质）。
+
+替代的旧机制（已退役）：思考卡内的任务步骤/产物卡/工具行（ThinkingProcess
+的 execution 渲染）、thinkingStepsFromTimeline 的 task/tool 重建分支。
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from sqlmodel import Session, select
+
+from models.domain.message import Message
+from models.domain.run_event import RunEvent
+from models.enums import RunEventType
+from utils.logger import logger
+
+EXPERT_MESSAGE_KIND = "expert_result"
+
+
+def insert_expert_message_standalone(
+    *,
+    thread_id: str,
+    task_id: str,
+    expert_type: str,
+    description: str,
+    sort_order: int,
+    total_steps: int,
+) -> int | None:
+    """线程池形态的插入（独立 Session），返回 message id 供事件携带。"""
+    from database import Session, engine
+
+    with Session(engine) as db:
+        msg = insert_expert_message(
+            db,
+            thread_id=thread_id,
+            task_id=task_id,
+            expert_type=expert_type,
+            description=description,
+            sort_order=sort_order,
+            total_steps=total_steps,
+        )
+        return msg.id if msg else None
+
+
+def fail_expert_message_standalone(*, thread_id: str, task_id: str, error: str) -> None:
+    """线程池形态的失败更新（独立 Session）。"""
+    from database import Session, engine
+
+    with Session(engine) as db:
+        fail_expert_message(db, thread_id=thread_id, task_id=task_id, error=error)
+
+
+def _expert_extra(
+    *,
+    expert_type: str,
+    task_id: str,
+    description: str,
+    sort_order: int,
+    total_steps: int,
+    status: str,
+) -> dict[str, Any]:
+    """专家消息的 extra_data 骨架（状态字段随生命周期更新）。"""
+    return {
+        "message_kind": EXPERT_MESSAGE_KIND,
+        "expert_type": expert_type,
+        "task_id": task_id,
+        "task_description": description,
+        "sort_order": sort_order,
+        "total_steps": total_steps,
+        "status": status,
+        "artifact_ids": [],
+        "tool_stats": None,
+        "duration_ms": None,
+        "summary": None,
+        "error": None,
+    }
+
+
+def insert_expert_message(
+    db: Session,
+    *,
+    thread_id: str,
+    task_id: str,
+    expert_type: str,
+    description: str,
+    sort_order: int,
+    total_steps: int,
+) -> Message | None:
+    """task 开始：插入 running 态专家消息（同步调用，跑在线程池）。"""
+    msg = Message(
+        thread_id=thread_id,
+        role="assistant",
+        content=description,
+        extra_data=_expert_extra(
+            expert_type=expert_type,
+            task_id=task_id,
+            description=description,
+            sort_order=sort_order,
+            total_steps=total_steps,
+            status="running",
+        ),
+    )
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    logger.info(
+        "[ExpertMessage] 插入 running 态专家消息: task=%s expert=%s msg=%s",
+        task_id,
+        expert_type,
+        msg.id,
+    )
+    return msg
+
+
+def _find_expert_message(db: Session, thread_id: str, task_id: str) -> Message | None:
+    """按 task_id 定位该线程的专家消息（extra_data 是 JSON 列，thread 内
+    助手消息量级是个位数，内存过滤比 JSONB 表达式更可移植且够快）。"""
+    rows = db.exec(
+        select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+    ).all()
+    for m in rows:
+        extra = m.extra_data or {}
+        if extra.get("message_kind") == EXPERT_MESSAGE_KIND and extra.get("task_id") == task_id:
+            return m
+    return None
+
+
+def _tool_stats_from_ledger(db: Session, run_id: str | None, task_id: str) -> dict[str, int]:
+    """从 runevent 账本聚合该任务的工具调用统计（完成时刻快照）。"""
+    stats = {"count": 0, "total_ms": 0, "failed": 0}
+    if not run_id:
+        return stats
+    rows = db.exec(
+        select(RunEvent.event_data).where(
+            RunEvent.run_id == run_id, RunEvent.event_type == RunEventType.TOOL_RESULT
+        )
+    ).all()
+    for data in rows:
+        if (data or {}).get("task_id") == task_id:
+            stats["count"] += 1
+            stats["total_ms"] += int(data.get("duration_ms") or 0)
+            if data.get("success") is not True:
+                stats["failed"] += 1
+    return stats
+
+
+def complete_expert_message(
+    db: Session,
+    *,
+    thread_id: str,
+    task_id: str,
+    run_id: str | None,
+    artifact_ids: list[str],
+    duration_ms: int | None,
+    summary: str | None,
+) -> Message | None:
+    """task 完成：原位更新为 completed（含产物引用与工具统计快照）。"""
+    msg = _find_expert_message(db, thread_id, task_id)
+    if msg is None:
+        logger.warning("[ExpertMessage] 完成更新未找到专家消息: task=%s", task_id)
+        return None
+    extra = dict(msg.extra_data or {})
+    extra.update(
+        status="completed",
+        artifact_ids=artifact_ids,
+        tool_stats=_tool_stats_from_ledger(db, run_id, task_id),
+        duration_ms=duration_ms,
+        summary=summary,
+    )
+    msg.extra_data = extra
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    return msg
+
+
+def fail_expert_message(
+    db: Session,
+    *,
+    thread_id: str,
+    task_id: str,
+    error: str,
+) -> Message | None:
+    """task 失败：原位更新为 failed（如实保留错误，供回看诊断）。"""
+    msg = _find_expert_message(db, thread_id, task_id)
+    if msg is None:
+        logger.warning("[ExpertMessage] 失败更新未找到专家消息: task=%s", task_id)
+        return None
+    extra = dict(msg.extra_data or {})
+    extra.update(status="failed", error=error[:300])
+    msg.extra_data = extra
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    return msg

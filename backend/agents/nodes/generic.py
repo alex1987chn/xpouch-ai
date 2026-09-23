@@ -280,10 +280,37 @@ async def expert_worker_node(
     run_id = branch_context.get("run_id")
     thread_id = branch_context.get("thread_id")
     execution_plan_id = branch_context.get("execution_plan_id")
+    # 本任务的专家消息 id（task.started 时插入；完成/失败分支原位更新它）
+    expert_message_id: int | None = None
 
     if is_first_entry:
+        # 专家执行消息（真相源=消息表）：先插入 running 态拿到 message_id，
+        # 事件才能携带它——前端据此外加同一条消息，刷新直接从库读。
+        # 同步等待插入：事件语义是「收到即可查」，单行 INSERT 的量级。
+        if thread_id:
+            try:
+                from services.chat.expert_message import insert_expert_message_standalone
+
+                expert_message_id = await asyncio.to_thread(
+                    insert_expert_message_standalone,
+                    thread_id=thread_id,
+                    task_id=str(task_id),
+                    expert_type=expert_type,
+                    description=description,
+                    sort_order=int(current_task.get("sort_order") or 0),
+                    total_steps=int(branch_context.get("total_steps") or 0),
+                )
+            except Exception as msg_err:
+                logger.warning(f"[GenericWorker] ⚠️ 专家消息插入失败（不影响执行）: {msg_err}")
         await emit_event(
-            event_task_started(task_id=task_id, expert_type=expert_type, description=description)
+            event_task_started(
+                task_id=task_id,
+                expert_type=expert_type,
+                description=description,
+                message_id=expert_message_id,
+                sort_order=int(current_task.get("sort_order") or 0),
+                total_steps=int(branch_context.get("total_steps") or 0) or None,
+            )
         )
         logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
 
@@ -747,6 +774,23 @@ async def expert_worker_node(
                     content=response.content,
                     title=f"{expert_name}结果",
                 )
+                # task.completed 事件同样交给保存协程：先更新专家消息（产物引用/
+                # 工具统计）再发射——事件载荷即消息终态，前端「收到即可查」，
+                # 与 artifact_event 同一条时序纪律（旧实现在协程之前发事件，
+                # 前端拿到时消息还是 running 态）。
+                from utils.event_generator import event_task_completed
+
+                task_completed_event = event_task_completed(
+                    task_id=task_id,
+                    expert_type=expert_type,
+                    description=description,
+                    output=response.content[:500] + "..."
+                    if len(response.content) > 500
+                    else response.content,
+                    duration_ms=duration_ms,
+                    artifact_count=1,
+                    artifact_ids=[artifact_id],
+                )
                 # 使用后台线程异步保存，不阻塞 LLM 响应返回（持引用防 GC + 失败可见）
                 spawn_background(
                     async_save_expert_result(
@@ -756,6 +800,10 @@ async def expert_worker_node(
                         artifact_data=artifact,
                         duration_ms=duration_ms,
                         artifact_event=artifact_event,
+                        task_completed_event=task_completed_event,
+                        artifact_id=artifact_id,
+                        thread_id=thread_id,
+                        run_id=run_id,
                     ),
                     label=f"save_result:{expert_type}:{task_id}",
                 )
@@ -764,23 +812,6 @@ async def expert_worker_node(
                 logger.warning(f"[GenericWorker] ⚠️ 后台保存提交失败: {save_err}")
         else:
             logger.warning(f"[GenericWorker] ⚠️ 跳过保存: task_id={task_id}")
-
-        # 1. 发送 task.completed 事件（专家执行完成）
-        from utils.event_generator import event_task_completed
-
-        await emit_event(
-            event_task_completed(
-                task_id=task_id,
-                expert_type=expert_type,
-                description=description,
-                output=response.content[:500] + "..."
-                if len(response.content) > 500
-                else response.content,
-                duration_ms=duration_ms,
-                artifact_count=1,
-            )
-        )
-        logger.info(f"[GenericWorker] 已生成 task.completed 事件: {expert_type}")
 
         return {
             **base_return,
@@ -810,19 +841,34 @@ async def expert_worker_node(
             completed_at=utc_now().isoformat(),
         )
 
+        # 专家消息原位更新为 failed（后台线程；消息表=执行状态真相源）
+        if thread_id:
+            try:
+                from services.chat.expert_message import fail_expert_message_standalone
+
+                await asyncio.to_thread(
+                    fail_expert_message_standalone,
+                    thread_id=thread_id,
+                    task_id=str(task_id),
+                    error=str(e),
+                )
+            except Exception as msg_err:
+                logger.warning(f"[GenericWorker] ⚠️ 专家消息失败更新失败: {msg_err}")
+
         # ✅ 生成 task.failed 事件
         from utils.event_generator import event_task_failed
 
         await emit_event(
             event_task_failed(
-                task_id=task_id, expert_type=expert_type, description=description, error=str(e)
+                task_id=task_id,
+                expert_type=expert_type,
+                description=description,
+                error=str(e),
+                message_id=expert_message_id,
             )
         )
         logger.info(f"[GenericWorker] 已生成 task.failed 事件: {expert_type}")
 
-        run_id = branch_context.get("run_id")
-        thread_id = branch_context.get("thread_id")
-        execution_plan_id = branch_context.get("execution_plan_id")
         if run_id and thread_id:
             try:
                 from utils.async_task_queue import async_append_run_event, spawn_background

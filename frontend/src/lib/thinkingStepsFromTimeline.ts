@@ -41,21 +41,9 @@ export interface ThinkingStepLabels {
 const STEP_EVENTS = new Set([
   'router_decided',
   'plan_created',
-  'task_started',
-  'task_completed',
-  'task_failed',
-  'tool_result',
 ])
 
 /** 与 systemEvents 的实时文案共用同一个 i18n 词条（由调用方注入，见 ThinkingStepLabels） */
-function asText(value: unknown): string {
-  return typeof value === 'string' ? value : ''
-}
-
-function asNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
-}
-
 /** 账本里的 mode → 结论句（走调用方注入的 i18n 文案，与实时面板同源） */
 function routerConclusion(mode: unknown, labels: ThinkingStepLabels): string {
   return labels.routerDone(mode)
@@ -73,7 +61,6 @@ export function buildThinkingStepsFromTimeline(
   const steps: ThinkingStep[] = []
   // 任务步骤按 task_id 归并：账本里 task_started 可能重复（工具循环重入曾多写一行），
   // 归并后一个任务只出现一次，与前端实时面板的「按 task_id 复用同一步」一致
-  const taskStepIndex = new Map<string, number>()
 
   for (const event of events) {
     if (!STEP_EVENTS.has(event.event_type)) continue
@@ -103,74 +90,6 @@ export function buildThinkingStepsFromTimeline(
           type: 'planning',
         })
         break
-
-      case 'task_started': {
-        const expert = asText(data.expert_type) || 'expert'
-        const id = event.task_id ?? `task-${event.id}`
-        if (taskStepIndex.has(id)) break
-        taskStepIndex.set(id, steps.length)
-        steps.push({
-          id,
-          expertType: expert,
-          expertName: expert,
-          // 实时面板在任务进行中显示的就是任务描述，账本正好有这一项
-          content: asText(data.description) || labels.taskDone,
-          taskDescription: asText(data.description) || undefined,
-          timestamp: event.created_at,
-          status: 'completed',
-          type: 'execution',
-        })
-        break
-      }
-
-      case 'task_completed':
-      case 'task_failed': {
-        const id = event.task_id ?? `task-${event.id}`
-        const failed = event.event_type === 'task_failed'
-        const duration = asNumber(data.duration_ms)
-        const existing = taskStepIndex.get(id)
-        if (existing !== undefined) {
-          // 已有 started 步骤：只补状态/耗时，保留描述文本（与实时面板的演进一致）
-          steps[existing] = {
-            ...steps[existing],
-            status: failed ? 'failed' : 'completed',
-            ...(duration !== undefined ? { duration } : {}),
-          }
-          break
-        }
-        const expert = asText(data.expert_type) || 'expert'
-        taskStepIndex.set(id, steps.length)
-        steps.push({
-          id,
-          expertType: expert,
-          expertName: expert,
-          content: failed ? labels.taskFailed : labels.taskDone,
-          timestamp: event.created_at,
-          status: failed ? 'failed' : 'completed',
-          type: 'execution',
-          duration,
-        })
-        break
-      }
-
-      case 'tool_result': {
-        // 工具终态归并进对应任务的 toolHistory（实时面板由 handlers/toolEvents
-        // 维护同款数据；这里覆盖恢复路径——两边渲染同一汇总行/明细）
-        const id = event.task_id ?? ''
-        const existing = taskStepIndex.get(id)
-        if (existing === undefined) break
-        const call = {
-          tool: asText(data.tool) || 'unknown',
-          source: asText(data.source) === 'mcp' ? ('mcp' as const) : ('builtin' as const),
-          durationMs: asNumber(data.duration_ms) ?? 0,
-          success: data.success === true,
-        }
-        steps[existing] = {
-          ...steps[existing],
-          toolHistory: [...(steps[existing].toolHistory ?? []), call],
-        }
-        break
-      }
 
       default:
         break

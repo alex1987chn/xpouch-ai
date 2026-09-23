@@ -23,6 +23,10 @@ import ArtifactViewerModal from '@/components/artifacts/ArtifactViewerModal'
 import { cn } from '@/lib/utils'
 import type { Components } from 'react-markdown'
 import { useCopy } from '@/hooks/useCopy'
+import { expertColor, expertLabel } from '@/lib/expertIdentity'
+import { getArtifactDetail } from '@/services/artifacts'
+import type { ExpertMessageData, Message } from '@/types'
+import { Loader2, Wrench } from 'lucide-react'
 
 // 开发环境调试开关
 /** AI 长文折叠阈值（px，实测渲染高度超过即收起） */
@@ -353,8 +357,13 @@ function MessageItem({
   // 用户消息：暖调浅底圆角气泡，右对齐（蓝本 .msg-user）；附件以 chips 展示
   // （名字/数量来自消息 extra_data 元数据——文档文本与图片本体都不在展示层）
   if (isUser) {
-    const docNames = message.extra_data?.documents?.map(d => d.name) ?? []
-    const imageCount = message.extra_data?.image_count ?? 0
+    const extra = message.extra_data as Record<string, unknown> | undefined
+    const attachmentData =
+      extra && extra.message_kind === undefined
+        ? (extra as { documents?: { name: string }[]; image_count?: number })
+        : undefined
+    const docNames = attachmentData?.documents?.map((d: { name: string }) => d.name) ?? []
+    const imageCount = attachmentData?.image_count ?? 0
     const hasAttachments = docNames.length > 0 || imageCount > 0
     return (
       <div className="flex flex-col items-end group user-message">
@@ -390,6 +399,17 @@ function MessageItem({
         </div>
       </div>
     )
+  }
+
+  // 专家执行消息（真相源=消息表）：紧凑卡——专家署名 + 任务描述 + 摘要 +
+  // 工具统计 + artifact 横条（点击拉详情进 docView 预览）。执行中显示当前
+  // 工具活动（metadata 运行时态），完成后由 extra_data 终态接管。
+  const expertExtra =
+    (message.extra_data as ExpertMessageData | undefined)?.message_kind === 'expert_result'
+      ? (message.extra_data as ExpertMessageData)
+      : null
+  if (expertExtra) {
+    return <ExpertResultCard message={message} extra={expertExtra} />
   }
 
   // AI 消息：无气泡，全宽排版 + 专家署名行（识别色点 + 显示名，蓝本 .byline）
@@ -543,6 +563,163 @@ function areEqual(prevProps: MessageItemProps, nextProps: MessageItemProps): boo
   // 🔥 忽略函数引用变化：onRegenerate, onLinkClick
   // 这些函数应该由父组件用 useCallback 缓存
   return true
+}
+
+/**
+ * 专家执行结果卡（message_kind='expert_result'）。
+ *
+ * 数据全部来自消息 extra_data（服务端真相源）；metadata.toolActivity 是
+ * 执行期间的实时指示（calling 转圈），完成后不再渲染。
+ * artifact 横条点击拉详情并送 docView 静态预览（与正文消息的文档视图同一弹框）。
+ */
+function ExpertResultCard({
+  message,
+  extra,
+}: {
+  message: Message
+  extra: ExpertMessageData
+}) {
+  const { t } = useTranslation()
+  const [docView, setDocView] = useState<{
+    type: string
+    title: string
+    content: string
+    language?: string | null
+  } | null>(null)
+  const [loadingArtifact, setLoadingArtifact] = useState(false)
+
+  const color = expertColor(extra.expert_type)
+  const name = expertLabel(extra.expert_type, t)
+  const running = extra.status === 'running'
+  const failed = extra.status === 'failed'
+  const activity = message.metadata?.toolActivity
+  const toolStats = extra.tool_stats
+
+  const openArtifact = async (artifactId: string) => {
+    if (loadingArtifact) return
+    setLoadingArtifact(true)
+    try {
+      const artifact = await getArtifactDetail(artifactId)
+      setDocView({
+        type: artifact.type,
+        title: artifact.title || name,
+        content: artifact.content ?? '',
+        language: artifact.language ?? null,
+      })
+    } finally {
+      setLoadingArtifact(false)
+    }
+  }
+
+  const formatMs = (ms?: number | null) =>
+    ms == null ? null : ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
+
+  return (
+    <div className="flex w-full flex-col items-start select-text ai-message group">
+      {/* 署名行：专家识别色点 + 名称 + 步骤序号 + 耗时/状态 */}
+      <div className="mb-1 flex items-center gap-1.5">
+        <span className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: color }} />
+        <span className="text-tiny font-bold" style={{ color }}>
+          {name}
+        </span>
+        {extra.total_steps > 0 && (
+          <span className="text-nano text-content-muted">
+            · {t('expertStepLabel', { index: (extra.sort_order ?? 0) + 1, total: extra.total_steps })}
+          </span>
+        )}
+        {running ? (
+          <span className="shimmer" />
+        ) : (
+          formatMs(extra.duration_ms) && (
+            <span className="text-nano text-content-muted/60">· {formatMs(extra.duration_ms)}</span>
+          )
+        )}
+        {failed && <span className="text-nano text-accent-destructive">· {t('expertTaskFailed')}</span>}
+      </div>
+
+      {/* 任务描述（一行截断，title 悬停看全文） */}
+      <p
+        className="w-full truncate text-sm text-content-secondary"
+        title={extra.task_description}
+      >
+        {extra.task_description}
+      </p>
+
+      {/* 完成摘要（1 行截断） */}
+      {!running && !failed && extra.summary && (
+        <p className="mt-0.5 w-full truncate text-xs text-content-muted">{extra.summary}</p>
+      )}
+
+      {/* 失败详情 */}
+      {failed && extra.error && (
+        <p className="mt-0.5 w-full truncate text-xs text-accent-destructive" title={extra.error}>
+          {extra.error}
+        </p>
+      )}
+
+      {/* 工具活动：执行中显示当前调用（转圈），完成后显示统计快照 */}
+      {running && activity && (
+        <div className="mt-1 flex items-center gap-1.5 text-xs text-content-muted">
+          <Wrench className="h-3 w-3 shrink-0" />
+          <span className="truncate font-mono">{activity.tool}</span>
+          {activity.source === 'mcp' && (
+            <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
+          )}
+          {activity.state === 'calling' && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
+          {activity.state === 'calling' ? (
+            <span>
+              {(activity.attempt ?? 1) > 1 ? t('thinkingToolRetrying') : t('thinkingToolCalling')}
+            </span>
+          ) : (
+            <span className={activity.success ? 'text-status-online' : 'text-status-offline'}>
+              {activity.success ? '✓' : '✗'} {formatMs(activity.durationMs)}
+            </span>
+          )}
+        </div>
+      )}
+      {!running && toolStats && toolStats.count > 0 && (
+        <div className="mt-1 flex items-center gap-1.5 text-xs text-content-muted">
+          <Wrench className="h-3 w-3 shrink-0" />
+          <span>
+            {toolStats.count} {t('thinkingToolCalls')}
+            {toolStats.failed > 0 && (
+              <span className="text-status-offline">（{toolStats.failed} ✗）</span>
+            )}
+          </span>
+          <span>· {formatMs(toolStats.total_ms)}</span>
+        </div>
+      )}
+
+      {/* artifact 横条：点击预览（详情即时拉取，loading 态防抖） */}
+      {(extra.artifact_ids ?? []).length > 0 && (
+        <div className="mt-1.5 flex flex-col gap-1.5 w-full">
+          {(extra.artifact_ids ?? []).map(artifactId => (
+            <button
+              key={artifactId}
+              type="button"
+              onClick={() => openArtifact(artifactId)}
+              className="flex w-full items-center gap-2 rounded-md border border-border-divider bg-surface-tint/60 px-3 py-2 text-left transition-colors hover:border-border-hover hover:bg-surface-tint"
+            >
+              <FileText className="h-3.5 w-3.5 shrink-0 text-content-muted" />
+              <span className="min-w-0 flex-1 truncate text-sm text-content-secondary">
+                {t('expertArtifactPreview')}
+              </span>
+              {loadingArtifact ? (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-content-muted" />
+              ) : (
+                <span className="shrink-0 text-nano text-content-muted">{t('expertPreviewAction')}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* docView 弹框（复用正文消息的静态文档预览） */}
+      {docView && (
+        <ArtifactViewerModal artifactId={null} docArtifact={docView} onClose={() => setDocView(null)} />
+      )}
+    </div>
+  )
 }
 
 export default memo(MessageItem, areEqual)
