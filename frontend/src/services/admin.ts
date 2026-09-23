@@ -571,6 +571,13 @@ export interface AuditLogEntry {
   created_at: string | null
 }
 
+export interface PaginatedAuditLogs {
+  items: AuditLogEntry[]
+  total: number
+  limit: number
+  offset: number
+}
+
 // ============================================================================
 // REST 契约锚点（范式沿 types/stats.ts；SystemExpert/AdminUser/AuditLogEntry/
 // ToolInfo/ToolsListResponse/ToolPolicyListResponse 六个恒有键形状已锚定）
@@ -584,6 +591,9 @@ type Schemas = components['schemas']
 type _SystemExpert = Assert<SameShape<SystemExpert, Schemas['ExpertResponse']>>
 type _AdminUser = Assert<SameShape<AdminUser, Schemas['AdminUserResponse']>>
 type _AuditLogEntry = Assert<SameShape<AuditLogEntry, Schemas['AuditLogResponse']>>
+type _PaginatedAuditLogs = Assert<
+  SameShape<PaginatedAuditLogs, Schemas['PaginatedAuditLogResponse']>
+>
 type _ToolInfo = Assert<SameShape<ToolInfo, Schemas['ToolInfo']>>
 type _ToolsListResponse = Assert<SameShape<ToolsListResponse, Schemas['ToolsListResponse']>>
 type _ExpertPreviewResponse = Assert<
@@ -598,14 +608,22 @@ export type AdminConformanceAnchors = [
   _SystemExpert,
   _AdminUser,
   _AuditLogEntry,
+  _PaginatedAuditLogs,
   _ToolInfo,
   _ToolsListResponse,
   _ExpertPreviewResponse,
   _GenerateDescriptionResponse,
 ]
 
-export async function getAuditLogs(search?: string): Promise<AuditLogEntry[]> {
-  const param = search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : ''
-  const response = await authenticatedFetch(buildUrl(`/admin/audit-logs?limit=100${param}`))
-  return handleResponse<AuditLogEntry[]>(response, '获取审计日志失败')
+export async function getAuditLogs(params: {
+  search?: string
+  limit?: number
+  offset?: number
+}): Promise<PaginatedAuditLogs> {
+  const query = new URLSearchParams()
+  query.set('limit', String(params.limit ?? 50))
+  query.set('offset', String(params.offset ?? 0))
+  if (params.search?.trim()) query.set('search', params.search.trim())
+  const response = await authenticatedFetch(buildUrl(`/admin/audit-logs?${query.toString()}`))
+  return handleResponse<PaginatedAuditLogs>(response, '获取审计日志失败')
 }

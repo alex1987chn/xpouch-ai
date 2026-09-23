@@ -5,16 +5,18 @@
  * 搜索匹配操作者 / 动作 / 对象；时间倒序。
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { ScrollText, RefreshCw } from 'lucide-react'
+import { ScrollText, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { toLocalDate } from '@/lib/datetime'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/states'
 import { getAuditLogs } from '@/services/admin'
 import { cn } from '@/lib/utils'
+
+const PAGE_SIZE = 20
 
 const ACTION_LABELS: Record<string, string> = {
   'user.create': '用户管理 · 创建',
@@ -34,20 +36,32 @@ const ACTION_LABELS: Record<string, string> = {
 export default function AuditLogPanel({ searchQuery }: { searchQuery: string }) {
   const { t } = useTranslation()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [page, setPage] = useState(1)
+
+  // 换搜索词回第 1 页：旧关键词的页码在新结果上没有意义
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery])
+
   const query = useQuery({
-    queryKey: ['audit-logs', searchQuery, refreshKey],
-    queryFn: () => getAuditLogs(searchQuery),
+    queryKey: ['audit-logs', searchQuery, page, refreshKey],
+    queryFn: () =>
+      getAuditLogs({ search: searchQuery, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
     refetchOnWindowFocus: false,
     staleTime: 10_000,
+    // 翻页瞬间保留旧页内容（配 isFetching 转圈），不闪骨架屏
+    placeholderData: prev => prev,
   })
-  const entries = query.data ?? []
+  const entries = query.data?.items ?? []
+  const total = query.data?.total ?? 0
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <span className="flex items-center gap-1.5 text-xs font-medium text-content-secondary">
           <ScrollText className="h-3.5 w-3.5" />
-          {t('auditCount', { count: entries.length })}
+          {t('auditCount', { count: total })}
         </span>
         <span className="flex-1" />
         <button
@@ -112,6 +126,31 @@ export default function AuditLogPanel({ searchQuery }: { searchQuery: string }) 
           </table>
         )}
       </div>
+
+      {/* 翻页条（右下角）：auditCount 在顶部说总数，这里只管翻页 */}
+      {!query.isLoading && pages > 1 && (
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page <= 1 || query.isFetching}
+            title={t('prev')}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <span className="text-nano tabular-nums text-content-secondary">
+            {t('pageIndicator', { page, total: pages })}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(pages, p + 1))}
+            disabled={page >= pages || query.isFetching}
+            title={t('next')}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

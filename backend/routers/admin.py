@@ -1253,7 +1253,16 @@ class AuditLogResponse(BaseModel):
     created_at: datetime | None
 
 
-@router.get("/audit-logs", response_model=list[AuditLogResponse])
+class PaginatedAuditLogResponse(BaseModel):
+    """审计日志分页响应。total 是过滤后的总条数（前端分页条据此算页数）。"""
+
+    items: list[AuditLogResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get("/audit-logs", response_model=PaginatedAuditLogResponse)
 async def list_audit_logs_endpoint(
     search: str | None = Query(default=None, max_length=64),
     limit: int = Query(default=50, ge=1, le=200),
@@ -1264,15 +1273,20 @@ async def list_audit_logs_endpoint(
     """审计日志列表（管理面关键变更留痕，时间倒序）"""
     from crud.audit_log import list_audit_logs as _list
 
-    entries, _total = _list(session, search=search, limit=limit, offset=offset)
-    return [
-        AuditLogResponse(
-            id=e.id,
-            actor_username=e.actor_username,
-            action=e.action,
-            target=e.target,
-            detail=e.detail,
-            created_at=e.created_at,
-        )
-        for e in entries
-    ]
+    entries, total = _list(session, search=search, limit=limit, offset=offset)
+    return PaginatedAuditLogResponse(
+        items=[
+            AuditLogResponse(
+                id=e.id,
+                actor_username=e.actor_username,
+                action=e.action,
+                target=e.target,
+                detail=e.detail,
+                created_at=e.created_at,
+            )
+            for e in entries
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )

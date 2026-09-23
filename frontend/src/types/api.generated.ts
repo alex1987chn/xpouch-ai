@@ -2379,6 +2379,20 @@ export interface components {
             pages: number;
         };
         /**
+         * PaginatedAuditLogResponse
+         * @description 审计日志分页响应。total 是过滤后的总条数（前端分页条据此算页数）。
+         */
+        PaginatedAuditLogResponse: {
+            /** Items */
+            items: components["schemas"]["AuditLogResponse"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /**
          * PaginatedThreadListResponse
          * @description 分页会话列表响应模型
          */
@@ -4236,7 +4250,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuditLogResponse"][];
+                    "application/json": components["schemas"]["PaginatedAuditLogResponse"];
                 };
             };
             /** @description Validation Error */
