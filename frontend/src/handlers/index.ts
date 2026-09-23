@@ -30,6 +30,7 @@ import {
 } from './taskEvents'
 import { handleArtifactGenerated } from './artifactEvents'
 import { handleMessageDelta, handleMessageDone, handleMessageThinking } from './chatEvents'
+import { handleToolCalling, handleToolResult } from './toolEvents'
 import {
   handleRouterStart,
   handleRouterDecision,
@@ -127,10 +128,10 @@ export class EventHandler {
         handleTaskFailed(event, context)
         break
       case 'tool.calling':
+        handleToolCalling(event, context)
+        break
       case 'tool.result':
-        // 工具可见性事件：持久帧/时间线已消费（tool_result 入账本）；
-        // 聊天页任务卡的实时工具行待定——先显式吸收，避免 default 的 warn 噪音
-        logger.debug('[EventHandler] 工具事件:', event.type, (event as { data?: unknown }).data)
+        handleToolResult(event, context)
         break
       case 'artifact.generated':
         handleArtifactGenerated(event, context)

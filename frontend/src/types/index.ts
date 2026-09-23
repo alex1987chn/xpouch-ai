@@ -59,6 +59,19 @@ export interface ThinkingStep {
   timestamp: string
   status: 'pending' | 'running' | 'completed' | 'failed'
   /**
+   * 任务步骤（type='execution'）执行期间的**当前工具活动**——实时可见
+   * 「正在调什么工具」。只保留最新一次（历史去运行时间线看）；任务进入
+   * 终态后 UI 不再渲染本字段。
+   */
+  toolActivity?: {
+    tool: string
+    source: 'builtin' | 'mcp'
+    state: 'calling' | 'done'
+    attempt?: number
+    durationMs?: number
+    success?: boolean
+  }
+  /**
    * 步骤类型，用于 UI 区分显示图标
    * - search: 联网搜索
    * - reading: 深度阅读/网页阅读 (Jina Reader)

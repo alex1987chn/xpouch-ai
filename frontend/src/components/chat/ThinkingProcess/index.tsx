@@ -35,6 +35,7 @@ import {
   XCircle,
   Loader2,
   ExternalLink,
+  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { expertColor, expertDotStyle } from '@/lib/expertIdentity'
@@ -261,6 +262,45 @@ const StepItem = ({ step, index, onOpenArtifact, inExpertGroup = false }: StepIt
             {step.content}
           </p>
         </button>
+      )}
+
+      {/* 工具活动行：任务执行期间的「正在调什么工具」。仅 running 态渲染——
+          终态信息（耗时/成败汇总）由运行时间线承载，这里只做执行中的实时感知。
+          calling 态微转圈区分「模型在想」与「在等工具」。 */}
+      {step.toolActivity && step.status === 'running' && (
+        <div
+          className={cn(
+            'flex items-center gap-1.5 pb-1.5 pt-0.5 text-caption text-content-muted',
+            indent
+          )}
+        >
+          <Wrench className="h-3 w-3 shrink-0" />
+          <span className="truncate font-mono">{step.toolActivity.tool}</span>
+          {step.toolActivity.source === 'mcp' && (
+            <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
+          )}
+          {step.toolActivity.state === 'calling' ? (
+            <>
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+              <span>
+                {(step.toolActivity.attempt ?? 1) > 1
+                  ? t('thinkingToolRetrying')
+                  : t('thinkingToolCalling')}
+              </span>
+            </>
+          ) : (
+            <span
+              className={cn(
+                'shrink-0',
+                step.toolActivity.success ? 'text-status-online' : 'text-status-offline'
+              )}
+            >
+              {step.toolActivity.success ? '✓' : '✗'}
+              {step.toolActivity.durationMs != null &&
+                ` ${(step.toolActivity.durationMs / 1000).toFixed(1)}s`}
+            </span>
+          )}
+        </div>
       )}
 
       {/* 展开详情：过程文本 / 链接 */}
