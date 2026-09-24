@@ -14,8 +14,8 @@ const t = vi.fn((key: string) => `t:${key}`)
 
 describe('resolveExpertLabel 的解析顺序', () => {
   it('名册优先——管理员改名即时生效，压过静态词条', () => {
-    const catalogNames = new Map([['aggregator', '首席联络官']])
-    expect(resolveExpertLabel('aggregator', { catalogNames }, t)).toBe('首席联络官')
+    const catalogNames = new Map([['aggregator', '汇总专家']])
+    expect(resolveExpertLabel('aggregator', { catalogNames }, t)).toBe('汇总专家')
     expect(t).not.toHaveBeenCalled()
   })
 

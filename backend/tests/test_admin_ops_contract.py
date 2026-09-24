@@ -30,7 +30,7 @@ def test_update_expert_contract(sample_user, monkeypatch):
     class _UpdatedExpert:
         id = "exp-1"
         expert_type = "aggregator"
-        name = "首席联络官"
+        name = "汇总专家"
         is_dynamic = True
         is_system = False
         config_version = 7

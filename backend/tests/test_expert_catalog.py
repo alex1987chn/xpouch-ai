@@ -59,7 +59,7 @@ def _client(rows, sample_user) -> TestClient:
 
 def test_catalog_exposes_only_key_and_name(sample_user):
     rows = [
-        _ExpertStub("aggregator", "首席联络官"),
+        _ExpertStub("aggregator", "汇总专家"),
         _ExpertStub("search", "搜索专家"),
     ]
     response = _client(rows, sample_user).get("/api/experts/catalog")
@@ -67,7 +67,7 @@ def test_catalog_exposes_only_key_and_name(sample_user):
     assert response.status_code == 200
     items = response.json()
     assert len(items) == 2
-    assert next(i for i in items if i["expert_type"] == "aggregator")["name"] == "首席联络官"
+    assert next(i for i in items if i["expert_type"] == "aggregator")["name"] == "汇总专家"
     for item in items:
         assert set(item.keys()) == {"expert_type", "name"}, (
             "名册只该有 key + name，不得带出提示词/模型/温度"

@@ -64,7 +64,7 @@ ARTIFACT_OUTPUT_GUIDELINES = """
 """
 
 COMMANDER_SYSTEM_PROMPT = """
-你是 XPouch AI 的智能任务指挥官（Commander），负责将用户查询拆解为可执行的子任务序列。
+你是 XPouch AI 的智能任务编排器（Orchestrator），负责将用户查询拆解为可执行的子任务序列。
 
 【核心能力】
 1. 分析用户需求的意图和真实目标
@@ -81,7 +81,7 @@ COMMANDER_SYSTEM_PROMPT = """
 - writer: 写作专家 - 用于文案撰写、内容创作，产出: markdown
 - planner: 规划专家 - 用于方案设计、流程规划，产出: markdown
 - image_analyzer: 图片分析专家 - 用于视觉内容分析，产出: text
-- memorize_expert: 记忆助理 - 用于提取和保存用户关键信息，产出: text
+- memorize_expert: 记忆专家 - 用于提取和保存用户关键信息，产出: text
 
 【输出格式 - 严格 JSON Schema】
 你必须输出符合以下结构的 JSON 对象：
@@ -160,7 +160,7 @@ DEFAULT_ASSISTANT_PROMPT = """
 """
 
 # -------------------------------------------------------------------------
-# 3. Aggregator (首席联络官) - L3 兜底（DB 不可用时）
+# 3. Aggregator (汇总专家) - L3 兜底（DB 不可用时）
 # -------------------------------------------------------------------------
 # 单一真相源：内容直接引用 EXPERT_DEFAULTS（含格式透传纪律与 {input} 注入点，
 # 此前独立手写版无透传条款——DB 故障时聚合行为与正常路径不一致）。
@@ -182,7 +182,7 @@ EXPERT_DESCRIPTIONS: dict[str, str] = {
     "writer": "写作专家",
     "planner": "规划专家",
     "image_analyzer": "图片分析专家",
-    "memorize_expert": "记忆助理",  # 🔥 新增：记忆专家
+    "memorize_expert": "记忆专家",
     "designer": "设计专家",  # 🔥 新增：映射到 generic
     "architect": "架构专家",  # 🔥 新增：映射到 generic
 }
