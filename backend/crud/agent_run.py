@@ -61,7 +61,15 @@ def close_orphaned_task_state(db: Session, run: AgentRun, *, reason: str) -> Non
         rows = db.exec(
             select(SubTask)
             .join(ExecutionPlan, SubTask.execution_plan_id == ExecutionPlan.id)
-            .where(ExecutionPlan.run_id == run.id, SubTask.status == TaskStatus.RUNNING)
+            .where(
+                ExecutionPlan.run_id == run.id,
+                # RUNNING 之外还要收 PENDING/WAITING_FOR_APPROVAL：run 死了它们
+                # 永远不会被调度（曾积压 51 条 pending 僵尸——前端跟着 run 走
+                # 什么都不显示，账面却一直挂着）
+                SubTask.status.in_(
+                    (TaskStatus.RUNNING, TaskStatus.PENDING, TaskStatus.WAITING_FOR_APPROVAL)
+                ),
+            )
         ).all()
         for row in rows:
             row.status = TaskStatus.FAILED
@@ -72,16 +80,53 @@ def close_orphaned_task_state(db: Session, run: AgentRun, *, reason: str) -> Non
             fail_running_expert_messages_for_run(
                 db, thread_id=run.thread_id, run_id=run.id, error=reason
             )
-            logger.warning(
-                "[RunTerminal] run %s 终态收尾：%d 个 running 子任务与对应专家消息置 failed",
-                run.id[:8],
-                len(rows),
-            )
+        _close_stale_plans(db, run)
+        logger.warning(
+            "[RunTerminal] run %s 终态收尾：%d 个未完结子任务与对应专家消息置 failed，计划状态已收口",
+            run.id[:8],
+            len(rows),
+        )
     except Exception:
         logger.exception(
-            "[RunTerminal] run %s 终态收尾失败（subtask/专家消息可能仍挂 running）",
+            "[RunTerminal] run %s 终态收尾失败（subtask/计划/专家消息可能仍挂未终态）",
             run.id[:8],
         )
+
+
+# run 异常终态 → 计划终态映射（计划复用 TaskStatus 枚举）。COMPLETED 走正常
+# 完成路径自有收口，不在此列
+def _close_stale_plans(db: Session, run: AgentRun) -> None:
+    """run 异常终态时收口 ExecutionPlan 状态。
+
+    超时/取消曾只收子任务与消息、不碰计划——计划停在 waiting_for_approval/
+    running 就永久挂着"在等审批/在跑"（前端跟着 run 走什么都不显示，账面与
+    界面脱节；2026-09-24 审计实积 21 个僵尸计划）。
+    """
+    from models.domain.execution_plan import ExecutionPlan
+    from models.enums import TaskStatus
+
+    plan_terminal_by_run: dict[RunStatus, TaskStatus] = {
+        RunStatus.COMPLETED: TaskStatus.COMPLETED,
+        RunStatus.FAILED: TaskStatus.FAILED,
+        RunStatus.TIMED_OUT: TaskStatus.FAILED,
+        RunStatus.CANCELLED: TaskStatus.CANCELLED,
+    }
+    terminal = plan_terminal_by_run.get(run.status)
+    if terminal is None:
+        return
+    plans = db.exec(
+        select(ExecutionPlan).where(
+            ExecutionPlan.run_id == run.id,
+            ExecutionPlan.status.in_(
+                (TaskStatus.PENDING, TaskStatus.WAITING_FOR_APPROVAL, TaskStatus.RUNNING)
+            ),
+        )
+    ).all()
+    for plan in plans:
+        plan.status = terminal
+        plan.completed_at = plan.completed_at or utc_now()
+        plan.updated_at = utc_now()
+        db.add(plan)
 
 
 # 互斥判定时最多看这么多条活跃记录：过滤「租约是否有效」用同一个纯函数（见
@@ -296,6 +341,10 @@ def mark_run_completed(db: Session, run: AgentRun) -> None:
     run.updated_at = utc_now()
     _release_lease(run)  # 终态即释放：不再享有所有权
     db.add(run)
+    # 防御性收口：正常完成路径里图自身会把任务/计划收干净，这里是幂等兜底
+    # （只碰未终态行，正常时零命中）——防的是完成路径自身的漏网（2026-09-24
+    # 审计发现异常终态曾有同类缺口，完成路径不设例外）
+    close_orphaned_task_state(db, run, reason="运行完成后的防御性收口")
     _sync_thread_status(db, run.thread_id, run.status)
 
 
@@ -322,6 +371,10 @@ def update_run_status(
         run.current_node = current_node
     run.last_heartbeat_at = utc_now()
     run.updated_at = utc_now()
+    if status == RunStatus.WAITING_FOR_APPROVAL:
+        # 审批超时计时起点：状态机进入等待的唯一入口在此，重入（修订后再等）
+        # 会重新盖章
+        run.waiting_since_at = utc_now()
     if status in _NO_RENEW_RUN_STATUSES:
         _release_lease(run)
     else:

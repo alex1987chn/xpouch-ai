@@ -24,6 +24,8 @@ class _FakeSession:
         self.thread = thread
         self.runs: dict[str, AgentRun] = {}
         self.events: list[RunEvent] = []
+        self.subtasks: list[object] = []
+        self.plans: list[object] = []
         self.commit_called = False
 
     def add(self, obj):
@@ -33,6 +35,10 @@ class _FakeSession:
             self.events.append(obj)
         elif isinstance(obj, Thread):
             self.thread = obj
+        else:
+            # SubTask / ExecutionPlan 等领域行：收口路径会改字段后 add 回来，
+            # 原地对象即断言载体，无需登记
+            pass
 
     def flush(self):
         return None
@@ -47,8 +53,22 @@ class _FakeSession:
             return self.runs.get(object_id)
         return None
 
-    # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）
-    def _session_exec(self, _statement):
+    # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）。按查询目标
+    # 路由：终态收口会分别查 agentrun / subtask / executionplan
+    def _session_exec(self, statement):
+        sql = str(statement)
+        if "FROM executionplan" in sql or "FROM execution_plan" in sql:
+            # 模拟收口查询的 WHERE status IN (未终态)——与下方 active_runs
+            # 过滤同一手法：桩替身执行查询语义
+            return _FakeResult(
+                [
+                    p
+                    for p in self.plans
+                    if str(p.status) in ("pending", "waiting_for_approval", "running")
+                ]
+            )
+        if "FROM subtask" in sql:
+            return _FakeResult(self.subtasks)
         active_runs = [
             run
             for run in self.runs.values()
@@ -348,3 +368,125 @@ def test_expired_lease_run_does_not_block_new_run():
 
     # 不抛异常 = 放行
     ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
+
+
+class _FakePlan:
+    """终态收口的计划桩：只承载 status/completed_at/updated_at 三个被写字段。"""
+
+    def __init__(self, status):
+        self.status = status
+        self.completed_at = None
+        self.updated_at = None
+
+
+def test_terminal_run_closes_stale_plan_and_pending_subtask():
+    """run 异常终态必须收口计划与未完结子任务（2026-09-24 僵尸缺口回归钉）。
+
+    曾只收 RUNNING 子任务、不碰 ExecutionPlan——计划挂 waiting_for_approval
+    的 run 超时后账面永久"在等审批"，与前端（跟着 run 走）脱节。
+    """
+    from models.enums import TaskStatus
+
+    thread = Thread(
+        id="thread-1",
+        title="demo",
+        user_id="user-1",
+        agent_type="ai",
+        agent_id="sys-default-chat",
+        status="running",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    run = AgentRun(
+        id="run-1",
+        thread_id="thread-1",
+        user_id="user-1",
+        status=RunStatus.RUNNING,
+        current_node="router",
+        created_at=datetime.now(),
+        started_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    waiting_plan = _FakePlan(TaskStatus.WAITING_FOR_APPROVAL)
+    done_plan = _FakePlan(TaskStatus.COMPLETED)
+    session = _FakeSession(thread)
+    session.runs[run.id] = run
+    session.plans = [waiting_plan, done_plan]
+
+    timed_out = mark_run_timed_out_by_id(session, "run-1")
+
+    assert timed_out is not None
+    # 等审批的计划被收口为 failed；已完结的计划不动
+    assert waiting_plan.status == TaskStatus.FAILED
+    assert waiting_plan.completed_at is not None
+    assert done_plan.status == TaskStatus.COMPLETED
+
+
+def test_cancelled_run_closes_stale_plan_as_cancelled():
+    from models.enums import TaskStatus
+
+    thread = Thread(
+        id="thread-1",
+        title="demo",
+        user_id="user-1",
+        agent_type="ai",
+        agent_id="sys-default-chat",
+        status="running",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    run = AgentRun(
+        id="run-1",
+        thread_id="thread-1",
+        user_id="user-1",
+        status=RunStatus.RUNNING,
+        current_node="router",
+        created_at=datetime.now(),
+        started_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    running_plan = _FakePlan(TaskStatus.RUNNING)
+    session = _FakeSession(thread)
+    session.runs[run.id] = run
+    session.plans = [running_plan]
+
+    cancelled = mark_run_cancelled_by_id(session, "run-1")
+
+    assert cancelled is not None
+    assert running_plan.status == TaskStatus.CANCELLED
+
+
+def test_mark_run_completed_closes_stale_plan_defensively():
+    """完成路径的防御性收口：正常应为无操作，但漏网的未终态计划按 completed 收。"""
+    from models.enums import TaskStatus
+
+    thread = Thread(
+        id="thread-1",
+        title="demo",
+        user_id="user-1",
+        agent_type="ai",
+        agent_id="sys-default-chat",
+        status="running",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    run = AgentRun(
+        id="run-1",
+        thread_id="thread-1",
+        user_id="user-1",
+        status=RunStatus.RUNNING,
+        current_node="aggregator",
+        created_at=datetime.now(),
+        started_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    stale_plan = _FakePlan(TaskStatus.WAITING_FOR_APPROVAL)
+    session = _FakeSession(thread)
+    session.runs[run.id] = run
+    session.plans = [stale_plan]
+
+    mark_run_completed(session, run)
+
+    assert run.status == RunStatus.COMPLETED
+    assert stale_plan.status == TaskStatus.COMPLETED
+    assert stale_plan.completed_at is not None
