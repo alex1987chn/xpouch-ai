@@ -13,7 +13,7 @@
 
 - [ ] 图片输入收尾：附件入口现仅图片；文档/文件输入=独立功能（定位已讨论：解析为文本注入当前对话上下文，不持久化；pypdf/python-docx/openpyxl；单文件 10MB / 单次 3 个）
 - [ ] 图片进复杂任务的传递管道（image_analyzer 当前收不到图片）：用户消息附图只挂在初始消息（router 可见），commander 分派到专家执行无任何图片通道——image_analyzer 教材虽好但拿到的只有文字（2026-09-23 审计发现，用户拍板暂缓：管道就绪前该专家不可用，也未移出内置）
-- [ ] Selective approval UI 或记忆系统（二选一，方向待讨论）
+- [ ] Selective approval UI 或记忆系统（二选一，方向待讨论）。记忆系统侧已知缺口（2026-09-24 审计）：自然语言"删除记忆"无消费端——MemoryManager 无删除/更新能力，用户说"删除"时无链路承接（历史上删除确认曾被当记忆存成回声）；伴生考虑：管理台记忆查看/清理入口、写入侧已加 fail-loud 与幂等去重（见 DECISIONS 工程节），教材修复后（20260923_000200）写侧尚无一次真实闭环验证
 - [ ] BYOK（认可方向，未排期）
 - [ ] GitHub 入口补位：登录弹窗 wordmark 下方 + 命令面板"关于"条目（实现注意：lucide 1.x 无品牌图标，复用 `components/common/GithubMark`）
 - [ ] README 双语"30 秒跑起来"段：一张界面实拍 + 一条 self-host 命令 + 与 CrewAI/AutoGen/LangGraph 模板的一句差异
@@ -34,6 +34,7 @@
 
 ## 观察（不排期，条件触发再升级）
 
+- 等待审批 run 无消息载体=前端不可见（2026-09-24 审计实例：两个 run 冲到 waiting_for_approval，消息表零载体行，用户侧表现"发了没反应"）——恢复路径也无处置渲染审批卡的锚点；同会话 82 秒内两个 waiting run 并存，互斥未拦（waiting 态不持租约不挡新任务，疑似 by-design 但审批目标会有歧义）。数据已按取消语义清理；若再现需查 carrier 插入路径与审批恢复目标选取
 - TS7：等 7.1（tsgo Compiler API 稳定）+ typescript-eslint 支持双信号后一次性纯替换；当前 tsc --noEmit 5.6s 非瓶颈，vite/vitest 不走 tsc
 - Geist 挂 Google Fonts=大陆可达性隐患；未来要蓝本中文字感=全部字体自托管
 - git stash 有一条老 stash（986b76e LangSmith WIP，来历不明未动）

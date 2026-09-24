@@ -88,6 +88,10 @@ class AgentRun(SQLModel, table=True):
     completed_at: datetime | None = None
     cancelled_at: datetime | None = None
     timed_out_at: datetime | None = None
+    # 进入 waiting_for_approval 的时刻（审批超时判据的起点）。不能复用
+    # updated_at（它是「最后一次续租」，每 20s 刷新）；重入等待（计划修订后
+    # 再等审批）会被 update_run_status 重新盖章
+    waiting_since_at: datetime | None = None
 
     thread: Optional["Thread"] = Relationship(back_populates="runs")  # noqa: F821
     execution_plan: Optional["ExecutionPlan"] = Relationship(  # noqa: F821

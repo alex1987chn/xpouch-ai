@@ -22,14 +22,21 @@ import asyncio
 
 from sqlmodel import Session, select
 
-from crud.agent_run import ACTIVE_RUN_STATUSES, mark_run_timed_out_by_id, run_holds_thread
+from config import settings
+from crud.agent_run import (
+    ACTIVE_RUN_STATUSES,
+    mark_run_cancelled_by_id,
+    mark_run_timed_out_by_id,
+    run_holds_thread,
+)
 from database import engine
-from models import AgentRun
+from models import AgentRun, Message, RunStatus
 from utils.logger import logger
 from utils.run_lease import (
     RUN_LEASE_RENEW_INTERVAL_SECONDS,
     RUN_LEASE_TTL_SECONDS,
     RUN_OWNER_ID,
+    approval_deadline_exceeded,
     is_deadline_exceeded,
     lease_deadline,
 )
@@ -43,6 +50,11 @@ MAX_ACTIVE_RUNS_SCANNED = 100
 # 回收原因文案（事件账本与 error_message 共用，避免两处不一致）
 REASON_LEASE_EXPIRED = "运行进程失联（租约过期），已标记为超时"
 REASON_DEADLINE_EXCEEDED = "运行超过执行预算，已标记为超时"
+REASON_APPROVAL_TIMEOUT = "计划等待审批超时，本轮已自动取消"
+
+# 审批超时说明的消息标记（extra_data.message_kind）：与 expert/thinking 载体
+# 同键位，前端不认识的 kind 按普通消息渲染——保证用户回看会话时能看到取消原因
+APPROVAL_TIMEOUT_NOTE_KIND = "approval_timeout_note"
 
 
 def renew_owned_leases(session: Session) -> int:
@@ -69,12 +81,15 @@ def renew_owned_leases(session: Session) -> int:
 
 
 def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[str]]]:
-    """回收「没有存活证据 / 预算用尽」的活跃 run。
+    """回收「没有存活证据 / 预算用尽 / 审批等待超时」的活跃 run。
 
-    返回 `(thread_id, [run_id])` 供调用方清理 checkpoint。两类目标：
+    返回 `(thread_id, [run_id])` 供调用方清理 checkpoint。三类目标：
     - 租约过期或无租约 → 没有进程在管它
     - 超过 deadline → 进程可能还在，但预算已用尽（HITL 等待期 deadline 被挂起，
       所以等待中的 run 不会命中这条）
+    - waiting_for_approval 且等待超过 approval_timeout_hours（2026-09-24 新增）→
+      被人遗弃的等待。语义是「等人等太久」，与前两类「进程无响应」正交，
+      走取消（cancelled）而非超时（timed_out），并在会话留可见说明
 
     存活与预算的判定**复用同一对判据**（`crud.agent_run.run_holds_thread` +
     `utils/run_lease.is_deadline_exceeded`），不在查询里重写一遍——判定散落正是旧
@@ -96,6 +111,32 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
 
     reclaimed: list[tuple[str, list[str]]] = []
     for run in rows:
+        # 审批超时（2026-09-24）：waiting 态**不走**租约/预算判据（09-13 误杀
+        # 教训——等待审批的 run 无条件存活），被遗弃的等待由独立的第三判据
+        # 兜底：超时自动取消 + 会话留可见说明。处理完 continue，与下方
+        # 租约回收逻辑完全隔离。
+        if run.status == RunStatus.WAITING_FOR_APPROVAL:
+            if approval_deadline_exceeded(
+                run.waiting_since_at,
+                timeout_hours=settings.approval_timeout_hours,
+                now=now,
+            ):
+                cancelled = mark_run_cancelled_by_id(
+                    session,
+                    run.id,
+                    error_message=REASON_APPROVAL_TIMEOUT,
+                )
+                if cancelled is not None:
+                    _insert_approval_timeout_note(session, run)
+                    session.commit()
+                    reclaimed.append((run.thread_id, [run.id]))
+                    logger.warning(
+                        "[RunLease] 审批超时取消 | run_id=%s | waiting_since=%s | limit=%sh",
+                        run.id,
+                        run.waiting_since_at,
+                        settings.approval_timeout_hours,
+                    )
+            continue
         holds = run_holds_thread(run, now=now)
         over_budget = is_deadline_exceeded(run.deadline_at, now)
         # ⚠️ 两个判据是**或**关系，不能写成「活着就跳过」：进程活着但流早断了
@@ -124,6 +165,23 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
             run.lease_expires_at,
         )
     return reclaimed
+
+
+def _insert_approval_timeout_note(session: Session, run: AgentRun) -> None:
+    """审批超时取消后在会话里留一条可见说明。
+
+    没有这条，用户回访时的体验与 09-13 误杀事故无异——审批卡凭空消失、
+    无从得知原因。role 用 assistant（role 是自由串、前端无 system 分支，
+    assistant 保证按普通消息渲染），message_kind 标记留作后续样式化入口。
+    """
+    session.add(
+        Message(
+            thread_id=run.thread_id,
+            role="assistant",
+            content=f"计划等待审批超过 {settings.approval_timeout_hours} 小时，已自动取消。",
+            extra_data={"run_id": run.id, "message_kind": APPROVAL_TIMEOUT_NOTE_KIND},
+        )
+    )
 
 
 def supervisor_tick() -> tuple[int, list[tuple[str, list[str]]]]:

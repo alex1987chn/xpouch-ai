@@ -109,6 +109,10 @@ class Settings(BaseSettings):
     # 执行预算（RUN_DEADLINE_SECONDS，默认 900s），否则超时形同虚设。
     llm_call_timeout_seconds: float = Field(default=420.0, alias="LLM_CALL_TIMEOUT_SECONDS")
     run_deadline_seconds: int = Field(default=900, alias="RUN_DEADLINE_SECONDS")
+    # 审批超时（2026-09-24）：waiting_for_approval 的 run 被遗弃时的退出机制。
+    # 与租约/执行预算无关——那是「进程无响应」，这是「等人等太久」（09-13 事故
+    # 教训：等待审批不能用租约判死）。超时自动取消并在会话留可见说明；0=关闭。
+    approval_timeout_hours: int = Field(default=24, alias="APPROVAL_TIMEOUT_HOURS")
     # 注：原 run_max_graph_loops / RUN_MAX_GRAPH_LOOPS（图循环预算）已随批次 B3
     # 移除——它唯一的作用是看管「为对抗 interrupt_before 静态中断而手写的外层
     # while 循环」。改用 interrupt() 后，循环保护由原生 recursion_limit 承担。

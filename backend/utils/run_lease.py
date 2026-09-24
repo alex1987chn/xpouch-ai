@@ -108,3 +108,24 @@ def is_deadline_exceeded(deadline_at: datetime | None, now: datetime | None = No
     if deadline_at is None:
         return False
     return deadline_at <= (now or utc_now())
+
+
+def approval_deadline_exceeded(
+    waiting_since_at: datetime | None,
+    *,
+    timeout_hours: int,
+    now: datetime | None = None,
+) -> bool:
+    """审批等待是否超时（2026-09-24 新增的第三判据：被人遗弃）。
+
+    与前两个判据正交：租约=进程还在管吗，预算=这次执行还够跑吗，
+    审批超时=**等人等太久**了吗。waiting_for_approval 的 run 无租约无人续、
+    预算被挂起（09-13 误杀教训使然），前两个判据对它永远放行——被遗弃的
+    等待只能由这里兜底（否则 immortal waiter，09-23 实例挂了 28h+）。
+
+    `waiting_since_at` 为 None（历史行/未进过等待）→ 不判死；
+    `timeout_hours <= 0` → 机制关闭。
+    """
+    if timeout_hours <= 0 or waiting_since_at is None:
+        return False
+    return waiting_since_at <= (now or utc_now()) - timedelta(hours=timeout_hours)
