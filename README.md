@@ -144,7 +144,7 @@ The current stable baseline includes:
 
 - The backend is the source of truth
 - The frontend is driven by SSE events into its stores
-- Event protocol v2: nodes emit structured events through a unified outlet (`emit_event`) over the LangChain custom-event channel — exactly-once delivery, never entering graph state or checkpoints; the **type source of truth is the backend model**, which generates the frontend TS (`frontend/src/types/events.generated.ts`), guarded by a pytest gate and `just check-event-types`
+- Event protocol v2: nodes emit structured events through a unified outlet (`emit_event`) over the LangChain custom-event channel — exactly-once delivery, never entering graph state or checkpoints; the **type source of truth is the backend model**, which generates the frontend TS (`frontend/src/types/events.generated.ts`), guarded by a pytest gate and a same-script `--check` freshness gate
 - A transport-level `[DONE]` marker distinguishes normal completion from abnormal stream breaks
 - Ready to evolve into an auditable, replayable Agent product
 

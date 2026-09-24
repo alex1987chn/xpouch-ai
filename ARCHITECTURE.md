@@ -98,7 +98,7 @@ POST /api/chat
 - 节点内部经统一出口 `emit_event` 发射结构化事件，走 LangChain custom event 通道直达消费端
 - **恰好一次投递**：事件不进图状态、不进 checkpoint（避免重放重复消费）
 - 前后端类型的**单一真相源是后端**：`backend/event_types/` 的模型生成 `frontend/src/types/events.generated.ts`
-  （`just gen-event-types`），两道漂移闸门把关——pytest 一条 + `just check-event-types`；
+  （`cd backend && uv run python -m scripts.gen_event_types_ts`），两道漂移闸门把关——pytest 一条 + 同脚本 `--check`；
   新增事件必须先加枚举（含 msgpack 序列化白名单）再使用
 - 传输层以 `[DONE]` 标记正常结束，异常断流与完成可区分；帧本身按 run 级序号落库，支持断线补放
 - 前端消费端按 **run / 流会话** 去重（不是页面级）——帧号是 run 级序号，跨 run 会撞号
@@ -138,9 +138,9 @@ POST /api/chat
 ### 新增一个事件（或改事件字段）
 
 1. 改 `backend/event_types/` 里的模型/枚举（同步 msgpack 白名单）
-2. 跑 `just gen-event-types` 重新生成 `frontend/src/types/events.generated.ts`（**生成物不要手改**）
+2. 跑 `cd backend && uv run python -m scripts.gen_event_types_ts` 重新生成 `frontend/src/types/events.generated.ts`（**生成物不要手改**）
 3. 前端消费：`frontend/src/handlers/` 对应 handler；去重按 run / 流会话作用域
-4. `just check-event-types` + pytest 两道闸门必须绿
+4. 同脚本 `--check` + pytest 两道闸门必须绿
 
 ### 提交前自查
 

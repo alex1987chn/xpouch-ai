@@ -109,7 +109,7 @@
 
 - **现状**：Python `event_types/events.py` 与前端 TS 类型各自手写。
 - **已完成**：真相源 = 后端 pydantic 模型（本来就有，`build_sse_event` 就是拿它们构线的），往下一层导出：
-  - `backend/scripts/gen_event_types_ts.py` → `frontend/src/types/events.generated.ts`（模型→TS interface + EventType 联合 + EventPayloadMap；缺 payload 模型直接抛错）。Justfile 有 `gen-event-types` / `check-event-types`。
+  - `backend/scripts/gen_event_types_ts.py` → `frontend/src/types/events.generated.ts`（模型→TS interface + EventType 联合 + EventPayloadMap；缺 payload 模型直接抛错）。手动入口 `cd backend && uv run python -m scripts.gen_event_types_ts`（加 `--check` 只校验不写）。
   - **闸门一（后端）**：`tests/test_event_types_ts_fresh.py` —— 生成物过期即测试失败，并打印修复命令。
   - **闸门二（前端）**：`types/events.ts` 对每条手写类型做**字段子集断言**（`Assert<KeysSubset<...>>`）——挡住「前端声明了后端不发送的字段」这类最伤人的漂移。已用假字段做负向验证（tsc 立刻 TS2344）。
   - **顺带照出一个真问题**：`TaskInfo` 后端没有 `depends_on`、前端一直有 → `plan.created` 从不发送依赖关系。已补模型 + 发射器透传。

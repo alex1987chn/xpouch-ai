@@ -106,14 +106,11 @@ docker-compose up -d --build
 贡献者**必须安装** pre-commit hooks 以确保代码质量：
 
 ```bash
-# 方式 1: 使用 uv（推荐）
+# 使用 uv（推荐）
 uv tool install pre-commit
 pre-commit install
 
-# 方式 2: 使用 Justfile
-just install-hooks
-
-# 方式 3: pip 安装
+# 或 pip 安装
 pip install pre-commit
 pre-commit install
 ```
@@ -121,19 +118,13 @@ pre-commit install
 **手动运行检查**：
 
 ```bash
-# 检查所有文件
 pre-commit run --all-files
-
-# 或使用 Justfile
-just pre-commit-check
 ```
 
 **跳过检查（仅紧急情况）**：
 
 ```bash
 git commit -m "your message" --no-verify
-# 或
-just commit-no-verify "your message"
 ```
 
 ### 提交信息规范

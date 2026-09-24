@@ -135,7 +135,7 @@ XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtim
 
 - 后端是真相源
 - 前端通过 SSE 事件驱动 store 与 UI
-- 事件协议 v2：节点经统一出口（`emit_event`）发射结构化事件，经 LangChain custom event 通道直达消费端——每条事件恰好一次投递，不进图状态/checkpoint；**类型单一真相源**：由后端事件模型生成前端 TS（`frontend/src/types/events.generated.ts`），配 pytest 与 `just check-event-types` 两道漂移闸门
+- 事件协议 v2：节点经统一出口（`emit_event`）发射结构化事件，经 LangChain custom event 通道直达消费端——每条事件恰好一次投递，不进图状态/checkpoint；**类型单一真相源**：由后端事件模型生成前端 TS（`frontend/src/types/events.generated.ts`），配 pytest 与生成脚本 `--check` 两道漂移闸门
 - 传输级 `[DONE]` 完成标记，异常断流与正常结束可区分
 - 适合继续演进为可审计、可回放的 Agent 产品
 

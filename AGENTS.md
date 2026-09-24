@@ -14,7 +14,7 @@ AI 多智能体工作台（LangGraph 后端 + React 前端，开源自托管）�
 - 测试：后端 `backend/.venv/Scripts/python.exe -m pytest tests/ -q`；前端 `pnpm test`
 - **验收链（改完必跑）**：后端 ruff check + format + pytest；前端 `pnpm run typecheck` + lint + test + build；动到执行路径（流式/HITL/迁移）加跑 e2e
 - HITL 全链路 e2e（真实 LLM）：`backend/scripts/e2e_hitl_check.py`
-- 改枚举/事件协议/response_model 后：`just gen-enums` / `gen-event-types` / `gen-openapi-types`
+- 改枚举/事件协议/response_model 后：`cd backend && uv run python -m scripts.gen_enums_ts`（枚举）/ `gen_event_types_ts`（事件协议）/ `gen_openapi_types`（REST 契约）
 
 ## 生成物（勿手改）
 `frontend/src/types/enums.generated.ts`、`events.generated.ts`、`api.generated.ts`——由后端生成，有新鲜度闸门。
