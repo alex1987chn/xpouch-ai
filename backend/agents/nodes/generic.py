@@ -688,8 +688,11 @@ async def expert_worker_node(
         # -------------------------------------------------------------
         if expert_type == "memorize_expert":
             memory_content = response.content.strip()
-            # user_id 由 Send payload 的 branch_context 带过来，默认 default_user
-            user_id = branch_context.get("user_id") or "default_user"
+            # user_id 由 Send payload 的 branch_context 带过来（wave_scheduler 的
+            # build_branch_payload）。缺失即异常路径：宁可不入库也不落共享
+            # default_user——落了就把记忆记到公共账号，任何同样缺 user_id 的
+            # 请求都能检索到（跨用户串记忆，存量 default_user 脏数据即其产物）
+            user_id = branch_context.get("user_id")
 
             # 教材约定「一行一条记忆、无值得记录时只输出：无」（见
             # expert_config.memorize_expert）——逐行入库（分条存储检索精度更高），
@@ -700,7 +703,15 @@ async def expert_worker_node(
                 for ln in memory_content.splitlines()
                 if ln.strip() and ln.strip() != "无"
             ]
-            if memory_lines:
+            if not user_id:
+                logger.warning(
+                    "[GenericWorker] branch_context 缺 user_id，记忆拒绝入库（不落共享账号）: "
+                    "thread=%s run=%s",
+                    branch_context.get("thread_id"),
+                    branch_context.get("run_id"),
+                )
+                response.content = "未能识别当前用户，本次记忆未保存。"
+            elif memory_lines:
                 logger.info(f"[GenericWorker] 正在保存 {len(memory_lines)} 条记忆")
                 try:
                     for line in memory_lines:
@@ -713,8 +724,10 @@ async def expert_worker_node(
                     logger.info("[GenericWorker] 记忆保存成功!")
                     response.content = "已为您记录：\n" + "\n".join(memory_lines)
                 except (RuntimeError, ValueError) as mem_err:
+                    # 如实上报失败——不说"我会记住"（没存上就是没存上）；
+                    # 重试安全：已入库的行会被 MemoryManager 的同内容去重挡住
                     logger.warning(f"[GenericWorker] 记忆保存失败: {mem_err}")
-                    response.content = f"记录时遇到问题，但我会记住：{memory_content}"
+                    response.content = "记忆保存失败（向量生成或写入出错），本次未记住，请重试。"
             else:
                 response.content = "本次对话没有需要记住的内容。"
         # -------------------------------------------------------------

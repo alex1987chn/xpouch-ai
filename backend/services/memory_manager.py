@@ -33,19 +33,33 @@ class MemoryManager:
     def _add_memory_sync(
         self, user_id: str, content: str, source: str = "conversation", memory_type: str = "fact"
     ):
-        """同步添加记忆到数据库"""
+        """同步添加记忆到数据库。
+
+        embedding 失败抛 RuntimeError 而非静默返回：调用方（generic 记忆分支）
+        会向用户如实上报"未记住"——静默跳过曾让用户以为记住了实际没有。
+        """
         if not content or not content.strip():
             return
 
         # 1. 转向量
         vector = get_embedding(content)
         if not vector:
-            logger.warning(f"[Memory] ❌ 向量生成失败，跳过存储: {content[:50]}...")
-            return
+            raise RuntimeError(f"embedding 为空，无法生成记忆向量: {content[:50]}...")
 
-        # 2. 存入数据库
+        # 2. 幂等去重：同用户同内容不重复入库（"记住我名字"类指令会反复触发，
+        #    也让写入中途失败后的重试安全——已入库的行不会被重复种）
+        # 3. 存入数据库
         try:
             with Session(engine) as session:
+                dup = session.exec(
+                    select(UserMemory).where(
+                        UserMemory.user_id == user_id,
+                        UserMemory.content == content,
+                    )
+                ).first()
+                if dup:
+                    logger.info(f"[Memory] 重复记忆跳过（同用户同内容）: {content[:50]}...")
+                    return
                 memory = UserMemory(
                     user_id=user_id,
                     content=content,
@@ -58,7 +72,9 @@ class MemoryManager:
                 session.commit()
                 logger.info(f"[Memory] ✅ 已记住: {content[:80]}...")
         except Exception as e:
-            logger.error(f"[Memory] ❌ 数据库写入失败: {e}")
+            # 包装为 RuntimeError：调用方（generic 记忆分支）只接 RuntimeError/ValueError，
+            # 裸 psycopg 异常会穿透到执行框架层
+            raise RuntimeError(f"记忆数据库写入失败: {e}") from e
 
     def _search_sync(self, user_id: str, query: str, limit: int = 5) -> str:
         """同步检索相关记忆"""
