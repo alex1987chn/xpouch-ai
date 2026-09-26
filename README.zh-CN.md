@@ -22,6 +22,20 @@
 
 ---
 
+## 30 秒跑起来
+
+```bash
+git clone https://github.com/alex1987chn/xpouch-ai.git && cd xpouch-ai
+cp .env.example .env && cp backend/.env.example backend/.env   # 编辑 backend/.env，填一个 LLM API Key
+docker compose up -d --build                                   # → http://localhost:8080
+```
+
+首个注册的账号自动成为管理员。
+
+> **CrewAI / AutoGen / LangGraph 模板给的是 agent 代码，XPouch 给的是能直接跑的产品**——自托管多用户工作台，规划、审批、并行执行、恢复、产物沉淀开箱即用，登录页后面直接用。
+
+完整指南：[快速开始](#快速开始) · [自托管运维](docs/self-hosting.md)
+
 ## 项目简介
 
 XPouch AI 是一个围绕真实任务执行设计的开源多专家 Agent Runtime。系统将规划、审批、执行、恢复和产物沉淀放在同一条可追踪主链中，而不是只提供一层聊天 UI。
@@ -217,7 +231,7 @@ cp .env.example .env
 cp backend/.env.example backend/.env
 # 编辑 backend/.env，至少填入一个 LLM API Key
 
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 启动后：

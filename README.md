@@ -22,6 +22,20 @@ English | [简体中文](./README.zh-CN.md)
 
 ---
 
+## Run it in 30 seconds
+
+```bash
+git clone https://github.com/alex1987chn/xpouch-ai.git && cd xpouch-ai
+cp .env.example .env && cp backend/.env.example backend/.env   # edit backend/.env — add one LLM API key
+docker compose up -d --build                                   # → http://localhost:8080
+```
+
+The first account you register becomes the admin.
+
+> **CrewAI / AutoGen / LangGraph templates hand you agent *code* to build on — XPouch is the finished *product***: a self-hosted, multi-user workspace where planning, HITL approval, parallel execution, recovery, and artifacts work out of the box behind a login page.
+
+Full guide: [Quick Start](#quick-start) · [Self-hosting](docs/self-hosting.md)
+
 ## What is XPouch AI?
 
 XPouch AI is an open-source multi-expert Agent Runtime built for real task execution. It puts planning, approval, execution, recovery, and artifact persistence on a single, fully traceable main chain — instead of offering just another chat UI.
@@ -227,7 +241,7 @@ cp .env.example .env
 cp backend/.env.example backend/.env
 # Edit backend/.env — at least one LLM API key is required
 
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 Once started:
