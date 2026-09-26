@@ -17,6 +17,7 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
 from agents.event_stream import emit_event
+from agents.routing_rules import forced_complex_reason, forced_simple_reason
 from agents.services.expert_manager import get_expert_config_cached
 from agents.state import AgentState
 from constants import DEFAULT_ASSISTANT_PROMPT, ROUTER_SYSTEM_PROMPT
@@ -65,11 +66,12 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
     await emit_event(event_router_start(query=user_query[:200]))  # 限制长度
     logger.info("[Router] 已发送 router.start 事件")
 
-    # 0-. 确定性兜底（对称规则）：带附件文档的消息强制简单模式直达回复。
-    # 文档问答 = 读文档答问题的轻量场景（文档文本已随消息注入上下文），
-    # 走 complex 的多专家编排纯属开销且曾因超长坏文本炸规划；
-    # 重型文档工作流（解析→多步分析→产物）待知识库版本再引入。
-    if "【用户附件：" in user_query:
+    # 0-. 确定性兜底（对称规则，单一真相源=agents/routing_rules.py）：带附件
+    # 文档的消息强制简单模式直达回复。文档问答 = 读文档答问题的轻量场景
+    # （文档文本已随消息注入上下文），走 complex 的多专家编排纯属开销且
+    # 曾因超长坏文本炸规划；重型文档工作流待知识库版本再引入。
+    simple_reason = forced_simple_reason(user_query)
+    if simple_reason:
         await emit_event(
             event_router_decision(
                 decision="simple",
@@ -82,15 +84,16 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
         }
 
     # 0. 确定性兜底：某些任务必须进入 complex，避免路由模型误判。
-    forced_complex_reason = _get_forced_complex_reason(user_query)
-    if forced_complex_reason:
+    # 规则清单与教材的镜像闸门见 agents/routing_rules.py（路由归一，2026-09-26）
+    forced_reason = forced_complex_reason(user_query)
+    if forced_reason:
         await emit_event(
             event_router_decision(
                 decision="complex",
-                reason=forced_complex_reason,
+                reason=forced_reason,
             )
         )
-        logger.info("[Router] 命中复杂模式兜底规则: %s", forced_complex_reason)
+        logger.info("[Router] 命中复杂模式兜底规则: %s", forced_reason)
         return {
             "router_decision": "complex",
         }
@@ -238,54 +241,12 @@ def _fill_router_placeholders(system_prompt: str, user_query: str, relevant_memo
             logger.info(f"[Router] 已注入占位符: {{{placeholder}}}")
 
     # 检查是否还有未填充的占位符（警告但不中断）
-    import re
 
     remaining_placeholders = re.findall(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", system_prompt)
     if remaining_placeholders:
         logger.warning(f"[Router] 警告: 以下占位符未填充: {remaining_placeholders}")
 
     return system_prompt
-
-
-def _get_forced_complex_reason(user_query: str) -> str | None:
-    """对高风险误判场景进行确定性复杂模式兜底。"""
-    normalized_query = re.sub(r"\s+", "", user_query.lower())
-
-    direct_complex_keywords = (
-        "记住",
-        "保存",
-        "记下来",
-        "天气",
-        "新闻",
-        "股票",
-        "汇率",
-        "实时",
-        "最新",
-        "生成图片",
-        "生成文档",
-        "分析文件",
-        "运行代码",
-    )
-    if any(keyword in normalized_query for keyword in direct_complex_keywords):
-        return "deterministic_complex_keyword"
-
-    travel_keywords = (
-        "怎么去",
-        "怎么过去",
-        "怎么走",
-        "路线",
-        "路程",
-        "多远",
-        "距离",
-        "地铁",
-        "公交",
-        "打车",
-        "导航",
-    )
-    if any(keyword in normalized_query for keyword in travel_keywords):
-        return "deterministic_travel_planning"
-
-    return None
 
 
 def _resolve_simple_llm(state: AgentState):

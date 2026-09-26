@@ -24,11 +24,11 @@ def load_regression_cases(asset_path: Path | None = None) -> dict[str, Any]:
 
 def validate_router_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
     """验证 Router 确定性 complex 兜底样例。"""
-    from agents.nodes.router import _get_forced_complex_reason
+    from agents.routing_rules import forced_complex_reason
 
     failures: list[dict[str, Any]] = []
     for case in cases:
-        actual_reason = _get_forced_complex_reason(case["query"])
+        actual_reason = forced_complex_reason(case["query"])
         expected_reason = case["expected_forced_reason"]
         if actual_reason != expected_reason:
             failures.append(
