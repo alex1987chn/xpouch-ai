@@ -6,7 +6,6 @@
 
 ## 运维（等用户）
 
-- [ ] **生产部署收尾（原 v3.5.4 验证，现应连 09-22/23 批次一起发 v3.5.6）**：确认 f6ae155（deploy.sh 改为 Compose v2 插件优先 + 版本闸门 ≥2.17）修复后重跑 deploy.sh 成功。前置检查：`.env` 空串 key（4851b97 起空串=拒绝启动）；**迁移 20260918_000100 会删 customagent 表与 custom 线程（不可恢复，备份兜底）**；20260916_000200 枚举 USING 转换=锁表操作，低峰执行；若设过日配额，b98478a 已修，部署后聊天即恢复。**09-23 批次注意**：①20260923_000200 把内置专家（search/router/aggregator/memorize_expert）教材覆盖为代码种子版，20260923_000400 再覆盖 search 教材（工具条款让位版）——生产若人工调优过这几家提示词，先导出备份（000400 会再次覆盖 search）；另补种 router/aggregator 并归位内置标记。②000300 runevent 枚举加 tool_result（加值，低锁表风险）。③000500/000600 是数据清洗 UPDATE（僵尸 running 任务/消息收尾为 failed + summary 对齐 artifact.title），无 schema 变化，会把存量卡死会话解锁。④ModelScope 的 Generate-image MCP key 已失效（USER_NOT_IN_ORG）——部署后在管理台更新 key 或停用该服务器（现在单服务器失败不连坐其余 MCP，挂着只浪费一轮超时）。
 - [ ] **生产 asyncio 日志确认（T4）**：查生产有无调度挂起迹象（本机问题疑已绕开，生产未见症候）；确认后解锁"半异步治理"排期。
 
 ## 需求（待办）
@@ -20,7 +19,7 @@
 
 ## 工程债（待排期）
 
-- [ ] T2 契约锚点余量（已锚 20 类型）：请求 DTO 锚点（待后端请求模型收敛）、`types/index.ts` 拆分（线上形状 vs 前端本地扩展字段如 ThinkingStep/isStreaming）、ToolPolicy 系 Literal 化（id 带业务语义默认值）
+- [ ] T2 请求 DTO 契约锚点（响应侧 20 类型、ToolPolicy 系 Literal 化、类型线上/本地分居均已锚；请求侧待后端请求模型收敛）
 - [ ] 事件双真相源统一：同一组 pydantic 模型约束 SSE 流与 run_events 账本
 - [ ] 后端半异步二选一（全同步线程池 vs 正规 async engine；**等 T4 生产确认**）
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
@@ -38,8 +37,8 @@
 - Geist 挂 Google Fonts=大陆可达性隐患；未来要蓝本中文字感=全部字体自托管
 - git stash 有一条老 stash（986b76e LangSmith WIP，来历不明未动）
 - 多 worker 分布式锁（部署形态未定）
-- StreamService 五协作者分解 / generic 630 行拆解 / 路由三家归一 / RunContext 值对象（曾认可方向，未排期）
-- 曝光升档剩余项：README 快速开始段、在线 demo、英文 README 主入口强化（LICENSE 识别与 topics/description 已于 2026-09-15 修复；具体流量/star 数据属私有信息，不入仓库）
+- StreamService 五协作者分解 / generic 拆解（991 行）/ RunContext 值对象（曾认可方向，未排期；拆解前置=先补 cancel 路径与断线恢复的 e2e 场景）
+- 曝光升档剩余项：在线 demo、英文 README 主入口强化（README 快速开始段单列于需求节；LICENSE 识别与 topics/description 已于 2026-09-15 修复；具体流量/star 数据属私有信息，不入仓库）
 
 ## 等用户拍板
 
