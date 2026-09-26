@@ -3,7 +3,7 @@
 走真实 HTTP + 真实 LLM，验证「规划 → 审批暂停 → 批准 → 执行完成」全链路：
 
     用法（后端需已启动在 3002）：
-        backend/.venv/Scripts/python.exe backend/scripts/e2e_hitl_check.py
+        cd backend && uv run python scripts/e2e_hitl_check.py
 
 为什么需要它：单元测试覆盖不到「图真的停在 interrupt 上」「Command(resume)
 真的能把图从断点续跑」这类跨进程行为——用真节点 + MemorySaver 的测试只能
