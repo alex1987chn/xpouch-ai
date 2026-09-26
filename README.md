@@ -72,6 +72,7 @@ The current stable baseline includes:
 - `POST /api/chat/resume` resumes execution around a `run_id`; revisions run as a background task and the frontend polls for the new version
 - Rejection feedback is permanently kept in the conversation as a user message
 - **Revision diff view**: compare the plan revision v(n) against v(n+1) before deciding again
+- Abandoned plans don't linger forever: approval waiting times out after 24h (configurable via `APPROVAL_TIMEOUT_HOURS`), auto-cancelled with a visible note in the conversation
 
 ### Run-based runtime
 

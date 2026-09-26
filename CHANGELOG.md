@@ -5,13 +5,15 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2026-09-26] - v3.5.7 记忆闭环、审批超时与链路加固
 
 ### 变更
 
 - **记忆删除/查看能力（长期记忆闭环）**：此前用户说"删除记忆"无链路承接——AI 只能口头答应（历史上有条记忆的内容就是"已为您删除所有苹果记忆"，实际什么都没发生）。现在 `search_memories` / `delete_memories` 闭包工具（user_id 服务端注入，绝不作为 LLM 参数——跨用户读删在结构上不可能）+ 教材双向协议（先预览后删除、输出操作报告）；配套护栏：用过记忆工具的分支跳过逐行入库（删除报告不再会被存成记忆），工具清单收敛为绑定/执行共用的单一真相源（修复上线首日"not a valid tool"双脑分裂）。教材经 20260926_000903 下发
 - **审批超时 24h 自动取消**：waiting_for_approval 的 run 被遗弃时由租约 supervisor 的独立第三判据兜底（`APPROVAL_TIMEOUT_HOURS` 默认 24、0=关闭）——此前 immortal waiter（实例挂 28h+）。语义是"等人等太久"而非"进程无响应"（09-13 误杀教训的铁律不变：等待审批永不走租约/预算判死），超时走 cancelled 并在会话留可见取消说明
 - **内置专家显示名收敛**：任务指挥官→编排专家（orchestrator）、首席联络官→汇总专家（synthesizer）、意图路由→意图识别专家、记忆助理→记忆专家——去掉官职味、统一「X专家」家族，提示词自称同步；expert_type 标识符不动（canonical 词汇）。迁移 20260924_000800 下发
+- **SSE 传输层迁移 eventsource-parser**：@microsoft/fetch-event-source 维护冻结多年，规范缺口永不再修——迁至现役标准库（Vercel AI SDK 生态底层件），新传输层约 60 行且**结构上无自动重试**（原库 onerror 返回会静默重发 POST，调用方全靠 throw 阻止——该舞步全部退役）。策略层（断线续传/归属守卫）不变；新增线格式级集成测试 6 例（CRLF/跨块切断/UTF-8 码点中断等）
+- **GitHub 入口补位**：登录弹窗 wordmark 下与命令面板「关于」条目——demo 访客与评估者在登录页即可直达源码
 - **路由归一**："什么走 complex"的口径从三处散落（教材/代码兜底关键词/附件规则）收敛为 `agents/routing_rules.py` 单一真相源 + 教材镜像闸门测试；闸门首跑即抓到教材从未覆盖"最新"时效信息与出行路线两类的真实缺口（20260926_000904 补齐）。reason 词汇细化为规则名
 
 ### 修复
