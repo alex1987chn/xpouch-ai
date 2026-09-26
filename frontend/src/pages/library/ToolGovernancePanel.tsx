@@ -1,3 +1,4 @@
+import type { ToolRiskTier } from '@/types/enums.generated'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Save, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
@@ -23,7 +24,7 @@ interface ToolGovernancePanelProps {
 
 interface PolicyDraft {
  enabled: boolean
- risk_tier: 'low' | 'medium' | 'high'
+ risk_tier: ToolRiskTier
  approval_required: boolean
  allowed_experts: string
  blocked_experts: string

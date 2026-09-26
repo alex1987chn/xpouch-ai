@@ -10,6 +10,7 @@
  * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
 
+import type { ToolRiskTier } from '@/types/enums.generated'
 import type { components } from '@/types/api.generated'
 import { getHeaders, buildUrl, handleResponse, authenticatedFetch } from './common'
 
@@ -84,7 +85,7 @@ export interface ToolInfo {
   description: string
   category: 'builtin' | 'mcp'
   enabled: boolean
-  risk_tier: 'low' | 'medium' | 'high'
+  risk_tier: ToolRiskTier
   approval_required: boolean
   allowed_experts?: string[] | null
   blocked_experts?: string[] | null
@@ -103,7 +104,7 @@ export interface ToolPolicyRecord {
   tool_name: string
   source: 'builtin' | 'mcp'
   enabled: boolean
-  risk_tier: 'low' | 'medium' | 'high'
+  risk_tier: ToolRiskTier
   approval_required: boolean
   allowed_experts?: string[] | null
   blocked_experts?: string[] | null
@@ -120,7 +121,7 @@ export interface ToolPolicyListResponse {
 
 export interface ToolPolicyUpdateRequest {
   enabled?: boolean
-  risk_tier?: 'low' | 'medium' | 'high'
+  risk_tier?: ToolRiskTier
   approval_required?: boolean
   allowed_experts?: string[] | null
   blocked_experts?: string[] | null

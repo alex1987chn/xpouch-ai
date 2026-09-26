@@ -1,9 +1,9 @@
 from agents.tool_policy import (
-    ToolPolicyAction,
     evaluate_tool_policy,
     filter_tools_for_binding,
     infer_mcp_tool_metadata,
 )
+from models.enums import ToolPolicyAction
 from services.tool_policy_service import ToolPolicyOverride
 
 

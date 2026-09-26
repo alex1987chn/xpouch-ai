@@ -8,10 +8,11 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from agents.tool_policy import BUILTIN_TOOL_POLICIES, ToolRiskTier, resolve_tool_metadata
+from agents.tool_policy import BUILTIN_TOOL_POLICIES, resolve_tool_metadata
 from database import get_session
 from dependencies import get_current_user
 from models import ToolPolicy, ToolPolicyResponse, ToolPolicyUpdate, User, UserRole
+from models.enums import ToolRiskTier
 from models.mcp import MCPServer
 from services.tool_policy_service import ToolPolicyOverride, tool_policy_service
 from utils.exceptions import AuthorizationError, NotFoundError, ValidationError

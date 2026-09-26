@@ -2,7 +2,15 @@
 // 消除类型定义分散的问题
 
 import type { components } from '@/types/api.generated'
-import type { AnyServerEvent } from './events'
+// 本地运行时形状分居到 ui.ts（线上形状留本文件）；此处 import 供 Message
+// 引用 + barrel re-export，消费端 import 路径不变
+export type {
+  MessageMetadata,
+  StreamCallback,
+  StreamRuntimeMeta,
+  ThinkingStep,
+} from './ui'
+import type { MessageMetadata } from './ui'
 
 // ============================================
 // REST 契约锚点（本文件的 REST 形状类型逐个接锚点；范式沿 types/stats.ts）
@@ -85,60 +93,7 @@ export interface Message {
   extra_data?: MessageAttachmentData | ExpertMessageData | RunThinkingData
 }
 
-/**
- * 思考过程步骤
- */
-export interface ThinkingStep {
-  id: string
-  expertType: string
-  expertName: string
-  content: string
-  timestamp: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  /**
-   * 步骤类型，用于 UI 区分显示图标
-   * - search: 联网搜索
-   * - reading: 深度阅读/网页阅读 (Jina Reader)
-   * - analysis: 分析思考
-   * - coding: 代码生成
-   * - planning: 任务规划
-   * - writing: 写作生成
-   * - artifact: 产物生成 (实时流式渲染)
-   * - memory: 记忆检索
-   * - default: 默认/其他
-   */
-  type?: 'search' | 'reading' | 'analysis' | 'coding' | 'planning' | 'writing' | 'artifact' | 'memory' | 'default'
-  /**
-   * 执行耗时（毫秒）
-   */
-  duration?: number
-  /**
-   * 该步骤产出的产物引用（用于步骤下方的内联卡片）。
-   * 只存渲染所需的最小字段；正文由 ArtifactViewerModal 按 id 取详情，
-   * 避免把产物内容复制进消息元数据。
-   */
-  artifacts?: { id: string; type: string; title?: string | null }[]
-  /**
-   * 相关 URL（如 reading 类型时的网页链接）
-   */
-  url?: string
-}
 
-/**
- * 消息元数据（用于专家任务等）
- */
-export interface MessageMetadata {
-  type?: 'task_plan' | 'task_start' | 'expert_completion'
-  expertId?: string
-  thinking?: ThinkingStep[]
-  reasoningContent?: string
-  /** 发起该消息的会话 ID（P4-1 会话归属守卫：切换会话后不再追加旧会话消息） */
-  threadId?: string
-  /** 专家消息（extra_data.message_kind='expert_result'）执行期间的工具活动序列
-   * ——纯前端运行时态：逐次累积（calling 项实时追加、result 到达转 done），
-   * 完成后由 extra_data.tool_calls / tool_stats 终态取代渲染 */
-  toolCalls?: ToolCallRecord[]
-}
 
 /**
  * API 消息接口 - 用于后端 API 交互
@@ -165,19 +120,27 @@ export type ThreadAgentType = 'default' | 'custom' | 'ai'
  * 产物中心：跨会话产物列表项
  * 列表接口只带 content_preview；详情接口返回完整 content
  */
+/**
+ * 产物中心列表项：基座 = 列表 schema（ArtifactSummaryResponse，SameShape
+ * 锚定）；`content` / `sub_task_id` 为详情模式的**声明式扩展**（详情接口
+ * 返回完整 content，见 ArtifactDetailResponse）——此前把两个 schema 手工
+ * 揉成一个可选大杂烩，正是锚点要消灭的宽松漂移。
+ */
 export interface ArtifactListItem {
   id: string
-  thread_id?: string | null
+  thread_id: string | null
   thread_title?: string | null
   type: string
-  title?: string | null
-  language?: string | null
-  sort_order?: number
+  title: string | null
+  language: string | null
+  sort_order: number
+  content_preview: string
+  content_length: number
+  created_at: string
+  /** 详情模式扩展：完整内容（列表接口不返回） */
   content?: string
-  content_preview?: string
-  content_length?: number
+  /** 详情模式扩展 */
   sub_task_id?: string
-  created_at?: string | null
 }
 
 /** 产物分页列表响应 */
@@ -188,6 +151,13 @@ export interface PaginatedArtifacts {
   limit: number
   pages: number
 }
+
+type _ArtifactListItem = Assert<
+  SameShape<
+    Pick<ArtifactListItem, Exclude<keyof ArtifactListItem, 'content' | 'sub_task_id'>>,
+    Schemas['ArtifactSummaryResponse']
+  >
+>
 
 /**
  * 会话列表项接口（轻量级，不包含消息内容）
@@ -215,19 +185,17 @@ export interface Thread {
 export interface AgentRunSummary {
   id: string
   status: string
-  current_node?: string | null
-  created_at?: string
-  updated_at?: string
-  last_heartbeat_at?: string | null
-  completed_at?: string | null
+  // 以下均为后端必填可空字段（SameShape 锚点对齐，此前前端手写成可选=宽松漂移）
+  current_node: string | null
+  created_at: string | null
+  updated_at: string | null
+  last_heartbeat_at: string | null
+  completed_at: string | null
   /** run 开始时间：`attachThinkingFromTimeline` 判定「这条助手消息是否由本次 run 产出」的依据 */
-  started_at?: string | null
+  started_at: string | null
 }
 
-export interface StreamRuntimeMeta {
-  threadId?: string
-  runId?: string
-}
+type _AgentRunSummary = Assert<SameShape<AgentRunSummary, Schemas['AgentRunSummaryResponse']>>
 
 /**
  * 执行计划接口 - 记录复杂模式下的一次完整任务编排过程
@@ -317,23 +285,13 @@ export interface UserProfile {
 type _UserProfile = Assert<SameShape<UserProfile, Schemas['UserProfileResponse']>>
 
 /** 锚点只做编译期校验，导出以免被 noUnusedLocals 误报 */
-export type IndexConformanceAnchors = [_UserProfile]
+export type IndexConformanceAnchors = [_UserProfile, _AgentRunSummary, _ArtifactListItem]
 
 // ============================================
-// 专家状态事件类型
+// 会话相关类型
 // ============================================
-
-/**
- * SSE 流式回调类型
- */
-export type StreamCallback = (
-  chunk: string | undefined,
-  threadId?: string,
-  expertEvent?: AnyServerEvent,
-  artifact?: Artifact,
-  expertId?: string,
-  runtimeMeta?: StreamRuntimeMeta
-) => Promise<void> | void
+// StreamCallback / StreamRuntimeMeta / ThinkingStep / MessageMetadata
+// 已分居到 ./ui.ts（本地运行时形状），经文件头 barrel re-export
 
 /**
  * Artifact 类型枚举 - 统一前后端定义

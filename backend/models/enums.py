@@ -28,7 +28,13 @@ class ConversationType(StrEnum):
 
 
 class ExpertType(StrEnum):
-    """专家类型枚举"""
+    """专家类型枚举（内置清单）。
+
+    与 expert_config.EXPERT_DEFAULTS 严格同步（测试钉死）——此前只列了
+    7 个执行型专家，commander/router/aggregator/memorize_expert 四个
+    编排链内置缺席，属词汇漂移。用户自建专家（is_dynamic=true）不在此列，
+    运行时按自由串处理。
+    """
 
     SEARCH = "search"
     CODER = "coder"
@@ -37,6 +43,10 @@ class ExpertType(StrEnum):
     WRITER = "writer"
     PLANNER = "planner"
     IMAGE_ANALYZER = "image_analyzer"
+    COMMANDER = "commander"
+    ROUTER = "router"
+    AGGREGATOR = "aggregator"
+    MEMORIZE_EXPERT = "memorize_expert"
 
 
 class TaskStatus(StrEnum):
@@ -164,3 +174,20 @@ class RunEventType(StrEnum):
     RUN_FAILED = "run_failed"  # 运行失败
     RUN_CANCELLED = "run_cancelled"  # 运行取消
     RUN_TIMED_OUT = "run_timed_out"  # 运行超时
+
+
+class ToolRiskTier(StrEnum):
+    """工具风险等级（治理层分级；自 agents/tool_policy.py 迁入——枚举真相源
+    统一收口到本模块，gen_enums_ts 才能导出到前端）"""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ToolPolicyAction(StrEnum):
+    """工具治理决策动作"""
+
+    ALLOW = "allow"
+    DENY = "deny"
+    REQUIRE_APPROVAL = "require_approval"

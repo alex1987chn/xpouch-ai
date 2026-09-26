@@ -65,6 +65,8 @@ from models.enums import (  # noqa: E402
     RunStatus,
     TaskStatus,
     ThreadStatus,
+    ToolPolicyAction,
+    ToolRiskTier,
     UserRole,
     _enum_values,
 )
@@ -123,6 +125,8 @@ __all__ = [
     "TaskStatus",
     "RunStatus",
     "RunEventType",
+    "ToolPolicyAction",
+    "ToolRiskTier",
     "ExecutionMode",
     "_enum_values",
     # ORM 模型

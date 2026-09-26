@@ -10,22 +10,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Any
 
+from models.enums import ToolPolicyAction, ToolRiskTier
 from services.tool_policy_service import ToolPolicyOverride
-
-
-class ToolRiskTier(StrEnum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-
-
-class ToolPolicyAction(StrEnum):
-    ALLOW = "allow"
-    DENY = "deny"
-    REQUIRE_APPROVAL = "require_approval"
 
 
 @dataclass(frozen=True)

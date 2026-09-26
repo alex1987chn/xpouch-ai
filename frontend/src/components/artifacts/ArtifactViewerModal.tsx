@@ -76,8 +76,10 @@ export function ArtifactViewerModal({ artifactId, onClose, threadId, docArtifact
         language: docArtifact.language ?? null,
         content: docArtifact.content,
         content_preview: '',
-        created_at: docArtifact.created_at ?? null,
+        created_at: docArtifact.created_at ?? '',
         thread_id: null,
+        sort_order: 0,
+        content_length: docArtifact.content.length,
       }
     : detailQuery.data
 
