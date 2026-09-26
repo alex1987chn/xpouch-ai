@@ -15,7 +15,7 @@
 ## 工程债（待排期）
 
 - [ ] 事件双真相源统一：同一组 pydantic 模型约束 SSE 流与 run_events 账本
-- [ ] 后端半异步二选一（全同步线程池 vs 正规 async engine；T4 生产确认已过——2026-09-26 部署后日志干净，可排期）
+- [ ] 后端半异步二选一（全同步线程池 vs 正规 async engine；T4 生产确认已过——2026-09-26 部署后日志干净，可排期）。**2026-09-27 spike 已验证全异步可行**：`sqlmodel.ext.asyncio.AsyncSession` + `await exec()` 与同步 API 同形（单列聚合标量语义不变，硬约束兼容），`+psycopg` 同 URL 直喂 `create_async_engine`，写路径 flush/RETURNING 正常；唯一结构性雷区=Relationship 懒加载 async 下必炸 MissingGreenlet（模型 14 处声明、crud/services 实际访问约 12-15 处，可枚举改显式查询/selectinload）。另：85% 的 to_thread 桥在必留 async 的执行链（stream_service/recovery/节点），全同步方案只能清 7 处——全异步是唯一能根治执行链桥的选项；顺序应「全异步 → StreamService/generic 拆解」避免同批文件动两次
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）
