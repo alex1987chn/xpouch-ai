@@ -83,7 +83,7 @@ def test_update_and_clear_work_like_a_mapping():
     assert len(cache) == 0
 
 
-def test_expert_refresh_invalidates_node_local_caches():
+async def test_expert_refresh_invalidates_node_local_caches():
     """回归真实事故：管理员改配置后，节点本地缓存必须也失效（旧机制靠注册表，
     漏注册就静默用旧值）。这里直接读节点模块里那两个缓存对象。"""
     from agents.nodes.generic import _generic_expert_cache
@@ -92,7 +92,7 @@ def test_expert_refresh_invalidates_node_local_caches():
     _generic_expert_cache["coder"] = {"system_prompt": "旧提示词"}
     assert _generic_expert_cache.get("coder") is not None
 
-    refresh_cache(session=None)
+    await refresh_cache(session=None)
 
     assert _generic_expert_cache.get("coder") is None, "节点本地缓存未被失效"
 

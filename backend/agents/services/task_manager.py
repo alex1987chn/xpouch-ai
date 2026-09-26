@@ -36,7 +36,7 @@ from utils.time import utc_now
 # =============================================================================
 
 
-def get_or_create_execution_plan(
+async def get_or_create_execution_plan(
     db: Session,
     thread_id: str,
     run_id: str | None,
@@ -89,7 +89,7 @@ def get_or_create_execution_plan(
     """
     # 幂等（同一 run 内节点重执行）→ 复用已建计划，不触碰子任务
     if run_id is not None:
-        existing = get_execution_plan_by_run(db, run_id)
+        existing = await get_execution_plan_by_run(db, run_id)
         if existing is not None:
             logger.info(f"[TaskManager] 复用本 run 的 ExecutionPlan {existing.id}（不重建子任务）")
             return existing, True
@@ -97,7 +97,7 @@ def get_or_create_execution_plan(
     # 其余情况一律**新建一份计划**：不删除任何既有计划、子任务或产物。
     # 同会话里「先生成网页、再写小游戏」应各留一份计划与产物（产物是会话级
     # 交付物，不能因后续任务重新规划而消失），任务历史也随之保留。
-    execution_plan = create_execution_plan_with_subtasks(
+    execution_plan = await create_execution_plan_with_subtasks(
         db=db,
         thread_id=thread_id,
         run_id=run_id,
@@ -111,7 +111,7 @@ def get_or_create_execution_plan(
     return execution_plan, False
 
 
-def complete_execution_plan(db: Session, execution_plan_id: str, final_response: str) -> None:
+async def complete_execution_plan(db: Session, execution_plan_id: str, final_response: str) -> None:
     """
     标记执行计划为已完成
 
@@ -123,7 +123,7 @@ def complete_execution_plan(db: Session, execution_plan_id: str, final_response:
     Example:
         >>> complete_execution_plan(db, "plan_abc", "所有任务已完成，结果是...")
     """
-    update_execution_plan_status(
+    await update_execution_plan_status(
         db, execution_plan_id, TaskStatus.COMPLETED, final_response=final_response
     )
 
@@ -133,7 +133,7 @@ def complete_execution_plan(db: Session, execution_plan_id: str, final_response:
 # =============================================================================
 
 
-def save_expert_execution_result(
+async def save_expert_execution_result(
     db: Session,
     task_id: str,
     expert_type: str,
@@ -162,7 +162,7 @@ def save_expert_execution_result(
     """
     try:
         # 1. 检查 SubTask 是否存在
-        subtask = get_subtask(db, task_id)
+        subtask = await get_subtask(db, task_id)
         if not subtask:
             logger.warning(f"[TaskManager] SubTask 不存在: {task_id}")
             return False
@@ -175,8 +175,8 @@ def save_expert_execution_result(
             subtask.duration_ms = duration_ms
         subtask.updated_at = utc_now()
         db.add(subtask)
-        db.commit()
-        db.refresh(subtask)
+        await db.commit()
+        await db.refresh(subtask)
 
         execution_plan = subtask.execution_plan
         run_id = execution_plan.run_id if execution_plan else None
@@ -206,7 +206,7 @@ def save_expert_execution_result(
                 language=artifact_data.get("language"),
                 sort_order=artifact_data.get("sort_order", 0),
             )
-            created_artifacts = create_artifacts_batch(db, task_id, [artifact_create])
+            created_artifacts = await create_artifacts_batch(db, task_id, [artifact_create])
             if run_id and thread_id:
                 for created_artifact in created_artifacts:
                     emit_artifact_generated(
@@ -221,7 +221,7 @@ def save_expert_execution_result(
                     )
 
         if run_id and thread_id:
-            db.commit()
+            await db.commit()
 
         return True
 

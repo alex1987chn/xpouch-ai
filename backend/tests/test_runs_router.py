@@ -10,7 +10,7 @@ class _FakeSession:
         self._runs_by_id = runs_by_id or {}
         self._threads_by_id = threads_by_id or {}
 
-    def get(self, model, object_id):
+    async def get(self, model, object_id):
         if model is AgentRun:
             return self._runs_by_id.get(object_id)
         if model is Thread:

@@ -32,7 +32,7 @@ NODE_FILES = [
 def test_nodes_use_emit_event_as_sole_event_exit():
     for node_file in NODE_FILES:
         code = _read(node_file)
-        assert "emit_event(" in code, f"{node_file} 应通过 emit_event 发射事件"
+        assert "await emit_event(" in code, f"{node_file} 应通过 emit_event 发射事件"
         assert "sse_event_to_string" not in code, f"{node_file} 不得直构 SSE 线格式"
         assert "append_sse_event" not in code, f"{node_file} 不得再写 event_queue"
         assert "get_event_queue_snapshot" not in code, f"{node_file} 不得读取 event_queue"
@@ -72,7 +72,7 @@ def test_emit_event_roundtrip_through_custom_stream():
 
     async def _run():
         wires = []
-        async for token in compiled.astream_events({"x": ""}, version="v2"):
+        async for token in await compiled.astream_events({"x": ""}, version="v2"):
             if token.get("event") == "on_custom_event" and token.get("name") == "sse_event":
                 wire = sse_payload_to_wire(token)
                 if wire:
@@ -86,14 +86,14 @@ def test_emit_event_roundtrip_through_custom_stream():
     assert "契约测试" in wires[0]
 
 
-def test_emit_event_safe_outside_graph_context():
+async def test_emit_event_safe_outside_graph_context():
     """无图执行上下文时 no-op 不抛异常（单元测试/直调场景）。"""
     import asyncio
 
     from agents.event_stream import emit_event
     from utils.event_generator import event_router_start
 
-    asyncio.run(emit_event(event_router_start(query="no-op")))  # 不应抛异常
+    asyncio.run(await emit_event(event_router_start(query="no-op")))  # 不应抛异常
 
 
 def test_replace_task_item_returns_new_list_and_merges_fields():

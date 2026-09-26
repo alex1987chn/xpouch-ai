@@ -7,20 +7,18 @@ v3.5 更新：实现三层兜底提示词体系 (DB -> Cache -> Constants)
 v3.6 优化: P0 修复 + TTLCache 本地内存缓存高频查询
 """
 
-import asyncio
 import uuid
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from sqlmodel import Session
 
 from agents.event_stream import emit_event
 from agents.services.expert_manager import get_expert_config_cached
 from agents.services.task_manager import complete_execution_plan
 from agents.state import AgentState
 from constants import AGGREGATOR_SYSTEM_PROMPT
-from database import engine
+from database import SessionFactory
 from services.chat.thread_service import save_assistant_message_sync
 from utils.config_cache import ConfigCache
 from utils.event_generator import event_message_delta, event_message_done
@@ -122,7 +120,6 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
 
     # v3.2: 更新执行计划状态并持久化聚合消息 (通过 TaskManager)
     # 🔥 使用独立的数据库会话（避免 MemorySaver 序列化问题）
-    # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
     # v3.7: 🔥🔥🔥 关键修复：在 aggregator 内部直接更新 AgentRun 状态
     # 这样无论 SSE 连接是否断开，状态都会正确更新
     run_id = state.get("run_id")  # 获取当前运行实例 ID
@@ -135,30 +132,30 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
         # 复杂模式下是最后一个专家的原始产出、**不是**综述正文），且只有一行
         # 无堆栈的 warning。现在每件独立提交、失败各自如实报错。
 
-        def _mark_plan_completed() -> None:
-            with Session(engine) as db_session:
-                complete_execution_plan(db_session, execution_plan_id, final_response)
+        async def _mark_plan_completed() -> None:
+            async with SessionFactory() as db_session:
+                await complete_execution_plan(db_session, execution_plan_id, final_response)
 
-        def _persist_summary() -> None:
+        async def _persist_summary() -> None:
             if not thread_id:
                 return
-            with Session(engine) as db_session:
+            async with SessionFactory() as db_session:
                 # 统一走 thread_service 同步核心（think 标签清洗）；
                 # message_id 用本节点自造的聚合 id（与 delta/done 同源）
-                save_assistant_message_sync(
+                await save_assistant_message_sync(
                     db_session,
                     thread_id,
                     final_response,
                     message_id=message_id,
                 )
 
-        def _mark_run_completed() -> None:
+        async def _mark_run_completed() -> None:
             if not run_id:
                 return
             from crud.agent_run import mark_run_completed_by_id
 
-            with Session(engine) as db_session:
-                mark_run_completed_by_id(db_session, run_id)
+            async with SessionFactory() as db_session:
+                await mark_run_completed_by_id(db_session, run_id)
 
         failed: list[str] = []
         for _label, _step in (
@@ -167,7 +164,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
             ("更新 AgentRun 状态", _mark_run_completed),
         ):
             try:
-                await asyncio.to_thread(_step)
+                await _step()
             except Exception as e:
                 failed.append(_label)
                 logger.error("[AGG] %s 失败: %s", _label, e, exc_info=True)

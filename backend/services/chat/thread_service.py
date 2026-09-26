@@ -70,7 +70,7 @@ def _build_document_context_blocks(extra_data: dict | str | None) -> str:
     return "".join(blocks)
 
 
-def save_assistant_message_sync(
+async def save_assistant_message_sync(
     db: Session,
     thread_id: str,
     content: str,
@@ -98,23 +98,23 @@ def save_assistant_message_sync(
     )
 
     # 更新线程时间
-    thread = db.get(Thread, thread_id)
+    thread = await db.get(Thread, thread_id)
     if thread:
         thread.updated_at = utc_now()
         db.add(thread)
 
-    db.commit()
+    await db.commit()
     return message
 
 
-def get_thread_or_raise(db: Session, thread_id: str, user_id: str) -> Thread:
+async def get_thread_or_raise(db: Session, thread_id: str, user_id: str) -> Thread:
     """线程归属校验单一实现（run 侧对称物：run_lifecycle.get_agent_run_or_raise）。
 
     此前同款「不存在→404 / 非属主→403」块在 thread_service / runs / chat /
     share_service 至少 6 处复制粘贴。注意 artifact_service 的两处**有意不走
     这里**：它们经 subtask→plan 间接取 thread，且对孤儿 thread 放行（宽松语义）。
     """
-    thread = db.get(Thread, thread_id)
+    thread = await db.get(Thread, thread_id)
     if not thread:
         raise NotFoundError(resource="会话")
     if thread.user_id != user_id:
@@ -143,7 +143,7 @@ class ChatThreadService:
 
         Returns:
             分页结果，包含线程列表和分页信息
-            需要消息内容请调用 get_thread_messages(thread_id)
+            需要消息内容请调用 await get_thread_messages(thread_id)
         """
         # 限制每页最大条数
         limit = min(limit, 100)
@@ -153,7 +153,7 @@ class ChatThreadService:
         count_statement = (
             sa_select(func.count()).select_from(Thread).where(Thread.user_id == user_id)
         )
-        total = self.db.exec(count_statement).one()[0]
+        total = await self.db.exec(count_statement).one()[0]
 
         # 2. 查询当前页线程（不预加载消息）
         statement = (
@@ -163,7 +163,7 @@ class ChatThreadService:
             .offset(offset)
             .limit(limit)
         )
-        threads = self.db.exec(statement).all()
+        threads = await self.db.exec(statement).all()
 
         if not threads:
             return {
@@ -189,7 +189,7 @@ class ChatThreadService:
             .where(Message.thread_id.in_(thread_ids))
             .group_by(Message.thread_id)
         )
-        count_rows = self.db.exec(count_stmt).all()
+        count_rows = await self.db.exec(count_stmt).all()
 
         # 3.2 使用子查询获取每个线程的最大时间戳，再关联获取消息内容
         subquery = (
@@ -207,7 +207,7 @@ class ChatThreadService:
             (Message.thread_id == subquery.c.thread_id)
             & (Message.created_at == subquery.c.max_created_at),
         )
-        last_msg_rows = self.db.exec(last_msg_stmt).all()
+        last_msg_rows = await self.db.exec(last_msg_stmt).all()
 
         # 3.3 组装统计信息
         stats_by_thread: dict[str, dict] = {}
@@ -227,7 +227,7 @@ class ChatThreadService:
             .where(AgentRun.thread_id.in_(thread_ids))
             .order_by(AgentRun.thread_id, AgentRun.created_at.desc())
         )
-        all_runs = self.db.exec(run_stmt).all()
+        all_runs = await self.db.exec(run_stmt).all()
 
         # 每个 thread 只保留最新的 run
         latest_run_by_thread: dict[str, AgentRun] = {}
@@ -277,13 +277,13 @@ class ChatThreadService:
             AuthorizationError: 无权访问此线程
         """
         # 1. 验证线程存在且属于当前用户（本方法不消费 thread 实例）
-        get_thread_or_raise(self.db, thread_id, user_id)
+        await get_thread_or_raise(self.db, thread_id, user_id)
 
         # 2. 查询消息（按时间正序）
         statement = (
             select(Message).where(Message.thread_id == thread_id).order_by(Message.created_at.asc())
         )
-        messages = self.db.exec(statement).all()
+        messages = await self.db.exec(statement).all()
 
         # 3. 返回完整消息
         return [
@@ -317,7 +317,7 @@ class ChatThreadService:
         statement = (
             select(Thread).where(Thread.id == thread_id).options(selectinload(Thread.messages))
         )
-        thread = self.db.exec(statement).first()
+        thread = await self.db.exec(statement).first()
         if not thread:
             raise NotFoundError(resource="会话")
         if thread.user_id != user_id:
@@ -333,7 +333,7 @@ class ChatThreadService:
 
     async def _build_complex_thread_response(self, thread: Thread) -> dict:
         """构建复杂模式的线程响应（包含 ExecutionPlan 详情）"""
-        execution_plan = self.db.get(ExecutionPlan, thread.execution_plan_id)
+        execution_plan = await self.db.get(ExecutionPlan, thread.execution_plan_id)
         if not execution_plan:
             return self._build_simple_thread_response(thread)
 
@@ -344,7 +344,7 @@ class ChatThreadService:
             .options(selectinload(SubTask.artifacts))
             .order_by(SubTask.sort_order)
         )
-        sub_tasks = self.db.exec(statement).all()
+        sub_tasks = await self.db.exec(statement).all()
 
         base_response = self._build_simple_thread_response(thread)
         base_response["execution_plan"] = {
@@ -385,9 +385,9 @@ class ChatThreadService:
         }
         return base_response
 
-    def _get_latest_run(self, thread_id: str) -> AgentRun | None:
+    async def _get_latest_run(self, thread_id: str) -> AgentRun | None:
         """获取线程最近一次运行实例。"""
-        return self.db.exec(
+        return await self.db.exec(
             select(AgentRun)
             .where(AgentRun.thread_id == thread_id)
             .order_by(AgentRun.created_at.desc())
@@ -414,13 +414,13 @@ class ChatThreadService:
             "started_at": agent_run.started_at.isoformat() if agent_run.started_at else None,
         }
 
-    def _build_simple_thread_response(self, thread: Thread) -> dict:
+    async def _build_simple_thread_response(self, thread: Thread) -> dict:
         """构建简单模式的线程响应"""
         # 🔥 后端兜底排序：确保消息按时间戳升序排列
         sorted_messages = sorted(
             thread.messages, key=lambda m: m.created_at or datetime.min.replace(tzinfo=UTC)
         )
-        latest_run = self._get_latest_run(thread.id)
+        latest_run = await self._get_latest_run(thread.id)
         return {
             "id": thread.id,
             "title": thread.title,
@@ -458,28 +458,30 @@ class ChatThreadService:
             NotFoundError: 线程不存在
             AuthorizationError: 无权删除此线程
         """
-        thread = get_thread_or_raise(self.db, thread_id, user_id)
+        thread = await get_thread_or_raise(self.db, thread_id, user_id)
 
-        execution_plans = self.db.exec(
+        execution_plans = await self.db.exec(
             select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
         ).all()
-        agent_runs = self.db.exec(select(AgentRun).where(AgentRun.thread_id == thread_id)).all()
+        agent_runs = await self.db.exec(
+            select(AgentRun).where(AgentRun.thread_id == thread_id)
+        ).all()
 
         # Thread.execution_plan_id 与 ExecutionPlan.thread_id 形成双向引用。
         # 删除前先断开 Thread -> ExecutionPlan 的引用，避免数据库外键约束报错。
         if thread.execution_plan_id is not None:
             thread.execution_plan_id = None
             self.db.add(thread)
-            self.db.flush()
+            await self.db.flush()
 
         for execution_plan in execution_plans:
-            self.db.delete(execution_plan)
+            await self.db.delete(execution_plan)
 
         for agent_run in agent_runs:
-            self.db.delete(agent_run)
+            await self.db.delete(agent_run)
 
-        self.db.delete(thread)
-        self.db.commit()
+        await self.db.delete(thread)
+        await self.db.commit()
         return True
 
     async def get_or_create_thread(
@@ -498,7 +500,7 @@ class ChatThreadService:
             Thread实例（新建或现有）
         """
         if thread_id:
-            thread = self.db.get(Thread, thread_id)
+            thread = await self.db.get(Thread, thread_id)
             if thread:
                 if thread.user_id != user_id:
                     raise AuthorizationError("没有权限访问此会话")
@@ -530,8 +532,8 @@ class ChatThreadService:
             updated_at=utc_now(),
         )
         self.db.add(thread)
-        self.db.commit()
-        self.db.refresh(thread)
+        await self.db.commit()
+        await self.db.refresh(thread)
         return thread
 
     # ============================================================================
@@ -558,7 +560,7 @@ class ChatThreadService:
         message = create_user_message(
             self.db, thread_id=thread_id, content=content, extra_data=extra_data
         )
-        self.db.commit()
+        await self.db.commit()
         return message
 
     async def save_assistant_message(
@@ -580,7 +582,7 @@ class ChatThreadService:
         Returns:
             保存的消息实例
         """
-        return save_assistant_message_sync(
+        return await save_assistant_message_sync(
             self.db, thread_id, content, thinking_data=thinking_data, message_id=message_id
         )
 
@@ -597,7 +599,7 @@ class ChatThreadService:
         statement = (
             select(Message).where(Message.thread_id == thread_id).order_by(Message.created_at)
         )
-        db_messages = self.db.exec(statement).all()
+        db_messages = await self.db.exec(statement).all()
 
         langchain_messages = []
         for msg in db_messages:
@@ -664,10 +666,10 @@ class ChatThreadService:
             agent_type: agent 类型 (simple/complex/ai)
             execution_plan_id: 关联的 ExecutionPlan ID（可选）
         """
-        thread = self.db.get(Thread, thread_id)
+        thread = await self.db.get(Thread, thread_id)
         if thread:
             thread.agent_type = agent_type
             if execution_plan_id:
                 thread.execution_plan_id = execution_plan_id
             self.db.add(thread)
-            self.db.commit()
+            await self.db.commit()

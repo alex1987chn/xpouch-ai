@@ -106,7 +106,7 @@ class _StubSession:
     def __init__(self, stored: SystemSetting | None = None):
         self._stored = stored
 
-    def get(self, model, pk):  # noqa: ANN001 - 模拟 SQLModel Session.get 签名
+    async def get(self, model, pk):  # noqa: ANN001 - 模拟 SQLModel Session.get 签名
         if model is SystemSetting and self._stored is not None and self._stored.key == pk:
             return self._stored
         return None
@@ -114,35 +114,35 @@ class _StubSession:
     def add(self, instance):  # noqa: ANN001
         self._stored = instance
 
-    def commit(self):
+    async def commit(self):
         pass
 
 
-def test_load_model_preferences_defaults_when_unset():
-    prefs = load_model_preferences(_StubSession())
+async def test_load_model_preferences_defaults_when_unset():
+    prefs = await load_model_preferences(_StubSession())
     assert prefs == {"simple_model": None, "simple_thinking": "auto"}
 
 
-def test_save_then_load_roundtrip():
+async def test_save_then_load_roundtrip():
     session = _StubSession()
-    saved = save_model_preferences(session, simple_model="kimi-k2.6", simple_thinking="enabled")
+    saved = await save_model_preferences(session, simple_model="kimi-k2.6", simple_thinking="enabled")
     assert saved == {"simple_model": "kimi-k2.6", "simple_thinking": "enabled"}
-    assert load_model_preferences(session) == {
+    assert await load_model_preferences(session) == {
         "simple_model": "kimi-k2.6",
         "simple_thinking": "enabled",
     }
 
 
-def test_load_model_preferences_dirty_json_falls_back():
+async def test_load_model_preferences_dirty_json_falls_back():
     dirty = SystemSetting(key="model_preferences", value="not-a-json")
-    prefs = load_model_preferences(_StubSession(dirty))
+    prefs = await load_model_preferences(_StubSession(dirty))
     assert prefs == {"simple_model": None, "simple_thinking": "auto"}
 
 
-def test_load_model_preferences_dirty_thinking_sanitized():
+async def test_load_model_preferences_dirty_thinking_sanitized():
     dirty = SystemSetting(
         key="model_preferences",
         value='{"simple_model": "kimi-k3", "simple_thinking": "banana"}',
     )
-    prefs = load_model_preferences(_StubSession(dirty))
+    prefs = await load_model_preferences(_StubSession(dirty))
     assert prefs == {"simple_model": "kimi-k3", "simple_thinking": "auto"}

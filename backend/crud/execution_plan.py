@@ -21,7 +21,7 @@ from models import (
 from utils.time import utc_now
 
 
-def create_execution_plan(
+async def create_execution_plan(
     db: Session,
     thread_id: str,
     user_query: str,
@@ -39,40 +39,40 @@ def create_execution_plan(
         status=TaskStatus.PENDING,
     )
     db.add(execution_plan)
-    db.commit()
-    db.refresh(execution_plan)
+    await db.commit()
+    await db.refresh(execution_plan)
     return execution_plan
 
 
-def get_execution_plan(db: Session, execution_plan_id: str) -> ExecutionPlan | None:
+async def get_execution_plan(db: Session, execution_plan_id: str) -> ExecutionPlan | None:
     """获取执行计划详情。"""
     statement = select(ExecutionPlan).where(ExecutionPlan.id == execution_plan_id)
-    return db.exec(statement).first()
+    return await db.exec(statement).first()
 
 
-def get_execution_plan_by_run(db: Session, run_id: str) -> ExecutionPlan | None:
+async def get_execution_plan_by_run(db: Session, run_id: str) -> ExecutionPlan | None:
     """按 run_id 获取 ExecutionPlan（一 run 一计划，故至多一份）。"""
-    return db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
+    return await db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
 
 
-def get_latest_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
+async def get_latest_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
     """取线程**最新**的执行计划（显式 created_at 倒序；一个会话可有多份计划，
     一 run 一计划，先生成网页再写小游戏各留一份、互不覆盖）。"""
-    return db.exec(
+    return await db.exec(
         select(ExecutionPlan)
         .where(ExecutionPlan.thread_id == thread_id)
         .order_by(ExecutionPlan.created_at.desc())
     ).first()
 
 
-def update_execution_plan_status(
+async def update_execution_plan_status(
     db: Session,
     execution_plan_id: str,
     status: TaskStatus,
     final_response: str | None = None,
 ) -> ExecutionPlan | None:
     """更新执行计划状态和最终响应。"""
-    execution_plan = get_execution_plan(db, execution_plan_id)
+    execution_plan = await get_execution_plan(db, execution_plan_id)
     if not execution_plan:
         return None
 
@@ -84,28 +84,28 @@ def update_execution_plan_status(
     execution_plan.updated_at = utc_now()
 
     db.add(execution_plan)
-    db.commit()
-    db.refresh(execution_plan)
+    await db.commit()
+    await db.refresh(execution_plan)
     return execution_plan
 
 
-def get_subtask(db: Session, subtask_id: str) -> SubTask | None:
+async def get_subtask(db: Session, subtask_id: str) -> SubTask | None:
     """获取子任务详情。"""
     statement = select(SubTask).where(SubTask.id == subtask_id)
-    return db.exec(statement).first()
+    return await db.exec(statement).first()
 
 
-def get_subtasks_by_execution_plan(db: Session, execution_plan_id: str) -> list[SubTask]:
+async def get_subtasks_by_execution_plan(db: Session, execution_plan_id: str) -> list[SubTask]:
     """获取执行计划的所有子任务。"""
     statement = (
         select(SubTask)
         .where(SubTask.execution_plan_id == execution_plan_id)
         .order_by(SubTask.sort_order)
     )
-    return list(db.exec(statement).all())
+    return list(await db.exec(statement).all())
 
 
-def update_subtask_status(
+async def update_subtask_status(
     db: Session,
     subtask_id: str,
     status: str,
@@ -114,7 +114,7 @@ def update_subtask_status(
     duration_ms: int | None = None,
 ) -> SubTask | None:
     """更新子任务状态。"""
-    subtask = get_subtask(db, subtask_id)
+    subtask = await get_subtask(db, subtask_id)
     if not subtask:
         return None
 
@@ -132,21 +132,21 @@ def update_subtask_status(
 
     subtask.updated_at = utc_now()
     db.add(subtask)
-    db.commit()
-    db.refresh(subtask)
+    await db.commit()
+    await db.refresh(subtask)
     return subtask
 
 
-def _derive_thread_id(db: Session, sub_task_id: str) -> str | None:
+async def _derive_thread_id(db: Session, sub_task_id: str) -> str | None:
     """从 subtask→executionplan 链路派生 thread_id（artifact 冗余列写入用）。"""
-    subtask = db.get(SubTask, sub_task_id)
+    subtask = await db.get(SubTask, sub_task_id)
     if not subtask or not subtask.execution_plan_id:
         return None
-    plan = db.get(ExecutionPlan, subtask.execution_plan_id)
+    plan = await db.get(ExecutionPlan, subtask.execution_plan_id)
     return plan.thread_id if plan else None
 
 
-def create_artifacts_batch(
+async def create_artifacts_batch(
     db: Session,
     sub_task_id: str,
     artifacts_data: list[ArtifactCreate],
@@ -157,13 +157,13 @@ def create_artifacts_batch(
     两条路径到达（专家完成时的实时保存 + 流结束时的批量收集），此前会
     重复插入（每个任务出现两行相同产物）。
     """
-    existing = db.exec(
+    existing = await db.exec(
         select(Artifact.sub_task_id).where(Artifact.sub_task_id == sub_task_id)
     ).first()
     if existing is not None:
         return []
 
-    thread_id = _derive_thread_id(db, sub_task_id)
+    thread_id = await _derive_thread_id(db, sub_task_id)
     artifacts = []
     for idx, data in enumerate(artifacts_data):
         artifact_kwargs = {
@@ -182,28 +182,28 @@ def create_artifacts_batch(
         artifacts.append(artifact)
         db.add(artifact)
 
-    db.commit()
+    await db.commit()
     for artifact in artifacts:
-        db.refresh(artifact)
+        await db.refresh(artifact)
 
     return artifacts
 
 
-def get_artifact(db: Session, artifact_id: str) -> Artifact | None:
+async def get_artifact(db: Session, artifact_id: str) -> Artifact | None:
     """获取产物详情。"""
     statement = select(Artifact).where(Artifact.id == artifact_id)
-    return db.exec(statement).first()
+    return await db.exec(statement).first()
 
 
-def get_artifacts_by_subtask(db: Session, sub_task_id: str) -> list[Artifact]:
+async def get_artifacts_by_subtask(db: Session, sub_task_id: str) -> list[Artifact]:
     """获取子任务的所有产物。"""
     statement = (
         select(Artifact).where(Artifact.sub_task_id == sub_task_id).order_by(Artifact.sort_order)
     )
-    return list(db.exec(statement).all())
+    return list(await db.exec(statement).all())
 
 
-def update_artifact_content(db: Session, artifact_id: str, content: str) -> Artifact | None:
+async def update_artifact_content(db: Session, artifact_id: str, content: str) -> Artifact | None:
     """更新产物内容。"""
     artifact = get_artifact(db, artifact_id)
     if not artifact:
@@ -211,20 +211,20 @@ def update_artifact_content(db: Session, artifact_id: str, content: str) -> Arti
 
     artifact.content = content
     db.add(artifact)
-    db.commit()
-    db.refresh(artifact)
+    await db.commit()
+    await db.refresh(artifact)
     return artifact
 
 
-def get_thread_titles_map(db: Session, thread_ids: list[str]) -> dict[str, str | None]:
+async def get_thread_titles_map(db: Session, thread_ids: list[str]) -> dict[str, str | None]:
     """批量取会话标题（产物卡片展示来源会话用），缺失的会话不出现在结果里。"""
     if not thread_ids:
         return {}
-    rows = db.exec(select(Thread.id, Thread.title).where(Thread.id.in_(thread_ids))).all()
+    rows = await db.exec(select(Thread.id, Thread.title).where(Thread.id.in_(thread_ids))).all()
     return {row[0]: row[1] for row in rows}
 
 
-def list_artifacts_for_user(
+async def list_artifacts_for_user(
     db: Session,
     user_id: str,
     thread_id: str | None = None,
@@ -250,14 +250,14 @@ def list_artifacts_for_user(
         pattern = f"%{search}%"
         base_filters.append(or_(Artifact.title.ilike(pattern), Artifact.content.ilike(pattern)))
 
-    total = db.exec(
+    total = await db.exec(
         select(func.count())
         .select_from(Artifact)
         .join(Thread, Artifact.thread_id == Thread.id)
         .where(*base_filters)
     ).one()
 
-    items = db.exec(
+    items = await db.exec(
         select(Artifact)
         .join(Thread, Artifact.thread_id == Thread.id)
         .where(*base_filters)
@@ -275,7 +275,7 @@ def list_artifacts_for_user(
     }
 
 
-def create_execution_plan_with_subtasks(
+async def create_execution_plan_with_subtasks(
     db: Session,
     thread_id: str,
     run_id: str | None,
@@ -301,16 +301,16 @@ def create_execution_plan_with_subtasks(
 
     execution_plan = ExecutionPlan(**execution_plan_data)
     db.add(execution_plan)
-    db.flush()
+    await db.flush()
 
-    create_subtasks(db, execution_plan.id, subtasks_data)
+    await create_subtasks(db, execution_plan.id, subtasks_data)
 
-    db.commit()
-    db.refresh(execution_plan)
+    await db.commit()
+    await db.refresh(execution_plan)
     return execution_plan
 
 
-def create_subtasks(
+async def create_subtasks(
     db: Session,
     execution_plan_id: str,
     subtasks_data: list[SubTaskCreate],
@@ -345,7 +345,7 @@ def create_subtasks(
             status=TaskStatus.PENDING,
         )
         db.add(subtask)
-        db.flush()
+        await db.flush()
 
         if data.task_id:
             task_id_to_subtask[data.task_id] = subtask
@@ -363,5 +363,5 @@ def create_subtasks(
         subtask.depends_on = new_depends_on
         db.add(subtask)
 
-    db.flush()
+    await db.flush()
     return [subtask for subtask, _ in subtask_list]

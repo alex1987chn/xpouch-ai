@@ -34,6 +34,7 @@ from crud.run_event import (
     emit_plan_updated,
     emit_run_cancelled,
 )
+from database import SessionFactory
 from models import AgentRun, ExecutionPlan, RunStatus, Thread, User
 from models.enums import TERMINAL_RUN_STATUSES, TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
@@ -119,14 +120,14 @@ class RecoveryService:
         )
 
         # 1. 验证线程存在且属于当前用户
-        thread = self.db.get(Thread, thread_id)
+        thread = await self.db.get(Thread, thread_id)
         if not thread:
             raise NotFoundError(f"Thread not found: {thread_id}")
 
         if thread.user_id != user_id:
             raise AuthorizationError("无权访问此线程")
 
-        agent_run = self._get_run_or_raise(run_id, thread_id)
+        agent_run = await self._get_run_or_raise(run_id, thread_id)
         if agent_run.user_id != user_id:
             raise AuthorizationError("无权访问此运行实例")
 
@@ -200,7 +201,7 @@ class RecoveryService:
         ——审计面是治理留痕，不是内容副本（量、隐私、性能三重考量）。
         用户名在此懒查（成功路径才碰 user 表），守卫/校验失败路径零额外查询。
         """
-        audit_user = self.db.get(User, actor_user_id)
+        audit_user = await self.db.get(User, actor_user_id)
         record_audit(
             self.db,
             actor_user_id=actor_user_id,
@@ -209,7 +210,7 @@ class RecoveryService:
             target=f"run:{run_id}",
             detail={"thread_id": thread_id, **detail},
         )
-        await asyncio.to_thread(self.db.commit)
+        await self.db.commit()
 
     async def _handle_rejection(
         self, thread_id: str, run_id: str, feedback: str | None = None
@@ -255,7 +256,7 @@ class RecoveryService:
         )
 
         await self._update_run_status(run_id, RunStatus.CANCELLED)
-        await asyncio.to_thread(self.db.commit)
+        await self.db.commit()
 
         return {"status": "cancelled", "message": "计划已被用户拒绝"}
 
@@ -281,13 +282,13 @@ class RecoveryService:
         if not trimmed:
             raise ValidationError("修订必须附上反馈，否则规划专家无从下手")
 
-        agent_run = self._get_run_or_raise(run_id, thread_id)
+        agent_run = await self._get_run_or_raise(run_id, thread_id)
         if agent_run.user_id != user_id:
             raise AuthorizationError("无权访问此运行实例")
         if agent_run.status != RunStatus.WAITING_FOR_APPROVAL:
             raise ValidationError("当前运行不在等待审批状态，无法修订")
 
-        execution_plan = self.db.exec(
+        execution_plan = await self.db.exec(
             select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
         ).first()
         if not execution_plan:
@@ -305,7 +306,7 @@ class RecoveryService:
             plan_version=execution_plan.plan_version,
             feedback=trimmed,
         )
-        await asyncio.to_thread(self.db.commit)
+        await self.db.commit()
 
         logger.info(
             f"[HITL REVISION] run={run_id} 进入修订中（plan v{execution_plan.plan_version}）"
@@ -331,10 +332,9 @@ class RecoveryService:
         两种结局 run 都停留在 WAITING_FOR_APPROVAL，等待用户再次裁决。
         """
         from agents.services.plan_revision import revise_plan_tasks
-        from database import engine
 
-        with Session(engine) as session:
-            plan = session.get(ExecutionPlan, execution_plan_id)
+        async with SessionFactory() as session:
+            plan = await session.get(ExecutionPlan, execution_plan_id)
             if not plan:
                 logger.error(f"[HITL REVISION] 计划不存在: {execution_plan_id}")
                 return
@@ -358,8 +358,8 @@ class RecoveryService:
 
                 # 替换子任务（ORM 级联 delete-orphan）
                 for st in list(plan.sub_tasks):
-                    session.delete(st)
-                await asyncio.to_thread(session.flush)
+                    await session.delete(st)
+                await session.flush()
 
                 # 与新建路径共用同一套「建行 + 接依赖线」实现：
                 # 修订输出的 id/depends_on 是 LLM 的 "1"/"2" 命名空间，必须经
@@ -375,8 +375,7 @@ class RecoveryService:
                 for index, task in enumerate(revised.tasks, start=1):
                     task.id = str(index)
                 revised_tasks = build_plan_tasks(list(revised.tasks))
-                await asyncio.to_thread(
-                    create_subtasks,
+                await create_subtasks(
                     session,
                     plan.id,
                     [task.to_subtask_create() for task in revised_tasks],
@@ -395,13 +394,13 @@ class RecoveryService:
                     plan_version=plan.plan_version,
                     task_count=len(revised.tasks),
                 )
-                await asyncio.to_thread(session.commit)
+                await session.commit()
                 logger.info(
                     f"[HITL REVISION] 修订完成：run={run_id} v{plan.plan_version}"
                     f"（{len(revised.tasks)} 个任务）"
                 )
             except Exception as exc:  # noqa: BLE001 — 任何失败都退回"原计划待审"
-                session.rollback()
+                await session.rollback()
                 emit_hitl_revision_failed(
                     session,
                     run_id=run_id,
@@ -410,12 +409,12 @@ class RecoveryService:
                     plan_version=plan.plan_version,
                     error=str(exc),
                 )
-                await asyncio.to_thread(session.commit)
+                await session.commit()
                 logger.error(f"[HITL REVISION] 修订失败，保持原计划待审: {exc}")
 
     async def cancel_run(self, run_id: str, user_id: str) -> dict[str, str]:
         """显式取消指定运行实例。"""
-        agent_run = self.db.get(AgentRun, run_id)
+        agent_run = await self.db.get(AgentRun, run_id)
         if not agent_run:
             raise NotFoundError(f"AgentRun not found: {run_id}")
         if agent_run.user_id != user_id:
@@ -432,15 +431,15 @@ class RecoveryService:
                 "message": "运行已处于终态，无需重复取消",
             }
 
-        cancelled = mark_run_cancelled_by_id(
+        cancelled = await mark_run_cancelled_by_id(
             self.db,
             run_id,
             current_node=agent_run.current_node,
         )
         if cancelled is not None:
-            self.db.commit()
+            await self.db.commit()
 
-        execution_plan = self.db.exec(
+        execution_plan = await self.db.exec(
             select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
         ).first()
         if execution_plan:
@@ -450,7 +449,7 @@ class RecoveryService:
             execution_plan.updated_at = utc_now()
             execution_plan.final_response = execution_plan.final_response or "运行已取消"
             self.db.add(execution_plan)
-            self.db.commit()
+            await self.db.commit()
 
         # 🔥 写入 run_cancelled 事件到账本
         emit_run_cancelled(
@@ -459,7 +458,7 @@ class RecoveryService:
             thread_id=agent_run.thread_id,
             current_node=agent_run.current_node,
         )
-        self.db.commit()
+        await self.db.commit()
 
         # 取消即终态：清理本次运行的隔离线程 checkpoint + SSE 传输帧
         from utils.db import cleanup_terminal_run
@@ -498,7 +497,7 @@ class RecoveryService:
             # 单实例下这一步必然成功（租约是创建时自己拿的）；多实例/重复投递时
             # 另一个进程持有有效租约 → 拒绝驱动，否则双方会同时跑同一个 run，
             # 而对方的 supervisor 会在自己的续租周期里把它当作无主 run 回收掉。
-            if not await asyncio.to_thread(acquire_run_lease, self.db, run_id):
+            if not await acquire_run_lease(self.db, run_id):
                 raise AppError(
                     message="该任务正在被另一个实例处理，请稍后刷新查看结果",
                     code=ErrorCode.ACTIVE_RUN_CONFLICT,
@@ -515,10 +514,10 @@ class RecoveryService:
             await self._update_execution_plan_status(run_id, TaskStatus.RUNNING)
 
             # 关键一致性保障：计划更新前执行乐观锁校验与版本递增
-            self._bump_plan_version_with_cas(run_id, plan_version)
+            await self._bump_plan_version_with_cas(run_id, plan_version)
 
             # 🔥 写入 hitl_resumed 事件到账本
-            execution_plan = self._get_execution_plan_by_run(run_id)
+            execution_plan = await self._get_execution_plan_by_run(run_id)
             emit_hitl_resumed(
                 self.db,
                 run_id=run_id,
@@ -527,7 +526,7 @@ class RecoveryService:
                 plan_version=plan_version or 1,
                 plan_modified=updated_plan is not None and len(updated_plan) > 0,
             )
-            self.db.commit()
+            await self.db.commit()
 
             # 创建队列
             stream_queue = asyncio.Queue()  # 用于 artifact 收集
@@ -539,7 +538,7 @@ class RecoveryService:
                 set_run_id(run_id)
                 try:
                     # 调用 StreamService 执行 LangGraph 流式处理
-                    async for event in self.stream_service.execute_langgraph_stream(
+                    async for event in await self.stream_service.execute_langgraph_stream(
                         thread_id=thread_id,
                         stream_queue=stream_queue,
                         sse_queue=sse_queue,
@@ -583,7 +582,7 @@ class RecoveryService:
             raise
 
         return StreamingResponse(
-            event_generator(),
+            await event_generator(),
             media_type="text/event-stream",
             headers=sse_stream_headers(thread_id, run_id),
         )
@@ -631,31 +630,33 @@ class RecoveryService:
             return idempotency_key
         return f"{run_id}:{plan_version}"
 
-    def _get_run_or_raise(self, run_id: str, thread_id: str) -> AgentRun:
+    async def _get_run_or_raise(self, run_id: str, thread_id: str) -> AgentRun:
         """获取指定运行实例，并校验其属于当前线程（单一实现在 run_lifecycle）。"""
         from services.chat.run_lifecycle import get_agent_run_or_raise
 
-        return get_agent_run_or_raise(self.db, run_id, thread_id=thread_id)
+        return await get_agent_run_or_raise(self.db, run_id, thread_id=thread_id)
 
     async def _update_run_status(self, run_id: str, status: RunStatus) -> None:
         """更新指定运行实例的状态（单一实现在 run_lifecycle，经 to_thread）。"""
         from services.chat.run_lifecycle import update_run_status
 
-        await asyncio.to_thread(update_run_status, self.db, run_id, status)
+        await update_run_status(self.db, run_id, status)
 
     async def _reset_deadline(self, run_id: str) -> None:
         """恢复执行时重置完整执行预算（单一实现在 run_lifecycle，经 to_thread）。"""
         from services.chat.run_lifecycle import reset_deadline
 
-        await asyncio.to_thread(reset_deadline, self.db, run_id, settings.run_deadline_seconds)
+        await reset_deadline(self.db, run_id, settings.run_deadline_seconds)
 
     async def _mark_run_failed(self, run_id: str, error_message: str) -> None:
         """将指定运行实例标记为失败（单一实现在 run_lifecycle，经 to_thread）。"""
         from services.chat.run_lifecycle import mark_run_failed
 
-        await asyncio.to_thread(mark_run_failed, self.db, run_id, error_message)
+        await mark_run_failed(self.db, run_id, error_message)
 
-    def _bump_plan_version_with_cas(self, run_id: str, expected_plan_version: int | None) -> None:
+    async def _bump_plan_version_with_cas(
+        self, run_id: str, expected_plan_version: int | None
+    ) -> None:
         """
         使用 CAS（Compare-And-Set）方式递增 plan_version。
 
@@ -667,7 +668,7 @@ class RecoveryService:
         if expected_plan_version is None:
             raise ValidationError("缺少 plan_version，无法进行并发校验")
 
-        execution_plan = self._get_execution_plan_by_run(run_id)
+        execution_plan = await self._get_execution_plan_by_run(run_id)
 
         if not execution_plan:
             raise NotFoundError("ExecutionPlan")
@@ -680,11 +681,11 @@ class RecoveryService:
             )
             .values(plan_version=ExecutionPlan.plan_version + 1, updated_at=utc_now())
         )
-        result = self.db.exec(stmt)
+        result = await self.db.exec(stmt)
 
         if result.rowcount == 0:
-            self.db.rollback()
-            latest = self.db.exec(
+            await self.db.rollback()
+            latest = await self.db.exec(
                 select(ExecutionPlan.plan_version).where(ExecutionPlan.id == execution_plan.id)
             ).first()
             raise AppError(
@@ -698,7 +699,7 @@ class RecoveryService:
                 },
             )
 
-        self.db.commit()
+        await self.db.commit()
 
     async def _process_collected_artifacts(self, run_id: str, stream_queue: asyncio.Queue):
         """处理收集到的 artifacts 并保存"""
@@ -721,14 +722,14 @@ class RecoveryService:
                 break
 
         # 保存 artifacts（需要查询对应的 subtask_id）
-        execution_plan = self._get_execution_plan_by_run(run_id)
+        execution_plan = await self._get_execution_plan_by_run(run_id)
 
         if execution_plan:
             for task_id, artifacts in artifacts_by_task.items():
                 # 查询对应的 SubTask
                 from models import SubTask
 
-                subtask = self.db.exec(
+                subtask = await self.db.exec(
                     select(SubTask).where(
                         SubTask.execution_plan_id == execution_plan.id, SubTask.id == task_id
                     )
@@ -743,7 +744,7 @@ class RecoveryService:
                             ArtifactCreate.model_validate(a) if isinstance(a, dict) else a
                             for a in artifacts
                         ]
-                        create_artifacts_batch(self.db, subtask.id, artifact_models)
+                        await create_artifacts_batch(self.db, subtask.id, artifact_models)
                         logger.info(
                             f"[HITL RESUME] 保存 {len(artifacts)} 个 artifacts 到 SubTask {subtask.id}"
                         )
@@ -751,7 +752,7 @@ class RecoveryService:
                         # rollback 必需：create_artifacts_batch 内部会 commit，失败后
                         # 会话可能处于不可用事务态；不清理会让后续写（例如把 run 标成
                         # COMPLETED）抛 PendingRollbackError，把局部失败放大成整轮失败
-                        self.db.rollback()
+                        await self.db.rollback()
                         logger.error(
                             "[HITL RESUME] 保存 artifacts 失败（该任务产物缺失，其余流程继续）: %s",
                             e,
@@ -771,29 +772,29 @@ class RecoveryService:
             status: 新状态（TaskStatus 枚举）
         """
 
-        def _write() -> None:
-            execution_plan = self._get_execution_plan_by_run(run_id)
+        async def _write() -> None:
+            execution_plan = await self._get_execution_plan_by_run(run_id)
 
             if execution_plan:
                 execution_plan.status = status
                 execution_plan.updated_at = utc_now()
                 self.db.add(execution_plan)
-                self.db.commit()
+                await self.db.commit()
                 logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
 
-        await asyncio.to_thread(_write)
+        await _write()
 
     async def _cancel_execution_plan(self, run_id: str):
         """将 ExecutionPlan 标记为 cancelled"""
         try:
-            execution_plan = self._get_execution_plan_by_run(run_id)
+            execution_plan = await self._get_execution_plan_by_run(run_id)
 
             if execution_plan:
                 execution_plan.status = TaskStatus.CANCELLED
                 execution_plan.final_response = "计划被用户取消"
                 execution_plan.updated_at = utc_now()
                 self.db.add(execution_plan)
-                self.db.commit()
+                await self.db.commit()
                 logger.info(f"[HITL RESUME] ExecutionPlan {execution_plan.id} 已标记为 cancelled")
 
         except Exception as e:
@@ -801,7 +802,7 @@ class RecoveryService:
             # IN_PROGRESS」的矛盾态：前端审批卡可能仍显示可操作，而再次批准必然
             # 失败；且调用方因拿不到 plan id 会写出缺上下文的 hitl_rejected 事件。
             # 故用 error + exc_info（此前是 warning 且无堆栈，事后几乎无迹可寻）。
-            self.db.rollback()
+            await self.db.rollback()
             logger.error(
                 "[HITL RESUME] 更新 execution_plan 状态失败（run 已取消但计划状态可能"
                 "仍为非终态，前端可能仍可操作）: %s",
@@ -813,9 +814,11 @@ class RecoveryService:
     # 辅助方法
     # ============================================================================
 
-    def _get_execution_plan_by_run(self, run_id: str) -> ExecutionPlan | None:
+    async def _get_execution_plan_by_run(self, run_id: str) -> ExecutionPlan | None:
         """按 run_id 获取对应的 ExecutionPlan。"""
-        return self.db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
+        return await self.db.exec(
+            select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
+        ).first()
 
     def _build_error_event(self, code: str | ErrorCode, message: str) -> str:
         """构建 error 事件"""

@@ -16,7 +16,7 @@ from utils.logger import logger
 from utils.time import utc_now
 
 
-def append_frames(db: Session, run_id: str, frames: list[tuple[int, str]]) -> int:
+async def append_frames(db: Session, run_id: str, frames: list[tuple[int, str]]) -> int:
     """批量追加帧：frames = [(seq, wire), ...]。
 
     调用方（`services.chat.frame_recorder`）负责给出正确的 seq：它是 run 级的
@@ -29,10 +29,10 @@ def append_frames(db: Session, run_id: str, frames: list[tuple[int, str]]) -> in
     try:
         for seq, wire in frames:
             db.add(RunStreamFrame(run_id=run_id, seq=seq, wire=wire))
-        db.commit()
+        await db.commit()
         return len(frames)
     except Exception as exc:  # noqa: BLE001 — 帧持久化失败不能影响实时推送
-        db.rollback()
+        await db.rollback()
         logger.warning(
             "[RunStreamFrame] 该批帧未落库（实时推送不受影响）: %s",
             exc,
@@ -41,11 +41,11 @@ def append_frames(db: Session, run_id: str, frames: list[tuple[int, str]]) -> in
         return 0
 
 
-def list_frames_after(
+async def list_frames_after(
     db: Session, run_id: str, after_seq: int, limit: int = 2000
 ) -> list[RunStreamFrame]:
     """按 seq 升序取 after_seq 之后的帧（续传重放用）。"""
-    rows = db.exec(
+    rows = await db.exec(
         select(RunStreamFrame)
         .where(RunStreamFrame.run_id == run_id, RunStreamFrame.seq > after_seq)
         .order_by(RunStreamFrame.seq.asc())
@@ -54,9 +54,9 @@ def list_frames_after(
     return list(rows)
 
 
-def latest_seq(db: Session, run_id: str) -> int | None:
+async def latest_seq(db: Session, run_id: str) -> int | None:
     """该 run 已落库的最大 seq（无则 None）——供续传时判断「库比内存新/旧」。"""
-    row = db.exec(
+    row = await db.exec(
         select(RunStreamFrame.seq)
         .where(RunStreamFrame.run_id == run_id)
         .order_by(RunStreamFrame.seq.desc())
@@ -65,19 +65,19 @@ def latest_seq(db: Session, run_id: str) -> int | None:
     return int(row) if row is not None else None
 
 
-def prune_run_frames(db: Session, run_id: str) -> int:
+async def prune_run_frames(db: Session, run_id: str) -> int:
     """删除某 run 的全部帧（终态清理，与 checkpoint 清理同一时机调用）。"""
-    result = db.exec(delete(RunStreamFrame).where(RunStreamFrame.run_id == run_id))
-    db.commit()
+    result = await db.exec(delete(RunStreamFrame).where(RunStreamFrame.run_id == run_id))
+    await db.commit()
     return int(result.rowcount or 0)
 
 
-def prune_frames_older_than(db: Session, retention_hours: int = 24) -> int:
+async def prune_frames_older_than(db: Session, retention_hours: int = 24) -> int:
     """TTL 清扫：兜住「异常结束没走到终态清理」的残留帧。
 
     与 session_cleanup_service 的既有节奏配合（它已经在做线程/checkpoint 清扫）。
     """
     cutoff: datetime = utc_now() - timedelta(hours=retention_hours)
-    result = db.exec(delete(RunStreamFrame).where(RunStreamFrame.created_at < cutoff))
-    db.commit()
+    result = await db.exec(delete(RunStreamFrame).where(RunStreamFrame.created_at < cutoff))
+    await db.commit()
     return int(result.rowcount or 0)

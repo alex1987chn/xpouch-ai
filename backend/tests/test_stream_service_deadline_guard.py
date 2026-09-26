@@ -14,7 +14,7 @@ class _FakeSession:
         self.run = run
         self.commit_called = False
 
-    def get(self, model, object_id):
+    async def get(self, model, object_id):
         if model is AgentRun and object_id == self.run.id:
             return self.run
         return None
@@ -23,11 +23,11 @@ class _FakeSession:
         if isinstance(obj, AgentRun):
             self.run = obj
 
-    def commit(self):
+    async def commit(self):
         self.commit_called = True
 
 
-def test_deadline_guard_marks_run_timed_out():
+async def test_deadline_guard_marks_run_timed_out():
     run = AgentRun(
         id="run-1",
         thread_id="thread-1",
@@ -43,7 +43,7 @@ def test_deadline_guard_marks_run_timed_out():
     service = StreamService(session)
 
     with pytest.raises(AppError) as exc_info:
-        service._raise_if_run_cancelled("run-1")
+        await service._raise_if_run_cancelled("run-1")
 
     assert exc_info.value.code == ErrorCode.RUN_TIMED_OUT
     assert run.status == RunStatus.TIMED_OUT

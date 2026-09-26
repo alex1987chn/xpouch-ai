@@ -26,24 +26,26 @@ from utils.logger import logger
 router = APIRouter(prefix="/api/runs", tags=["runs"])
 
 
-def _get_run_or_raise(db: Session, run_id: str, user_id: str, is_admin: bool = False) -> AgentRun:
+async def _get_run_or_raise(
+    db: Session, run_id: str, user_id: str, is_admin: bool = False
+) -> AgentRun:
     """用户归属校验（单一实现在 run_lifecycle.get_agent_run_or_raise）。
 
     admin 例外：运行统计（全局列表）跳转详情时允许查看任意用户的 run。
     """
     if is_admin:
-        run = db.get(AgentRun, run_id)
+        run = await db.get(AgentRun, run_id)
         if run is None:
             raise NotFoundError("AgentRun")
         return run
-    return get_agent_run_or_raise(db, run_id, user_id=user_id)
+    return await get_agent_run_or_raise(db, run_id, user_id=user_id)
 
 
-def _get_thread_or_raise(db: Session, thread_id: str, user_id: str) -> Thread:
+async def _get_thread_or_raise(db: Session, thread_id: str, user_id: str) -> Thread:
     # 单一实现在 thread_service（run 侧对称物 get_agent_run_or_raise）
     from services.chat.thread_service import get_thread_or_raise
 
-    return get_thread_or_raise(db, thread_id, user_id)
+    return await get_thread_or_raise(db, thread_id, user_id)
 
 
 @router.get("/{run_id}", response_model=RunSummaryResponse)
@@ -84,7 +86,7 @@ async def get_run_plan(
     # 归属校验（admin 可跨用户查看）；run 本体不再使用
     _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
 
-    plan = db.exec(
+    plan = await db.exec(
         select(ExecutionPlan)
         .where(ExecutionPlan.run_id == run_id)
         .order_by(ExecutionPlan.id.desc())
@@ -95,7 +97,7 @@ async def get_run_plan(
     # 事件账本推导修订状态（倒序取第一条相关事件）
     from models.enums import RunEventType
 
-    revision_events = db.exec(
+    revision_events = await db.exec(
         select(RunEvent)
         .where(
             RunEvent.run_id == run_id,
@@ -166,7 +168,7 @@ async def get_run_status(
         AgentRun.completed_at,
         AgentRun.user_id,
     ).where(AgentRun.id == run_id)
-    result = db.exec(statement).first()
+    result = await db.exec(statement).first()
 
     if result is None:
         raise NotFoundError("AgentRun")
@@ -211,7 +213,7 @@ async def get_run_timeline(
     logger.info(f"[Runs API] 获取运行时间线: run_id={run_id}, user_id={current_user.id}")
     _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
 
-    events = get_run_events_by_run_id(db, run_id, limit=limit, offset=offset)
+    events = await get_run_events_by_run_id(db, run_id, limit=limit, offset=offset)
 
     return RunTimelineResponse(
         run_id=run_id,
@@ -247,7 +249,7 @@ async def get_thread_timeline(
     logger.info(f"[Runs API] 获取线程时间线: thread_id={thread_id}, user_id={current_user.id}")
     _get_thread_or_raise(db, thread_id, current_user.id)
 
-    events = get_run_events_by_thread_id(db, thread_id, limit=limit, offset=offset)
+    events = await get_run_events_by_thread_id(db, thread_id, limit=limit, offset=offset)
 
     return ThreadTimelineResponse(
         thread_id=thread_id,

@@ -17,7 +17,7 @@ from sqlmodel import Session, select
 from config import settings
 from crud.agent_run import derive_thread_status_from_run_status
 from crud.run_stream_frame import prune_frames_older_than
-from database import engine
+from database import SessionFactory
 from models import AgentRun, ExecutionPlan, Thread, ThreadStatus
 from utils.logger import logger
 from utils.time import utc_now
@@ -30,7 +30,7 @@ SESSION_CLEANUP_INTERVAL_SECONDS = settings.session_cleanup_interval_minutes * 6
 RUN_FRAME_RETENTION_HOURS = 24
 
 
-def _purge_thread(session: Session, thread: Thread) -> list[str] | None:
+async def _purge_thread(session: Session, thread: Thread) -> list[str] | None:
     """删除过期线程及其全部子数据，成功时返回其 run id 列表（供 checkpoint 清理），失败返回 None。
 
     - 子表（message/tasksession/agentrun/executionplan/subtask/runevent）的外键
@@ -42,30 +42,32 @@ def _purge_thread(session: Session, thread: Thread) -> list[str] | None:
     """
     try:
         with session.begin_nested():
-            execution_plans = session.exec(
+            execution_plans = await session.exec(
                 select(ExecutionPlan).where(ExecutionPlan.thread_id == thread.id)
             ).all()
-            agent_runs = session.exec(select(AgentRun).where(AgentRun.thread_id == thread.id)).all()
+            agent_runs = await session.exec(
+                select(AgentRun).where(AgentRun.thread_id == thread.id)
+            ).all()
 
             if thread.execution_plan_id is not None:
                 thread.execution_plan_id = None
                 session.add(thread)
-                session.flush()
+                await session.flush()
 
             for execution_plan in execution_plans:
-                session.delete(execution_plan)
+                await session.delete(execution_plan)
 
             for agent_run in agent_runs:
-                session.delete(agent_run)
+                await session.delete(agent_run)
 
-            session.delete(thread)
+            await session.delete(thread)
         return [run.id for run in agent_runs]
     except Exception as exc:  # noqa: BLE001
         logger.warning("[SessionCleanup] 删除线程 %s 失败，已跳过: %s", thread.id, exc)
         return None
 
 
-def _cleanup_once() -> dict[str, Any]:
+async def _cleanup_once() -> dict[str, Any]:
     """
     执行一次清理并返回统计信息。
 
@@ -87,14 +89,14 @@ def _cleanup_once() -> dict[str, Any]:
     # 需要异步清理 checkpoint 的目标：(thread_id, [run_id, ...])，由异步循环统一执行
     checkpoint_targets: list[tuple[str, list[str]]] = []
 
-    with Session(engine) as session:
-        stale_running_threads = session.exec(
+    async with SessionFactory() as session:
+        stale_running_threads = await session.exec(
             select(Thread).where(
                 Thread.status == ThreadStatus.RUNNING, Thread.updated_at < stale_running_before
             )
         ).all()
         for thread in stale_running_threads:
-            latest_run = session.exec(
+            latest_run = await session.exec(
                 select(AgentRun)
                 .where(AgentRun.thread_id == thread.id)
                 .order_by(AgentRun.created_at.desc())
@@ -108,25 +110,25 @@ def _cleanup_once() -> dict[str, Any]:
             session.add(thread)
             stale_running_reset += 1
 
-        expired_threads = session.exec(
+        expired_threads = await session.exec(
             select(Thread).where(
                 Thread.status.in_([ThreadStatus.IDLE, ThreadStatus.PAUSED]),
                 Thread.updated_at < expired_before,
             )
         ).all()
         for thread in expired_threads:
-            purged_run_ids = _purge_thread(session, thread)
+            purged_run_ids = await _purge_thread(session, thread)
             if purged_run_ids is not None:
                 expired_deleted += 1
                 checkpoint_targets.append((thread.id, purged_run_ids))
 
         if stale_running_reset or expired_deleted:
-            session.commit()
+            await session.commit()
         else:
-            session.rollback()
+            await session.rollback()
 
         # TTL 兜底：终态清理没跑到的残留帧（帧只服务断线重放，无需久留）
-        pruned_frames = prune_frames_older_than(session, RUN_FRAME_RETENTION_HOURS)
+        pruned_frames = await prune_frames_older_than(session, RUN_FRAME_RETENTION_HOURS)
 
     return {
         "stale_running_reset": stale_running_reset,
@@ -148,7 +150,7 @@ async def run_session_cleanup_loop() -> None:
     )
     while True:
         try:
-            stats = await asyncio.to_thread(_cleanup_once)
+            stats = await _cleanup_once()
             if stats["stale_running_reset"] or stats["expired_deleted"] or stats["pruned_frames"]:
                 logger.info("[SessionCleanup] 完成一次清理: %s", stats)
             # run 终态/线程删除后清理对应 checkpoint（LangGraph 无自动 TTL）

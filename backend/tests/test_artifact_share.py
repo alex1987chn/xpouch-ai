@@ -6,11 +6,33 @@
 
 import pytest
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel
 
 from models import Artifact, ExecutionPlan, ShareToken, SubTask, Thread
 from services.chat.share_service import ShareService
 from utils.exceptions import AuthorizationError, NotFoundError
+
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
 
 TABLES = [
     Thread.__table__,
@@ -22,19 +44,19 @@ TABLES = [
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         yield session
 
 
 @pytest.fixture
-def owned_artifact(db):
+async def owned_artifact(db):
     """u1 名下的 artifact（thread→plan→subtask→artifact 链）"""
     db.add(Thread(id="t1", title="会话", user_id="u1"))
     db.add(ExecutionPlan(id="p1", thread_id="t1", user_query="q"))
@@ -56,13 +78,13 @@ def owned_artifact(db):
         content="# Hello\n\n世界",
     )
     db.add(artifact)
-    db.commit()
+    await db.commit()
     return artifact
 
 
-def test_create_share_returns_token_once(db, owned_artifact):
+async def test_create_share_returns_token_once(db, owned_artifact):
     service = ShareService(db)
-    result = service.create_share("a1", "u1")
+    result = await service.create_share("a1", "u1")
 
     assert result["token"]
     assert result["path"] == f"/s/{result['token']}"
@@ -73,15 +95,15 @@ def test_create_share_returns_token_once(db, owned_artifact):
     assert len(row.token_hash) == 64
 
 
-def test_resolve_returns_artifact_and_revoked_returns_none(db, owned_artifact):
+async def test_resolve_returns_artifact_and_revoked_returns_none(db, owned_artifact):
     service = ShareService(db)
-    token = service.create_share("a1", "u1")["token"]
+    token = await service.create_share("a1", "u1")["token"]
 
     artifact = service.resolve(token)
     assert artifact is not None
     assert artifact.id == "a1"
 
-    service.revoke_shares("a1", "u1")
+    await service.revoke_shares("a1", "u1")
     assert service.resolve(token) is None
 
 
@@ -89,13 +111,13 @@ def test_resolve_unknown_token_is_none(db):
     assert ShareService(db).resolve("no-such-token") is None
 
 
-def test_create_share_requires_owner(db, owned_artifact):
+async def test_create_share_requires_owner(db, owned_artifact):
     service = ShareService(db)
     with pytest.raises(AuthorizationError):
-        service.create_share("a1", "u2")
+        await service.create_share("a1", "u2")
 
 
-def test_create_share_missing_artifact(db):
+async def test_create_share_missing_artifact(db):
     service = ShareService(db)
     with pytest.raises(NotFoundError):
-        service.create_share("missing", "u1")
+        await service.create_share("missing", "u1")

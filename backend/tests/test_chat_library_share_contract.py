@@ -126,15 +126,15 @@ def test_delete_template_contract():
     from models import SkillTemplate
 
     class _SessionStub:
-        def get(self, _model, _pk):
+        async def get(self, _model, _pk):
             return SkillTemplate(
                 template_key="demo", name="演示", starter_prompt="开始", is_builtin=False
             )
 
-        def delete(self, _obj) -> None:
+        async def delete(self, _obj) -> None:
             pass
 
-        def commit(self) -> None:
+        async def commit(self) -> None:
             pass
 
     app = FastAPI()

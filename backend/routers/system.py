@@ -166,8 +166,8 @@ async def update_user_me(
         current_user.avatar = request.avatar
 
     session.add(current_user)
-    session.commit()
-    session.refresh(current_user)
+    await session.commit()
+    await session.refresh(current_user)
 
     return _to_profile_response(current_user)
 
@@ -194,7 +194,7 @@ async def get_user_settings(
     from providers_config import get_provider_config
     from utils.llm_factory import get_default_model
 
-    preferences = load_model_preferences(session)
+    preferences = await load_model_preferences(session)
 
     default_model = get_default_model()
     provider_config = get_provider_config("deepseek") or {}
@@ -232,7 +232,7 @@ async def update_user_settings(
             message=f"无效的 thinking 取值: {request.simple_thinking}，允许 auto/enabled/disabled"
         )
 
-    preferences = save_model_preferences(
+    preferences = await save_model_preferences(
         session,
         simple_model=request.simple_model,
         simple_thinking=request.simple_thinking or "auto",
@@ -263,7 +263,7 @@ async def debug_list_users(
     """列出所有用户（仅用于调试，需要登录且仅开发环境）"""
     _ensure_debug_enabled()
 
-    users = session.exec(select(User).order_by(User.created_at.desc())).all()
+    users = await session.exec(select(User).order_by(User.created_at.desc())).all()
     return {
         "count": len(users),
         "users": [
@@ -295,7 +295,7 @@ async def debug_verify_token(request: Request, session: Session = Depends(get_se
     try:
         payload = verify_token(token, token_type="access")
         user_id = payload["sub"]
-        user = session.get(User, user_id)
+        user = await session.get(User, user_id)
 
         if user:
             return {
@@ -326,20 +326,20 @@ async def debug_cleanup_users(current_user: User = Depends(get_current_user_with
     # 创建新的session，不经过get_current_user依赖
     with SASession(engine) as session:
         # 查找所有没有手机号的用户
-        users_to_delete = session.exec(select(User).where(User.phone_number.is_(None))).all()
+        users_to_delete = await session.exec(select(User).where(User.phone_number.is_(None))).all()
 
         count = len(users_to_delete)
 
         for user in users_to_delete:
             # 1. 先删除该用户的所有线程（会级联删除messages）
-            threads = session.exec(select(Thread).where(Thread.user_id == user.id)).all()
+            threads = await session.exec(select(Thread).where(Thread.user_id == user.id)).all()
             for conv in threads:
-                session.delete(conv)
+                await session.delete(conv)
 
             # 2. 最后删除用户
-            session.delete(user)
+            await session.delete(user)
 
-        session.commit()
+        await session.commit()
 
         return {
             "deleted_count": count,
@@ -364,7 +364,7 @@ async def get_usage_summary(
 
     today_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-    def _sum_since(since: datetime | None) -> dict:
+    async def _sum_since(since: datetime | None) -> dict:
         stmt = select(
             func.coalesce(func.sum(AgentRun.total_tokens), 0),
             func.coalesce(func.sum(AgentRun.prompt_tokens), 0),
@@ -373,7 +373,7 @@ async def get_usage_summary(
         ).where(AgentRun.user_id == current_user.id)
         if since is not None:
             stmt = stmt.where(AgentRun.started_at >= since)
-        total, prompt, completion, runs = session.exec(stmt).one()
+        total, prompt, completion, runs = await session.exec(stmt).one()
         return {
             "runs": int(runs),
             "total_tokens": int(total),
@@ -382,6 +382,6 @@ async def get_usage_summary(
         }
 
     return {
-        "today": _sum_since(today_start),
-        "total": _sum_since(None),
+        "today": await _sum_since(today_start),
+        "total": await _sum_since(None),
     }

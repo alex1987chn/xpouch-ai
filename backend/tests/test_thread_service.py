@@ -28,7 +28,7 @@ class _FakeThreadSession:
         self.commit_called = False
         self._exec_calls = 0
 
-    def get(self, model, object_id):
+    async def get(self, model, object_id):
         if model is Thread and object_id == self.thread.id:
             return self.thread
         if model is ExecutionPlan:
@@ -54,13 +54,13 @@ class _FakeThreadSession:
     def add(self, _obj):
         return None
 
-    def flush(self):
+    async def flush(self):
         self.flush_called = True
 
-    def delete(self, obj):
+    async def delete(self, obj):
         self.deleted.append(obj)
 
-    def commit(self):
+    async def commit(self):
         self.commit_called = True
 
 

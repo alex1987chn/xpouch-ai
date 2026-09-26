@@ -69,7 +69,7 @@ class _ToolState(TypedDict):
     messages: Annotated[list, add_messages]
 
 
-def _invoke(executor: ToolNode, state: dict) -> dict:
+async def _invoke(executor: ToolNode, state: dict) -> dict:
     """经最小图调用 ToolNode，而非直接 ainvoke。
 
     直接调会抛 "Missing required config key 'N/A' for 'tools'"——工具的参数注入
@@ -81,7 +81,7 @@ def _invoke(executor: ToolNode, state: dict) -> dict:
     graph.set_entry_point("tools")
     graph.add_edge("tools", END)
     app = graph.compile()
-    return asyncio.run(app.ainvoke(state))
+    return asyncio.run(await app.ainvoke(state))
 
 
 def _tool_messages(result: dict) -> list:

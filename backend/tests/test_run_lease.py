@@ -62,13 +62,13 @@ class _FakeSession:
         elif isinstance(obj, Thread):
             self.thread = obj
 
-    def flush(self):
+    async def flush(self):
         return None
 
-    def commit(self):
+    async def commit(self):
         self.committed += 1
 
-    def get(self, model, object_id):
+    async def get(self, model, object_id):
         if model is Thread and self.thread is not None and object_id == self.thread.id:
             return self.thread
         if model is AgentRun:
@@ -191,12 +191,12 @@ class TestClaimAndRelease:
 
 
 class TestWritePointsRenewAndRelease:
-    def test_created_run_holds_a_lease(self, monkeypatch):
+    async def test_created_run_holds_a_lease(self, monkeypatch):
         from config import settings
 
         monkeypatch.setattr(settings, "run_deadline_seconds", 30)
         session = _FakeSession(_thread())
-        run = create_agent_run(
+        run = await create_agent_run(
             session,
             thread_id="thread-1",
             user_id="user-1",
@@ -207,62 +207,71 @@ class TestWritePointsRenewAndRelease:
         assert is_lease_alive(run.lease_expires_at) is True
         assert run.attempt == 1
 
-    def test_status_write_renews_lease(self):
+    async def test_status_write_renews_lease(self):
         """RUNNING 状态写入续租（证明进程在管它）；RESUMING 是过渡态不续租（见下）。"""
         run = _run(owner=RUN_OWNER_ID, lease_expires_at=utc_now() - timedelta(seconds=5))
         session = _FakeSession(_thread())
-        update_run_status(session, run, RunStatus.RUNNING)
+        await update_run_status(session, run, RunStatus.RUNNING)
         assert is_lease_alive(run.lease_expires_at) is True, "RUNNING 状态写入即续租"
 
-    def test_resuming_status_releases_lease(self):
+    async def test_resuming_status_releases_lease(self):
         """RESUMING 状态写入释放租约（过渡态，不是活跃运行）——resume 成功后
         run 即将进入 RUNNING，此时租约应释放，否则后续 resume 会撞
         ACTIVE_RUN_CONFLICT。
         """
         run = _run(owner=RUN_OWNER_ID, lease_expires_at=lease_deadline())
         session = _FakeSession(_thread())
-        update_run_status(session, run, RunStatus.RESUMING)
+        await update_run_status(session, run, RunStatus.RESUMING)
         assert run.owner is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"
         assert run.lease_expires_at is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"
 
-    def test_heartbeat_renews_lease(self):
+    async def test_heartbeat_renews_lease(self):
         run = _run(owner=RUN_OWNER_ID, lease_expires_at=utc_now() - timedelta(seconds=5))
         session = _FakeSession(_thread())
         session.runs[run.id] = run
-        touch_run_heartbeat_by_id(session, run.id)
+        await touch_run_heartbeat_by_id(session, run.id)
         assert is_lease_alive(run.lease_expires_at) is True
         assert run.last_heartbeat_at is not None
 
-    def test_terminal_statuses_release_lease(self):
+    async def _completed(s, r):
+        await mark_run_completed(s, r)
+
+    async def _failed(s, r):
+        await mark_run_failed(s, r, error_message="boom")
+
+    async def _timed_out(s, r):
+        await mark_run_timed_out_by_id(s, r.id, error_message="timeout")
+
+    async def _cancelled(s, r):
+        await mark_run_cancelled_by_id(s, r.id, error_message="stop")
+
+    async def test_terminal_statuses_release_lease(self):
         for label, action in (
-            ("completed", lambda s, r: mark_run_completed(s, r)),
-            ("failed", lambda s, r: mark_run_failed(s, r, error_message="boom")),
-            (
-                "timed_out",
-                lambda s, r: mark_run_timed_out_by_id(s, r.id, error_message="timeout"),
-            ),
-            ("cancelled", lambda s, r: mark_run_cancelled_by_id(s, r.id, error_message="stop")),
+            ("completed", _completed),
+            ("failed", _failed),
+            ("timed_out", _timed_out),
+            ("cancelled", _cancelled),
         ):
             run = _run(owner=RUN_OWNER_ID, lease_expires_at=lease_deadline(), attempt=1)
             session = _FakeSession(_thread())
             session.runs[run.id] = run
-            action(session, run)
+            await action(session, run)
             assert run.owner is None, f"{label} 必须释放租约（否则僵尸会一直占着会话）"
             assert run.lease_expires_at is None, label
 
-    def test_cancelled_run_does_not_keep_blocking_thread(self):
+    async def test_cancelled_run_does_not_keep_blocking_thread(self):
         """终态释放的直接后果：会话立刻可以开新任务。"""
         from crud.agent_run import get_active_run_for_thread
 
         run = _run(owner=RUN_OWNER_ID, lease_expires_at=lease_deadline())
         session = _FakeSession(_thread())
         session.runs[run.id] = run
-        assert get_active_run_for_thread(session, thread_id="thread-1") is run
+        assert await get_active_run_for_thread(session, thread_id="thread-1") is run
 
-        mark_run_cancelled_by_id(session, run.id, error_message="stop")
-        assert get_active_run_for_thread(session, thread_id="thread-1") is None
+        await mark_run_cancelled_by_id(session, run.id, error_message="stop")
+        assert await get_active_run_for_thread(session, thread_id="thread-1") is None
 
-    def test_resume_success_releases_lease(self):
+    async def test_resume_success_releases_lease(self):
         """resume 成功（计划更新 + 事件写入）后释放租约——否则 run 在 RUNNING 期间
         租约仍被持有，后续 resume（前端轮询/用户重复点）会撞 ACTIVE_RUN_CONFLICT。
 
@@ -274,7 +283,7 @@ class TestWritePointsRenewAndRelease:
         session.runs[run.id] = run
 
         # RESUMING 状态写入即释放租约（与终态同规则）
-        update_run_status(session, run, RunStatus.RESUMING)
+        await update_run_status(session, run, RunStatus.RESUMING)
 
         assert run.owner is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"
         assert run.lease_expires_at is None, "RESUMING 状态写入必须释放租约（否则后续 resume 撞锁）"

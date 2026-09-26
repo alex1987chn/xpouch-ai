@@ -23,13 +23,13 @@ class _FakeSession:
                 self._next_id += 1
             self.events[obj.id] = obj
 
-    def flush(self):
+    async def flush(self):
         return None
 
-    def commit(self):
+    async def commit(self):
         self.commit_called = True
 
-    def get(self, model, object_id):
+    async def get(self, model, object_id):
         if model is RunEvent:
             return self.events.get(object_id)
         return None

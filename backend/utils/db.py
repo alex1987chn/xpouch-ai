@@ -3,7 +3,6 @@ LangGraph 数据库连接工具
 提供异步连接池给 AsyncPostgresSaver 使用
 """
 
-import asyncio
 from contextlib import asynccontextmanager
 
 from psycopg_pool import AsyncConnectionPool
@@ -190,7 +189,7 @@ async def delete_checkpoints_for_thread(thread_id: str, run_ids: list[str] | Non
     target_ids = [thread_id] + [f"{thread_id}_{run_id}" for run_id in (run_ids or [])]
     deleted = 0
     remaining_after = -1
-    async with get_db_connection() as conn:
+    async with await get_db_connection() as conn:
         saver = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
         for target in target_ids:
             try:
@@ -224,25 +223,23 @@ async def cleanup_terminal_run(thread_id: str, run_ids: list[str] | None = None)
     """
     await delete_checkpoints_for_thread(thread_id, run_ids)
     if run_ids:
-        await asyncio.to_thread(_prune_frames_for_runs, run_ids)
+        await _prune_frames_for_runs(run_ids)
 
 
-def _prune_frames_for_runs(run_ids: list[str]) -> int:
+async def _prune_frames_for_runs(run_ids: list[str]) -> int:
     """删除这些 run 的 SSE 传输帧（`run_stream_frame`）。
 
     帧只服务「断线后按 seq 重放」，run 终态后不再需要；`session_cleanup_service`
     里的 TTL 清扫是兜底（异常结束没走到这里的残留）。失败只告警。
     """
-    from sqlmodel import Session
-
     from crud.run_stream_frame import prune_run_frames
-    from database import engine
+    from database import SessionFactory
 
     removed = 0
     try:
-        with Session(engine) as db:
+        async with SessionFactory() as db:
             for run_id in run_ids:
-                removed += prune_run_frames(db, run_id)
+                removed += await prune_run_frames(db, run_id)
     except Exception as exc:  # noqa: BLE001
         logger.warning("[DB] 清理 run_stream_frame 失败（不影响终态收尾）: %s", exc)
     return removed

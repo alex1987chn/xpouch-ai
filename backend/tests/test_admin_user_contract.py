@@ -32,13 +32,13 @@ class _SessionStub:
     def add(self, _obj) -> None:
         pass
 
-    def commit(self) -> None:
+    async def commit(self) -> None:
         pass
 
-    def refresh(self, _obj) -> None:
+    async def refresh(self, _obj) -> None:
         pass
 
-    def get(self, _model, _pk):
+    async def get(self, _model, _pk):
         return _user_fixture()
 
 

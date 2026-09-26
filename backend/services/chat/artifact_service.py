@@ -50,7 +50,7 @@ class ArtifactService:
         列表只带内容预览（前 200 字符），完整内容按需走详情接口；
         附带 thread_title 供卡片跳转来源会话。
         """
-        result = list_artifacts_for_user(
+        result = await list_artifacts_for_user(
             self.db,
             user_id=user_id,
             thread_id=thread_id,
@@ -61,7 +61,7 @@ class ArtifactService:
         )
 
         thread_ids = {a.thread_id for a in result["items"] if a.thread_id}
-        thread_titles = get_thread_titles_map(self.db, sorted(thread_ids))
+        thread_titles = await get_thread_titles_map(self.db, sorted(thread_ids))
 
         items = [
             {
@@ -143,13 +143,13 @@ class ArtifactService:
         from crud.execution_plan import get_artifacts_by_subtask as crud_get_artifacts
 
         # 验证 SubTask 权限
-        subtask = self.db.get(SubTask, subtask_id)
+        subtask = await self.db.get(SubTask, subtask_id)
         if not subtask:
             raise NotFoundError(f"SubTask not found: {subtask_id}")
 
-        execution_plan = self.db.get(ExecutionPlan, subtask.execution_plan_id)
+        execution_plan = await self.db.get(ExecutionPlan, subtask.execution_plan_id)
         if execution_plan:
-            thread = self.db.get(Thread, execution_plan.thread_id)
+            thread = await self.db.get(Thread, execution_plan.thread_id)
             if thread and thread.user_id != user_id:
                 raise AuthorizationError("无权访问此产物的产物")
 
@@ -202,7 +202,7 @@ class ArtifactService:
         await self._verify_full_permission_chain(artifact, user_id)
 
         # 3. 更新内容
-        updated_artifact = update_artifact_content(self.db, artifact_id, content)
+        updated_artifact = await update_artifact_content(self.db, artifact_id, content)
 
         if not updated_artifact:
             from utils.exceptions import AppError
@@ -238,15 +238,15 @@ class ArtifactService:
             NotFoundError: 关联资源不存在
             AuthorizationError: 无权访问
         """
-        subtask = self.db.get(SubTask, artifact.sub_task_id)
+        subtask = await self.db.get(SubTask, artifact.sub_task_id)
         if not subtask:
             raise NotFoundError("Associated task not found")
 
-        execution_plan = self.db.get(ExecutionPlan, subtask.execution_plan_id)
+        execution_plan = await self.db.get(ExecutionPlan, subtask.execution_plan_id)
         if not execution_plan:
             raise NotFoundError("Associated execution plan not found")
 
-        thread = self.db.get(Thread, execution_plan.thread_id)
+        thread = await self.db.get(Thread, execution_plan.thread_id)
         if not thread:
             raise NotFoundError("Associated thread not found")
 

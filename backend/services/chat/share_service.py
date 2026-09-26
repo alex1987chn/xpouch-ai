@@ -69,13 +69,13 @@ class ShareService:
     # 创建 / 撤销
     # ------------------------------------------------------------------
 
-    def create_share(self, artifact_id: str, user_id: str) -> dict[str, Any]:
+    async def create_share(self, artifact_id: str, user_id: str) -> dict[str, Any]:
         """为 artifact 生成新的分享令牌。
 
         明文 token 只在本响应出现一次；同一 artifact 可存在多个有效分享
         （每次生成新链），撤销按 artifact 全量撤销（见 revoke_shares）。
         """
-        artifact = self._get_owned_artifact(artifact_id, user_id)
+        artifact = await self._get_owned_artifact(artifact_id, user_id)
 
         token = token_urlsafe(32)
         share = ShareToken(
@@ -85,7 +85,7 @@ class ShareService:
             created_at=utc_now(),
         )
         self.db.add(share)
-        self.db.commit()
+        await self.db.commit()
         logger.info(f"[Share] 创建分享: artifact={artifact_id} user={user_id}")
 
         return {
@@ -95,23 +95,23 @@ class ShareService:
             "created_at": share.created_at.isoformat() if share.created_at else None,
         }
 
-    def revoke_shares(self, artifact_id: str, user_id: str) -> dict[str, Any]:
+    async def revoke_shares(self, artifact_id: str, user_id: str) -> dict[str, Any]:
         """撤销该 artifact 的全部分享（令牌不可枚举，逐 artifact 全撤销最简单可靠）"""
-        self._get_owned_artifact(artifact_id, user_id)
+        await self._get_owned_artifact(artifact_id, user_id)
 
         revoked = 0
         for share in self.db.query(ShareToken).filter_by(artifact_id=artifact_id, revoked_at=None):
             share.revoked_at = utc_now()
             self.db.add(share)
             revoked += 1
-        self.db.commit()
+        await self.db.commit()
         return {"revoked": revoked}
 
     # ------------------------------------------------------------------
     # 公开解析
     # ------------------------------------------------------------------
 
-    def create_template_share(self, template_key: str, user_id: str) -> dict[str, Any]:
+    async def create_template_share(self, template_key: str, user_id: str) -> dict[str, Any]:
         """为模板生成分享链接令牌（公开只读导出；撤销按模板全量撤销）"""
         token = token_urlsafe(32)
         share = ShareToken(
@@ -122,7 +122,7 @@ class ShareService:
             created_at=utc_now(),
         )
         self.db.add(share)
-        self.db.commit()
+        await self.db.commit()
         logger.info(f"[Share] 创建模板分享: template={template_key} user={user_id}")
 
         return {
@@ -131,7 +131,7 @@ class ShareService:
             "template_key": template_key,
         }
 
-    def revoke_template_shares(self, template_key: str) -> dict[str, Any]:
+    async def revoke_template_shares(self, template_key: str) -> dict[str, Any]:
         """撤销该模板的全部分享链接"""
         revoked = 0
         for share in self.db.query(ShareToken).filter_by(
@@ -140,7 +140,7 @@ class ShareService:
             share.revoked_at = utc_now()
             self.db.add(share)
             revoked += 1
-        self.db.commit()
+        await self.db.commit()
         return {"revoked": revoked}
 
     def resolve_template(self, token: str) -> SkillTemplate | None:
@@ -173,15 +173,15 @@ class ShareService:
     # 内部
     # ------------------------------------------------------------------
 
-    def _get_owned_artifact(self, artifact_id: str, user_id: str) -> Artifact:
+    async def _get_owned_artifact(self, artifact_id: str, user_id: str) -> Artifact:
         """加载 artifact 并校验所有权（artifact→subtask→executionplan→thread 链）"""
         artifact = get_artifact(self.db, artifact_id)
         if not artifact:
             raise NotFoundError(f"Artifact not found: {artifact_id}")
 
-        subtask = self.db.get(SubTask, artifact.sub_task_id)
+        subtask = await self.db.get(SubTask, artifact.sub_task_id)
         plan = (
-            self.db.get(ExecutionPlan, subtask.execution_plan_id)
+            await self.db.get(ExecutionPlan, subtask.execution_plan_id)
             if subtask and subtask.execution_plan_id
             else None
         )
@@ -189,5 +189,5 @@ class ShareService:
             # 归属校验共享助手（经 plan.thread_id 定位属主）
             from services.chat.thread_service import get_thread_or_raise
 
-            get_thread_or_raise(self.db, plan.thread_id, user_id)
+            await get_thread_or_raise(self.db, plan.thread_id, user_id)
         return artifact

@@ -29,7 +29,7 @@ def record_audit(
     return entry
 
 
-def list_audit_logs(
+async def list_audit_logs(
     db: Session,
     *,
     search: str | None = None,
@@ -51,7 +51,7 @@ def list_audit_logs(
 
     # 计数与仓内惯例一致用 .one()：本版本 sqlmodel 对单列聚合返回标量 int，
     # 此前写法 .first()[0] 把 int 当 Row 下标 → 接口 500，审计面板从上线起就渲染不出列表
-    total_count = db.exec(count_stmt).one()
+    total_count = await db.exec(count_stmt).one()
 
     stmt = base.order_by(AuditLog.created_at.desc(), AuditLog.id.desc()).limit(limit).offset(offset)
-    return list(db.exec(stmt).all()), total_count
+    return list(await db.exec(stmt).all()), total_count

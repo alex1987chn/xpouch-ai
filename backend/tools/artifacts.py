@@ -18,13 +18,13 @@ from utils.logger import logger
 MAX_ARTIFACT_CONTENT_CHARS = 20000
 
 
-def _load_artifact(artifact_id: str) -> Artifact | None:
+async def _load_artifact(artifact_id: str) -> Artifact | None:
     with SQLModelSession(engine) as session:
-        return session.get(Artifact, artifact_id)
+        return await session.get(Artifact, artifact_id)
 
 
 @tool
-def get_artifact(artifact_id: str) -> str:
+async def get_artifact(artifact_id: str) -> str:
     """读取本会话中某个历史产物的完整内容（修改/引用既有产物时使用）。
 
     Args:
@@ -34,7 +34,7 @@ def get_artifact(artifact_id: str) -> str:
         产物的类型、标题与完整内容（超长截断）
     """
     try:
-        artifact = _load_artifact(artifact_id)
+        artifact = await _load_artifact(artifact_id)
     except Exception as e:
         logger.error(f"[Tool:get_artifact] 查询产物失败 id={artifact_id}: {e}")
         return f"❌ 查询产物失败: {e}"
@@ -60,13 +60,13 @@ def get_artifact(artifact_id: str) -> str:
     )
 
 
-def _load_expert_type(sub_task_id: str) -> str | None:
+async def _load_expert_type(sub_task_id: str) -> str | None:
     with SQLModelSession(engine) as session:
-        subtask = session.get(SubTask, sub_task_id)
+        subtask = await session.get(SubTask, sub_task_id)
         return subtask.expert_type if subtask else None
 
 
-def get_recent_artifacts_for_thread(session: SQLModelSession, thread_id: str, limit: int = 5):
+async def get_recent_artifacts_for_thread(session: SQLModelSession, thread_id: str, limit: int = 5):
     """查询会话最近的历史产物摘要（跨轮连续性注入用）。
 
     返回按创建时间倒序的有界摘要列表：id / type / title / expert_type / 内容头。
@@ -81,7 +81,7 @@ def get_recent_artifacts_for_thread(session: SQLModelSession, thread_id: str, li
         .order_by(Artifact.created_at.desc())
         .limit(limit)
     )
-    rows = session.exec(stmt).all()
+    rows = await session.exec(stmt).all()
 
     digests = []
     for artifact, expert_type in rows:

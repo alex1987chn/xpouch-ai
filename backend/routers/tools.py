@@ -57,7 +57,7 @@ def _require_admin(current_user: User) -> None:
         raise AuthorizationError("仅管理员可访问该工具治理能力")
 
 
-def _build_effective_tool_infos(session: Session) -> list[ToolInfo]:
+async def _build_effective_tool_infos(session: Session) -> list[ToolInfo]:
     overrides = {
         (record.tool_name, record.source): ToolPolicyOverride(
             tool_name=record.tool_name,
@@ -69,7 +69,7 @@ def _build_effective_tool_infos(session: Session) -> list[ToolInfo]:
             blocked_experts=tuple(record.blocked_experts or ()),
             policy_note=record.policy_note,
         )
-        for record in session.exec(select(ToolPolicy)).all()
+        for record in await session.exec(select(ToolPolicy)).all()
     }
     tools: list[ToolInfo] = []
 
@@ -95,7 +95,7 @@ def _build_effective_tool_infos(session: Session) -> list[ToolInfo]:
         )
 
     try:
-        mcp_servers = session.exec(select(MCPServer).where(MCPServer.is_active)).all()
+        mcp_servers = await session.exec(select(MCPServer).where(MCPServer.is_active)).all()
         for server in mcp_servers:
             effective = resolve_tool_metadata(
                 server.name,
@@ -133,7 +133,7 @@ async def get_available_tools(
     返回基础工具（内置）和 MCP 工具的合并列表，
     用于前端展示工具使用指南。
     """
-    tools = _build_effective_tool_infos(session)
+    tools = await _build_effective_tool_infos(session)
     builtin_count = sum(1 for tool in tools if tool.category == "builtin")
     mcp_count = sum(1 for tool in tools if tool.category == "mcp")
 
@@ -151,10 +151,10 @@ async def list_tool_policies(
     current_user: User = Depends(get_current_user),
 ):
     _require_admin(current_user)
-    tools = _build_effective_tool_infos(session)
+    tools = await _build_effective_tool_infos(session)
     records = {
         (record.tool_name, record.source): record
-        for record in session.exec(select(ToolPolicy)).all()
+        for record in await session.exec(select(ToolPolicy)).all()
     }
     policies = [
         ToolPolicyResponse(
@@ -194,7 +194,7 @@ async def upsert_tool_policy(
     if source not in {"builtin", "mcp"}:
         raise ValidationError("source 仅支持 builtin 或 mcp")
 
-    known_tools = {(tool.name, tool.category) for tool in _build_effective_tool_infos(session)}
+    known_tools = {(tool.name, tool.category) for tool in await _build_effective_tool_infos(session)}
     if (tool_name, source) not in known_tools:
         raise NotFoundError("工具策略")
 
@@ -204,7 +204,7 @@ async def upsert_tool_policy(
         except ValueError as exc:
             raise ValidationError("risk_tier 非法") from exc
 
-    policy = session.exec(
+    policy = await session.exec(
         select(ToolPolicy)
         .where(ToolPolicy.tool_name == tool_name)
         .where(ToolPolicy.source == source)
@@ -226,8 +226,8 @@ async def upsert_tool_policy(
             setattr(policy, field_name, value)
 
     session.add(policy)
-    session.commit()
-    session.refresh(policy)
+    await session.commit()
+    await session.refresh(policy)
     await tool_policy_service.invalidate()
 
     return ToolPolicyResponse(

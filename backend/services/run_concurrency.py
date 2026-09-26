@@ -27,9 +27,9 @@ def clamp_concurrency(value: int) -> int:
     return max(SERIAL, min(int(value), MAX_CONCURRENCY_LIMIT))
 
 
-def load_graph_max_concurrency(session: Session) -> int | None:
+async def load_graph_max_concurrency(session: Session) -> int | None:
     """读取设置表里的并发上限；未配置/非法返回 None（交给 env 兜底）。"""
-    stored = session.get(SystemSetting, GRAPH_MAX_CONCURRENCY_KEY)
+    stored = await session.get(SystemSetting, GRAPH_MAX_CONCURRENCY_KEY)
     if not stored:
         return None
     try:
@@ -43,33 +43,33 @@ def load_graph_max_concurrency(session: Session) -> int | None:
     return clamp_concurrency(value)
 
 
-def save_graph_max_concurrency(session: Session, value: int | None) -> int:
+async def save_graph_max_concurrency(session: Session, value: int | None) -> int:
     """写入并发上限（None/<=1 视为「恢复串行」，直接删除该键）。"""
     if not value or int(value) <= SERIAL:
-        stored = session.get(SystemSetting, GRAPH_MAX_CONCURRENCY_KEY)
+        stored = await session.get(SystemSetting, GRAPH_MAX_CONCURRENCY_KEY)
         if stored:
-            session.delete(stored)
-            session.commit()
+            await session.delete(stored)
+            await session.commit()
         return SERIAL
 
     clamped = clamp_concurrency(value)
     payload = str(clamped)
-    stored = session.get(SystemSetting, GRAPH_MAX_CONCURRENCY_KEY)
+    stored = await session.get(SystemSetting, GRAPH_MAX_CONCURRENCY_KEY)
     if stored:
         stored.value = payload
         session.add(stored)
     else:
         session.add(SystemSetting(key=GRAPH_MAX_CONCURRENCY_KEY, value=payload))
-    session.commit()
+    await session.commit()
     return clamped
 
 
-def resolve_graph_max_concurrency(session: Session | None = None) -> int:
+async def resolve_graph_max_concurrency(session: Session | None = None) -> int:
     """本次运行实际使用的并发上限：设置表 → env → 串行。"""
     from config import settings
 
     if session is not None:
-        from_setting = load_graph_max_concurrency(session)
+        from_setting = await load_graph_max_concurrency(session)
         if from_setting is not None:
             return from_setting
     return clamp_concurrency(settings.graph_max_concurrency or SERIAL)

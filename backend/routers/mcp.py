@@ -96,10 +96,7 @@ async def is_private_url(url: str) -> tuple[bool, str]:
 
         # 3. 尝试解析域名并检查解析后的 IP
         try:
-            # P0 修复：使用 asyncio.to_thread 避免阻塞事件循环
-            import asyncio
-
-            addr_info = await asyncio.to_thread(socket.getaddrinfo, hostname, None)
+            addr_info = await socket.getaddrinfo(hostname, None)
             resolved_ips = set()
             for info in addr_info:
                 ip_str = info[4][0]
@@ -263,7 +260,7 @@ async def create_mcp_server(
         )
 
     # 检查 URL 是否已存在（虽然数据库有 unique 约束，但提前检查可以给更好的错误提示）
-    existing = session.exec(
+    existing = await session.exec(
         select(MCPServer).where(MCPServer.sse_url == server_data.sse_url)
     ).first()
 
@@ -286,8 +283,8 @@ async def create_mcp_server(
     )
 
     session.add(mcp_server)
-    session.commit()
-    session.refresh(mcp_server)
+    await session.commit()
+    await session.refresh(mcp_server)
 
     # 新服务器立即可被专家发现（不失效的话要等 TTL 过期才进工具清单）
     await mcp_tools_service.invalidate_cache()
@@ -306,7 +303,7 @@ async def list_mcp_servers(
     包含 connection_status 供前端展示状态灯。
     """
     statement = select(MCPServer).order_by(MCPServer.created_at.desc())
-    servers = session.exec(statement).all()
+    servers = await session.exec(statement).all()
 
     return servers
 
@@ -327,7 +324,7 @@ async def update_mcp_server(
     变更落库后失效工具缓存，专家下一个请求就能看到新工具集。
     """
     # 查找服务器
-    server = get_mcp_server_or_404(session, server_id)
+    server = await get_mcp_server_or_404(session, server_id)
 
     new_url = update_data.sse_url
     new_transport = update_data.transport
@@ -343,7 +340,7 @@ async def update_mcp_server(
             )
 
         # 检查新 URL 是否已被其他服务器使用
-        existing = session.exec(
+        existing = await session.exec(
             select(MCPServer).where(MCPServer.sse_url == new_url, MCPServer.id != server_id)
         ).first()
 
@@ -386,8 +383,8 @@ async def update_mcp_server(
     server.updated_at = utc_now()
 
     session.add(server)
-    session.commit()
-    session.refresh(server)
+    await session.commit()
+    await session.refresh(server)
 
     # 配置已变：立即失效工具缓存（TTL 最长 5 分钟，不失效的话
     # 专家在窗口内仍按旧清单发现/调用工具）
@@ -407,10 +404,10 @@ async def delete_mcp_server(
 
     物理删除该配置。
     """
-    server = get_mcp_server_or_404(session, server_id)
+    server = await get_mcp_server_or_404(session, server_id)
 
-    session.delete(server)
-    session.commit()
+    await session.delete(server)
+    await session.commit()
 
     # 已删服务器的工具立即退出发现链路（不失效的话 TTL 窗口内专家仍会调用）
     await mcp_tools_service.invalidate_cache()
@@ -436,7 +433,7 @@ async def get_mcp_server_tools(
 
     实时连接 MCP 服务器并获取可用工具列表。
     """
-    server = get_mcp_server_or_404(session, server_id)
+    server = await get_mcp_server_or_404(session, server_id)
 
     if not server.is_active:
         raise ValidationError("MCP 服务器未启用")

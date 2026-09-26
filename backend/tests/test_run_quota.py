@@ -11,7 +11,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel
 
 from models import AgentRun, SystemSetting
 from services.run_quota import (
@@ -22,6 +23,27 @@ from services.run_quota import (
 from utils.time import utc_now
 
 
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
+
+
 class _KVStubSession:
     """支持 get/add/commit/delete 的最小会话桩（单键）"""
 
@@ -29,7 +51,7 @@ class _KVStubSession:
         self._key = "user_daily_token_quota"
         self._value = value
 
-    def get(self, model, pk):  # noqa: ANN001
+    async def get(self, model, pk):  # noqa: ANN001
         if pk == self._key and self._value is not None:
             return SimpleNamespace(key=self._key, value=self._value)
         return None
@@ -37,10 +59,10 @@ class _KVStubSession:
     def add(self, instance):  # noqa: ANN001
         self._value = instance.value
 
-    def delete(self, instance):  # noqa: ANN001
+    async def delete(self, instance):  # noqa: ANN001
         self._value = None
 
-    def commit(self):
+    async def commit(self):
         pass
 
 
@@ -64,23 +86,23 @@ def _usage_session(used: int):
     return session
 
 
-def test_quota_unset_means_unlimited():
-    assert load_daily_token_quota(_KVStubSession(None)) is None
-    assert load_daily_token_quota(_KVStubSession("not-a-number")) is None
-    assert load_daily_token_quota(_KVStubSession("0")) is None
+async def test_quota_unset_means_unlimited():
+    assert await load_daily_token_quota(_KVStubSession(None)) is None
+    assert await load_daily_token_quota(_KVStubSession("not-a-number")) is None
+    assert await load_daily_token_quota(_KVStubSession("0")) is None
 
 
-def test_quota_save_then_load_roundtrip():
+async def test_quota_save_then_load_roundtrip():
     session = _KVStubSession()
-    assert save_daily_token_quota(session, 50000) == 50000
-    assert load_daily_token_quota(session) == 50000
-    save_daily_token_quota(session, None)
-    assert load_daily_token_quota(session) is None
+    assert await save_daily_token_quota(session, 50000) == 50000
+    assert await load_daily_token_quota(session) == 50000
+    await save_daily_token_quota(session, None)
+    assert await load_daily_token_quota(session) is None
 
 
-def test_today_usage_exceeds_quota():
-    assert today_token_usage_exceeds_quota(_usage_session(50_000), "u1", 50_000) is True
-    assert today_token_usage_exceeds_quota(_usage_session(49_999), "u1", 50_000) is False
+async def test_today_usage_exceeds_quota():
+    assert await today_token_usage_exceeds_quota(_usage_session(50_000), "u1", 50_000) is True
+    assert await today_token_usage_exceeds_quota(_usage_session(49_999), "u1", 50_000) is False
 
 
 # ============================================================================
@@ -91,19 +113,19 @@ _TABLES = [AgentRun.__table__, SystemSetting.__table__]
 
 
 @pytest.fixture
-def engine():
-    engine = create_engine(
-        "sqlite://",
+async def engine():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=_TABLES)
+    await _init_tables(engine, tables=_TABLES)
     yield engine
     engine.dispose()
 
 
-def _add_run(engine, run_id: str, total_tokens: int) -> None:
-    with Session(engine) as session:
+async def _add_run(engine, run_id: str, total_tokens: int) -> None:
+    async with _test_session() as session:
         session.add(
             AgentRun(
                 id=run_id,
@@ -115,22 +137,22 @@ def _add_run(engine, run_id: str, total_tokens: int) -> None:
                 updated_at=utc_now(),
             )
         )
-        session.commit()
+        await session.commit()
 
 
-def test_exceeds_quota_against_real_engine(engine):
+async def test_exceeds_quota_against_real_engine(engine):
     _add_run(engine, "r1", 300)
 
-    with Session(engine) as session:
-        assert today_token_usage_exceeds_quota(session, "u1", 300) is True
-        assert today_token_usage_exceeds_quota(session, "u1", 301) is False
-        assert today_token_usage_exceeds_quota(session, "u2", 1) is False
+    async with _test_session() as session:
+        assert await today_token_usage_exceeds_quota(session, "u1", 300) is True
+        assert await today_token_usage_exceeds_quota(session, "u1", 301) is False
+        assert await today_token_usage_exceeds_quota(session, "u2", 1) is False
 
 
-def test_quota_roundtrip_against_real_engine(engine):
-    with Session(engine) as session:
-        assert load_daily_token_quota(session) is None  # 未配置 = 不限量
-        assert save_daily_token_quota(session, 1_000_000) == 1_000_000
-        assert load_daily_token_quota(session) == 1_000_000
-        assert save_daily_token_quota(session, 0) is None
-        assert load_daily_token_quota(session) is None
+async def test_quota_roundtrip_against_real_engine(engine):
+    async with _test_session() as session:
+        assert await load_daily_token_quota(session) is None  # 未配置 = 不限量
+        assert await save_daily_token_quota(session, 1_000_000) == 1_000_000
+        assert await load_daily_token_quota(session) == 1_000_000
+        assert await save_daily_token_quota(session, 0) is None
+        assert await load_daily_token_quota(session) is None

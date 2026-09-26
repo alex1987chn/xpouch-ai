@@ -1,15 +1,13 @@
-import asyncio
+from sqlmodel import select
 
-from sqlmodel import Session, select
-
-from database import engine
+from database import SessionFactory
 from models.memory import UserMemory
-from providers_config import get_embedding_client
+from providers_config import get_embedding_client_async
 from utils.logger import logger
 from utils.time import utc_now
 
 
-def get_embedding(text: str) -> list[float]:
+async def get_embedding(text: str) -> list[float]:
     """
     获取向量嵌入
 
@@ -17,9 +15,9 @@ def get_embedding(text: str) -> list[float]:
     """
     try:
         # 从统一配置获取客户端
-        client, model, dimensions = get_embedding_client()
+        client, model, dimensions = await get_embedding_client_async()
 
-        response = client.embeddings.create(input=text.replace("\n", " "), model=model)
+        response = await client.embeddings.create(input=text.replace("\n", " "), model=model)
         return response.data[0].embedding
     except Exception as e:
         logger.error(f"[Memory] Embedding Error: {e}")
@@ -30,7 +28,7 @@ class MemoryManager:
     """记忆管理器 - 处理用户长期记忆的存储和检索"""
 
     # --- 同步方法 (运行在线程池中) ---
-    def _add_memory_sync(
+    async def _add_memory_impl(
         self, user_id: str, content: str, source: str = "conversation", memory_type: str = "fact"
     ):
         """同步添加记忆到数据库。
@@ -42,7 +40,7 @@ class MemoryManager:
             return
 
         # 1. 转向量
-        vector = get_embedding(content)
+        vector = await get_embedding(content)
         if not vector:
             raise RuntimeError(f"embedding 为空，无法生成记忆向量: {content[:50]}...")
 
@@ -50,8 +48,8 @@ class MemoryManager:
         #    也让写入中途失败后的重试安全——已入库的行不会被重复种）
         # 3. 存入数据库
         try:
-            with Session(engine) as session:
-                dup = session.exec(
+            async with SessionFactory() as session:
+                dup = await session.exec(
                     select(UserMemory).where(
                         UserMemory.user_id == user_id,
                         UserMemory.content == content,
@@ -69,18 +67,18 @@ class MemoryManager:
                     memory_type=memory_type,
                 )
                 session.add(memory)
-                session.commit()
+                await session.commit()
                 logger.info(f"[Memory] ✅ 已记住: {content[:80]}...")
         except Exception as e:
             # 包装为 RuntimeError：调用方（generic 记忆分支）只接 RuntimeError/ValueError，
             # 裸 psycopg 异常会穿透到执行框架层
             raise RuntimeError(f"记忆数据库写入失败: {e}") from e
 
-    def _list_memories_sync(self, user_id: str, limit: int = 50) -> list[str]:
+    async def _list_memories_impl(self, user_id: str, limit: int = 50) -> list[str]:
         """列出当前用户的记忆（按时间正序），供"查看我的记忆"类请求出具清单。"""
         try:
-            with Session(engine) as session:
-                rows = session.exec(
+            async with SessionFactory() as session:
+                rows = await session.exec(
                     select(UserMemory)
                     .where(UserMemory.user_id == user_id)
                     .order_by(UserMemory.created_at)
@@ -90,7 +88,7 @@ class MemoryManager:
         except Exception as e:
             raise RuntimeError(f"记忆查询失败: {e}") from e
 
-    def _delete_memories_sync(
+    async def _delete_memories_impl(
         self, user_id: str, keyword: str, *, dry_run: bool = False
     ) -> list[str]:
         """按关键词匹配删除（或预览）当前用户的记忆。
@@ -104,8 +102,8 @@ class MemoryManager:
             return []
         pattern = f"%{keyword}%"
         try:
-            with Session(engine) as session:
-                rows = session.exec(
+            async with SessionFactory() as session:
+                rows = await session.exec(
                     select(UserMemory)
                     .where(UserMemory.user_id == user_id, UserMemory.content.ilike(pattern))
                     .order_by(UserMemory.created_at)
@@ -113,26 +111,26 @@ class MemoryManager:
                 contents = [r.content for r in rows]
                 if not dry_run:
                     for r in rows:
-                        session.delete(r)
-                    session.commit()
+                        await session.delete(r)
+                    await session.commit()
                     logger.info(f"[Memory] 🗑️ 已删除 {len(contents)} 条记忆（关键词: {keyword}）")
                 return contents
         except Exception as e:
             raise RuntimeError(f"记忆删除失败: {e}") from e
 
-    def _search_sync(self, user_id: str, query: str, limit: int = 5) -> str:
+    async def _search_impl(self, user_id: str, query: str, limit: int = 5) -> str:
         """同步检索相关记忆"""
         if not query or not query.strip():
             return ""
 
         logger.info("[Memory] _search_sync start")
-        query_vector = get_embedding(query)
+        query_vector = await get_embedding(query)
         logger.info(f"[Memory] embedding done, dim={len(query_vector) if query_vector else 0}")
         if not query_vector:
             return ""
 
         try:
-            with Session(engine) as session:
+            async with SessionFactory() as session:
                 logger.info("[Memory] db session acquired, querying")
                 # 🔥 向量相似度排序 (cosine_distance 越小越相似)
                 statement = (
@@ -142,7 +140,7 @@ class MemoryManager:
                     .limit(limit)
                 )
 
-                results = session.exec(statement).all()
+                results = await session.exec(statement).all()
             logger.info(f"[Memory] query done, {len(results)} rows")
 
             if not results:
@@ -165,7 +163,7 @@ class MemoryManager:
         self, user_id: str, content: str, source: str = "conversation", memory_type: str = "fact"
     ):
         """异步添加记忆 - 使用 to_thread 防止阻塞主线程"""
-        await asyncio.to_thread(self._add_memory_sync, user_id, content, source, memory_type)
+        await self._add_memory_impl(user_id, content, source, memory_type)
 
     async def search_relevant_memories(self, user_id: str, query: str, limit: int = 5) -> str:
         """异步检索相关记忆 - 使用 to_thread 防止阻塞主线程。
@@ -174,19 +172,17 @@ class MemoryManager:
         协程内同步直调会冻结整个事件循环。本机 dev 若复发调度挂起，
         改用容器/WSL 跑后端绕开。
         """
-        return await asyncio.to_thread(self._search_sync, user_id, query, limit)
+        return await self._search_impl(user_id, query, limit)
 
     async def list_memories(self, user_id: str, limit: int = 50) -> list[str]:
         """异步列出用户记忆（to_thread 同上）。"""
-        return await asyncio.to_thread(self._list_memories_sync, user_id, limit)
+        return await self._list_memories_impl(user_id, limit)
 
     async def delete_memories(
         self, user_id: str, keyword: str, *, dry_run: bool = False
     ) -> list[str]:
         """异步删除（或 dry_run 预览）用户记忆（to_thread 同上）。"""
-        return await asyncio.to_thread(
-            self._delete_memories_sync, user_id, keyword, dry_run=dry_run
-        )
+        return await self._delete_memories_impl(user_id, keyword, dry_run=dry_run)
 
 
 # 全局记忆管理器实例

@@ -56,7 +56,7 @@ def append_run_event(
     return event
 
 
-def append_run_event_and_commit(
+async def append_run_event_and_commit(
     db: Session,
     *,
     run_id: str,
@@ -82,11 +82,11 @@ def append_run_event_and_commit(
         task_id=task_id,
         note=note,
     )
-    db.commit()
+    await db.commit()
     return event
 
 
-def get_run_events_by_run_id(
+async def get_run_events_by_run_id(
     db: Session,
     run_id: str,
     *,
@@ -106,7 +106,7 @@ def get_run_events_by_run_id(
         事件列表，按时间戳升序排列
     """
     return list(
-        db.exec(
+        await db.exec(
             select(RunEvent)
             .where(RunEvent.run_id == run_id)
             .order_by(RunEvent.created_at.asc())
@@ -116,7 +116,7 @@ def get_run_events_by_run_id(
     )
 
 
-def get_run_events_by_thread_id(
+async def get_run_events_by_thread_id(
     db: Session,
     thread_id: str,
     *,
@@ -138,7 +138,7 @@ def get_run_events_by_thread_id(
         事件列表，按时间戳升序排列
     """
     return list(
-        db.exec(
+        await db.exec(
             select(RunEvent)
             .where(RunEvent.thread_id == thread_id)
             .order_by(RunEvent.created_at.asc())
@@ -466,7 +466,7 @@ def emit_hitl_revision_failed(
     )
 
 
-def fail_stale_revision_jobs(
+async def fail_stale_revision_jobs(
     db: Session,
     *,
     stale_after_seconds: int = 1800,
@@ -492,7 +492,7 @@ def fail_stale_revision_jobs(
     # 只扫**仍处于活跃状态**的 run 的修订态事件（join 收窄，语义不变）：
     # 此前全量拉三类事件，账本随时间线性变慢（评审低危项）。已终态的 run
     # 不存在「补写修订失败」的意义。
-    events = db.exec(
+    events = await db.exec(
         select(RunEvent)
         .join(AgentRun, RunEvent.run_id == AgentRun.id)
         .where(RunEvent.event_type.in_(state_types))
@@ -522,5 +522,5 @@ def fail_stale_revision_jobs(
             error="进程重启中断了修订任务；原计划保持待审，可重新提交修订或直接批准",
         )
     if stale:
-        db.commit()
+        await db.commit()
     return len(stale)

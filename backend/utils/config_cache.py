@@ -13,7 +13,7 @@
 消掉了。等出现第二个配置存储或真的需要替换实现时再上 DI。
 
 **边界（有意未纳入）**：
-- `services/tool_policy_service.py` 的覆盖缓存：它有自己的 `invalidate()` 且管理面更新时
+- `services/tool_policy_service.py` 的覆盖缓存：它有自己的 `await invalidate()` 且管理面更新时
   会显式调用（`routers/tools.py`），不属于「忘记注册」这一类。
 - `agents/graph_builder.py` 的 LLM 单例（`lru_cache`）：只在进程启动时构造一次，改模型配置
   要重启才生效——**这是否算缺陷取决于产品预期**，未在本次改动范围内（见

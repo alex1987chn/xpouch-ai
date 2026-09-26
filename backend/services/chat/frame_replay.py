@@ -29,7 +29,7 @@ from utils.logger import logger
 MAX_REPLAY_FRAMES = 2000
 
 
-def load_gap_frames(
+async def load_gap_frames(
     db: Session, run_id: str, last_event_id: int, next_live_seq: int | None
 ) -> list[str]:
     """取回 `(last_event_id, next_live_seq)` 之间缺失的帧（线格式文本，按 seq 升序）。
@@ -47,7 +47,7 @@ def load_gap_frames(
     if next_live_seq is None or next_live_seq <= last_event_id + 1:
         return []
     missing = next_live_seq - last_event_id - 1
-    rows = list_frames_after(db, run_id, last_event_id, limit=missing)
+    rows = await list_frames_after(db, run_id, last_event_id, limit=missing)
     wires = [row.wire for row in rows]
     if len(wires) < missing:
         logger.warning(
@@ -59,14 +59,14 @@ def load_gap_frames(
     return wires
 
 
-def load_replay_frames(db: Session, run_id: str, last_event_id: int) -> list[str]:
+async def load_replay_frames(db: Session, run_id: str, last_event_id: int) -> list[str]:
     """取 `last_event_id` 之后的**全部**已落库帧（没有实时窗口可跟随时的整段重放）。
 
     调用方（resume 端点）只在「run 停在审批点、本轮流已收尾」时用这条路：客户端
     断连期间错过的是 `human.interrupt`，而**审批卡就是靠这个事件渲染的**——补不回
     来用户就无处可点。超过 MAX_REPLAY_FRAMES 则截断并告警。
     """
-    rows = list_frames_after(db, run_id, last_event_id, limit=MAX_REPLAY_FRAMES)
+    rows = await list_frames_after(db, run_id, last_event_id, limit=MAX_REPLAY_FRAMES)
     if len(rows) >= MAX_REPLAY_FRAMES:
         logger.warning(
             "[Resume] run=%s 整段重放达到上限 %d 条（客户端落后过多，已截断）",

@@ -29,7 +29,7 @@ from crud.agent_run import (
     mark_run_timed_out_by_id,
     run_holds_thread,
 )
-from database import engine
+from database import SessionFactory
 from models import AgentRun, Message, RunStatus
 from utils.logger import logger
 from utils.run_lease import (
@@ -57,7 +57,7 @@ REASON_APPROVAL_TIMEOUT = "计划等待审批超时，本轮已自动取消"
 APPROVAL_TIMEOUT_NOTE_KIND = "approval_timeout_note"
 
 
-def renew_owned_leases(session: Session) -> int:
+async def renew_owned_leases(session: Session) -> int:
     """续租本进程持有的所有活跃 run。返回续租条数。
 
     ⚠️ 副作用（写在这里，免得后人踩）：`AgentRun.updated_at` 配了 `onupdate=now()`，
@@ -66,7 +66,7 @@ def renew_owned_leases(session: Session) -> int:
     在它上面再建「最后活动时间」这类判据：它现在的含义是「最后一次被续租」，每 20s
     就会变。真正的「最后活动」看 `last_heartbeat_at`，生死看 `lease_expires_at`。
     """
-    owned = session.exec(
+    owned = await session.exec(
         select(AgentRun)
         .where(AgentRun.owner == RUN_OWNER_ID)
         .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))
@@ -76,11 +76,11 @@ def renew_owned_leases(session: Session) -> int:
     for run in owned:
         run.lease_expires_at = deadline
         session.add(run)
-    session.commit()
+    await session.commit()
     return len(owned)
 
 
-def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[str]]]:
+async def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[str]]]:
     """回收「没有存活证据 / 预算用尽 / 审批等待超时」的活跃 run。
 
     返回 `(thread_id, [run_id])` 供调用方清理 checkpoint。三类目标：
@@ -102,7 +102,7 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
     实测：一小时内误杀 5 条待审批 run，用户看到的是审批卡消失、任务再也批不了）。
     """
     now = now or utc_now()
-    rows = session.exec(
+    rows = await session.exec(
         select(AgentRun)
         .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))
         .order_by(AgentRun.created_at)
@@ -121,14 +121,14 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
                 timeout_hours=settings.approval_timeout_hours,
                 now=now,
             ):
-                cancelled = mark_run_cancelled_by_id(
+                cancelled = await mark_run_cancelled_by_id(
                     session,
                     run.id,
                     error_message=REASON_APPROVAL_TIMEOUT,
                 )
                 if cancelled is not None:
                     _insert_approval_timeout_note(session, run)
-                    session.commit()
+                    await session.commit()
                     reclaimed.append((run.thread_id, [run.id]))
                     logger.warning(
                         "[RunLease] 审批超时取消 | run_id=%s | waiting_since=%s | limit=%sh",
@@ -147,7 +147,7 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
         # 两种情况用户看到的都是「超时」，但排查结论完全不同（进程没了 vs 跑太久），
         # 所以原因分开写。
         reason = REASON_DEADLINE_EXCEEDED if over_budget else REASON_LEASE_EXPIRED
-        timed_out = mark_run_timed_out_by_id(
+        timed_out = await mark_run_timed_out_by_id(
             session,
             run.id,
             error_message=reason,
@@ -155,7 +155,7 @@ def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, list[s
         )
         if timed_out is None:
             continue
-        session.commit()
+        await session.commit()
         reclaimed.append((run.thread_id, [run.id]))
         logger.warning(
             "[RunLease] 回收 run | run_id=%s | 原因=%s | owner=%s | lease=%s",
@@ -184,13 +184,13 @@ def _insert_approval_timeout_note(session: Session, run: AgentRun) -> None:
     )
 
 
-def supervisor_tick() -> tuple[int, list[tuple[str, list[str]]]]:
+async def supervisor_tick() -> tuple[int, list[tuple[str, list[str]]]]:
     """一轮维护：续租 + 回收。
 
     抽成模块级函数是为了能被直接测（含「单轮失败不能让循环死掉」这条安全性）。
     """
-    with Session(engine) as session:
-        return renew_owned_leases(session), reclaim_expired_leases(session)
+    async with SessionFactory() as session:
+        return await renew_owned_leases(session), await reclaim_expired_leases(session)
 
 
 async def run_run_lease_supervisor() -> None:
@@ -209,7 +209,7 @@ async def run_run_lease_supervisor() -> None:
 
     while True:
         try:
-            renewed, reclaimed = await asyncio.to_thread(supervisor_tick)
+            renewed, reclaimed = await supervisor_tick()
             if reclaimed:
                 logger.warning("[RunLease] 本轮续租 %d 个、回收 %d 个 run", renewed, len(reclaimed))
             for thread_id, run_ids in reclaimed:

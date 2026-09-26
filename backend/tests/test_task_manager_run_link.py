@@ -11,16 +11,16 @@ class _FakeSession:
         self.committed = False
         self.refreshed = []
 
-    def delete(self, obj):
+    async def delete(self, obj):
         self.deleted.append(obj)
 
     def add(self, obj):
         self.added.append(obj)
 
-    def commit(self):
+    async def commit(self):
         self.committed = True
 
-    def refresh(self, obj):
+    async def refresh(self, obj):
         self.refreshed.append(obj)
 
 

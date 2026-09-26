@@ -12,7 +12,9 @@ from models import User, UserRole
 from utils.logger import logger
 
 
-def init_admin_from_env(session: Session, admin_email: str | None, admin_phone: str | None) -> None:
+async def init_admin_from_env(
+    session: Session, admin_email: str | None, admin_phone: str | None
+) -> None:
     """
     从环境变量初始化管理员
 
@@ -38,10 +40,10 @@ def init_admin_from_env(session: Session, admin_email: str | None, admin_phone: 
     identifier = ""
 
     if admin_email:
-        user = session.exec(select(User).where(User.email == admin_email)).first()
+        user = await session.exec(select(User).where(User.email == admin_email)).first()
         identifier = f"邮箱 {admin_email}"
     elif admin_phone:
-        user = session.exec(select(User).where(User.phone_number == admin_phone)).first()
+        user = await session.exec(select(User).where(User.phone_number == admin_phone)).first()
         identifier = f"手机号 {admin_phone}"
 
     if not user:
@@ -57,6 +59,6 @@ def init_admin_from_env(session: Session, admin_email: str | None, admin_phone: 
     # 提升为管理员
     user.role = UserRole.ADMIN
     session.add(user)
-    session.commit()
+    await session.commit()
 
     logger.info(f"[AdminInit] ✅ 用户已提升为管理员: {identifier} ({user.username})")

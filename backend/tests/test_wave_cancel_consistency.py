@@ -30,7 +30,8 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel, select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -55,6 +56,27 @@ from services.chat.stream_service import StreamService  # noqa: E402
 from utils.error_codes import ErrorCode  # noqa: E402
 from utils.exceptions import AppError  # noqa: E402
 from utils.time import utc_now  # noqa: E402
+
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
 
 TABLES = [
     Thread.__table__,
@@ -135,14 +157,14 @@ class _CancellableLLM:
 
 
 @pytest.fixture
-def engine():
-    engine = create_engine(
-        "sqlite://",
+async def engine():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         session.add(Thread(id="t1", title="会话", user_id="u1"))
         session.add(
             AgentRun(
@@ -162,7 +184,7 @@ def engine():
             )
         )
         session.add(SystemSetting(key="graph_max_concurrency", value="2"))
-        session.commit()
+        await session.commit()
     yield engine
     engine.dispose()
 
@@ -215,7 +237,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     await _park_at_approval(saver)
 
     llm = _CancellableLLM(_DELAYS)
-    svc = StreamService(Session(engine))
+    svc = StreamService(_test_session())
 
     async def _fake_mcp_tools() -> list:
         return []
@@ -243,7 +265,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
 
     # 帧记录器必须换成本测试的 SQLite 引擎：全局 recorder 默认绑 database.engine（PG），
     # 测试进程里那是一次必然失败的连接 + 2s 退避重试，会拖死 executor 收尾
-    recorder = RunFrameRecorder(session_factory=lambda: Session(engine), flush_interval=5)
+    recorder = RunFrameRecorder(session_factory=lambda: _test_session(), flush_interval=5)
 
     with (
         # 执行期不经过 router/commander（已在审批点之后），但建图会绑定它们，一并桩掉
@@ -269,7 +291,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
         patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
         patch("agents.nodes.generic.filter_tools_for_binding", return_value=([], [])),
     ):
-        agen = svc.execute_langgraph_stream(
+        agen = await svc.execute_langgraph_stream(
             thread_id="t1",
             stream_queue=asyncio.Queue(),
             sse_queue=asyncio.Queue(),
@@ -287,7 +309,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
             except BaseException as exc:  # AppError(RUN_CANCELLED) 是契约内的上抛
                 errors.append(exc)
 
-        consumer = asyncio.create_task(_consume())
+        consumer = asyncio.create_task(await _consume())
 
         # 等第一波两个分支都开跑、且快的那个已完成——此刻取消落在「半完成」窗口
         await _wait_until(
@@ -296,7 +318,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
             what="第一波两个分支开跑且 调研甲 完成",
         )
 
-        recovery = RecoveryService(Session(engine))
+        recovery = RecoveryService(_test_session())
         result = await recovery.cancel_run("r1", "u1")
         assert result["status"] == "cancelled"
 
@@ -316,8 +338,8 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     deadline = loop.time() + 5
     frame_seqs: list[int] = []
     while loop.time() < deadline:
-        with Session(engine) as db:
-            frame_seqs = sorted(frame.seq for frame in list_frames_after(db, "r1", 0))
+        async with _test_session() as db:
+            frame_seqs = sorted(frame.seq for frame in await list_frames_after(db, "r1", 0))
         if frame_seqs:
             break
         await asyncio.sleep(0.02)
@@ -337,13 +359,13 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     assert "汇编" not in llm.started, "取消后下游任务不得再开跑"
 
     # ④ DB 终态与账本
-    with Session(engine) as db:
-        run = db.get(AgentRun, "r1")
+    async with _test_session() as db:
+        run = await db.get(AgentRun, "r1")
         assert run.status == RunStatus.CANCELLED, f"取消必须是终态，实际 {run.status}"
-        plan = db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == "r1")).one()
+        plan = await db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == "r1")).one()
         assert plan.status == TaskStatus.CANCELLED
         event_types = {
-            row.event_type for row in db.exec(select(RunEvent).where(RunEvent.run_id == "r1")).all()
+            row.event_type for row in await db.exec(select(RunEvent).where(RunEvent.run_id == "r1")).all()
         }
         assert RunEventType.RUN_CANCELLED in event_types
 
@@ -357,5 +379,5 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     assert len(state.values.get("task_list", [])) == 3, "计划数据在取消后应保持完整"
 
     # ⑥ 幂等：对已终态的 run 再取消，返回提示而不抛错
-    second = await RecoveryService(Session(engine)).cancel_run("r1", "u1")
+    second = await RecoveryService(_test_session()).cancel_run("r1", "u1")
     assert second["status"] == str(RunStatus.CANCELLED)

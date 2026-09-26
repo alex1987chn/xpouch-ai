@@ -14,9 +14,9 @@ from models.mcp import MCPServer
 from utils.exceptions import NotFoundError
 
 
-def get_mcp_server_or_404(session: Session, server_id: str) -> MCPServer:
+async def get_mcp_server_or_404(session: Session, server_id: str) -> MCPServer:
     """获取 MCPServer，不存在则抛 NotFoundError。"""
-    server = session.get(MCPServer, server_id)
+    server = await session.get(MCPServer, server_id)
     if not server:
         raise NotFoundError(resource="MCP 服务器")
     return server

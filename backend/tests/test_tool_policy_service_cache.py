@@ -3,7 +3,7 @@
 回归背景：`_cache_expire_at` 曾初始化为 `datetime.min.replace(tzinfo=UTC)`
 （**aware**），而比较用的 `utc_now()` 返回 **naive** —— 比较直接抛
 `TypeError: can't compare offset-naive and offset-aware datetimes`。
-后果不止是缓存失效：`get_overrides()` 被 `generic` 的宽 except 吞掉、记成
+后果不止是缓存失效：`await get_overrides()` 被 `generic` 的宽 except 吞掉、记成
 「工具绑定失败」，于是 **所有专家的工具调用静默失效**（搜索/时间/计算器/MCP），
 且因文案指向「模型不支持工具调用」而长期无人发现。
 
@@ -31,39 +31,39 @@ def _service_with_stub_load(loaded: dict | None = None) -> tuple[ToolPolicyServi
 
 
 class TestCacheTimeBase:
-    def test_first_call_does_not_raise_type_error(self):
+    async def test_first_call_does_not_raise_type_error(self):
         """核心回归：首次调用不得因 naive/aware 混用抛 TypeError。"""
         service, calls = _service_with_stub_load()
 
-        result = asyncio.run(service.get_overrides())
+        result = asyncio.run(await service.get_overrides())
 
         assert result == {}
         assert calls["n"] == 1, "首次调用应真正加载"
 
-    def test_second_call_hits_cache(self):
+    async def test_second_call_hits_cache(self):
         service, calls = _service_with_stub_load()
 
-        asyncio.run(service.get_overrides())
-        asyncio.run(service.get_overrides())
+        asyncio.run(await service.get_overrides())
+        asyncio.run(await service.get_overrides())
 
         assert calls["n"] == 1, "TTL 内应命中缓存，不再查库"
 
-    def test_cache_expires_after_ttl(self):
+    async def test_cache_expires_after_ttl(self):
         service, calls = _service_with_stub_load()
-        asyncio.run(service.get_overrides())
+        asyncio.run(await service.get_overrides())
 
         # 把过期时刻推到过去（用同一时间基准，模拟 TTL 到期）
         service._cache_expire_at = service._cache_expire_at - timedelta(seconds=60)
-        asyncio.run(service.get_overrides())
+        asyncio.run(await service.get_overrides())
 
         assert calls["n"] == 2, "TTL 过期后应重新加载"
 
-    def test_invalidate_forces_reload(self):
+    async def test_invalidate_forces_reload(self):
         service, calls = _service_with_stub_load()
-        asyncio.run(service.get_overrides())
+        asyncio.run(await service.get_overrides())
 
-        asyncio.run(service.invalidate())
-        asyncio.run(service.get_overrides())
+        asyncio.run(await service.invalidate())
+        asyncio.run(await service.get_overrides())
 
         assert calls["n"] == 2, "invalidate 之后必须重新加载"
 

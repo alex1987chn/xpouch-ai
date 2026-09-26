@@ -51,20 +51,20 @@ async def get_run_stats(
     logger.info(f"[Stats API] 获取运行统计: user_id={current_user.id}, is_admin={is_admin}")
 
     # 获取核心指标（数据库层聚合）
-    metrics_data = get_run_metrics(db, user_id=user_id)
+    metrics_data = await get_run_metrics(db, user_id=user_id)
     metrics = RunMetrics(**metrics_data)
 
     # 获取每日趋势（数据库层聚合）
-    trends = get_daily_trends(db, user_id=user_id, days=days)
+    trends = await get_daily_trends(db, user_id=user_id, days=days)
 
     # 获取运行列表（分页）
-    runs, total_count = get_run_list(db, user_id=user_id, limit=limit, offset=offset, search=search)
+    runs, total_count = await get_run_list(db, user_id=user_id, limit=limit, offset=offset, search=search)
 
     # 今日 token 用量与配额（按请求者口径；配额为全局设置）
     from services.run_quota import load_daily_token_quota
 
-    today_tokens = get_today_token_usage(db, user_id=current_user.id)
-    daily_quota = load_daily_token_quota(db)
+    today_tokens = await get_today_token_usage(db, user_id=current_user.id)
+    daily_quota = await load_daily_token_quota(db)
 
     return RunStatsResponse(
         is_admin=is_admin,
@@ -88,6 +88,6 @@ async def get_tokens_today(
     from services.run_quota import load_daily_token_quota
 
     return {
-        "today_tokens": get_today_token_usage(db, user_id=current_user.id),
-        "daily_token_quota": load_daily_token_quota(db),
+        "today_tokens": await get_today_token_usage(db, user_id=current_user.id),
+        "daily_token_quota": await load_daily_token_quota(db),
     }

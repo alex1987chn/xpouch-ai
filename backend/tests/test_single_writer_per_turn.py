@@ -22,10 +22,32 @@ from types import SimpleNamespace
 import pytest
 from langchain_core.messages import AIMessage
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel
 
 from models import ExecutionPlan, SubTask, Thread
 from services.chat.stream_service import StreamService
+
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
 
 TABLES = [Thread.__table__, ExecutionPlan.__table__, SubTask.__table__]
 
@@ -45,19 +67,19 @@ class _FakeThreadService:
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         session.add(Thread(id="t1", title="会话", user_id="u1"))
         session.add(
             ExecutionPlan(id="p1", thread_id="t1", user_query="q", run_id="r1", plan_version=1)
         )
-        session.commit()
+        await session.commit()
         yield session
 
 
@@ -77,19 +99,19 @@ def _service(db: Session) -> _ServiceUnderTest:
     return _ServiceUnderTest(db, _FakeThreadService())
 
 
-def _run(db: Session, *, decision: str, summary: str | None) -> _ServiceUnderTest:
+async def _run(db: Session, *, decision: str, summary: str | None) -> _ServiceUnderTest:
     """跑一次保存；summary 非 None 时先写入计划正文（模拟 aggregator 已落库）。"""
     if summary is not None:
-        plan = db.get(ExecutionPlan, "p1")
+        plan = await db.get(ExecutionPlan, "p1")
         plan.final_response = summary
         db.add(plan)
-        db.commit()
+        await db.commit()
 
     svc = _service(db)
     asyncio.run(
-        svc._save_langgraph_result(
+        await svc._save_langgraph_result(
             thread_id="t1",
-            thread=db.get(Thread, "t1"),
+            thread=await db.get(Thread, "t1"),
             user_message="问题",
             last_message=AIMessage(content="state 里的最后一条消息"),
             router_decision=decision,
@@ -118,16 +140,16 @@ class TestComplexModeHasSingleWriter:
 
 
 class TestPlanFinalResponseNotClobbered:
-    def test_existing_summary_is_preserved(self, db):
+    async def test_existing_summary_is_preserved(self, db):
         """计划正文已是 aggregator 写的综述 → 不得被 state 末条消息覆盖。"""
         _run(db, decision="complex", summary="聚合综述")
 
         db.expire_all()
-        assert db.get(ExecutionPlan, "p1").final_response == "聚合综述"
+        assert await db.get(ExecutionPlan, "p1").final_response == "聚合综述"
 
-    def test_empty_summary_falls_back_to_last_message(self, db):
+    async def test_empty_summary_falls_back_to_last_message(self, db):
         """正文为空时兜底写入（例如 aggregator 落库失败），不留空。"""
         _run(db, decision="complex", summary=None)
 
         db.expire_all()
-        assert db.get(ExecutionPlan, "p1").final_response == "state 里的最后一条消息"
+        assert await db.get(ExecutionPlan, "p1").final_response == "state 里的最后一条消息"

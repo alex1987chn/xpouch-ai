@@ -241,17 +241,12 @@ async def expert_worker_node(
             else:
                 # 3️⃣ 缓存未命中，可能是自定义专家，尝试直接查数据库
                 logger.info(f"[GenericWorker] 缓存未命中，查询数据库: {expert_type}")
-                from sqlmodel import Session
 
                 from agents.services.expert_manager import get_expert_config
-                from database import engine
+                from database import SessionFactory
 
-                # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
-                def _load_expert_config():
-                    with Session(engine) as session:
-                        return get_expert_config(expert_type, session)
-
-                expert_config = await asyncio.to_thread(_load_expert_config)
+                async with SessionFactory() as session:
+                    expert_config = await get_expert_config(expert_type, session)
                 if expert_config:
                     logger.info(f"[GenericWorker] 从数据库加载成功: {expert_type}")
                     # 4️⃣ 写入本地缓存
@@ -308,8 +303,7 @@ async def expert_worker_node(
             try:
                 from services.chat.expert_message import insert_expert_message_standalone
 
-                expert_message_id = await asyncio.to_thread(
-                    insert_expert_message_standalone,
+                expert_message_id = await insert_expert_message_standalone(
                     thread_id=thread_id,
                     task_id=str(task_id),
                     expert_type=expert_type,
@@ -340,7 +334,7 @@ async def expert_worker_node(
                 from utils.async_task_queue import async_append_run_event, spawn_background
 
                 spawn_background(
-                    async_append_run_event(
+                    await async_append_run_event(
                         run_id=run_id,
                         event_type="task_started",
                         thread_id=thread_id,
@@ -368,7 +362,7 @@ async def expert_worker_node(
                 from utils.async_task_queue import async_mark_subtask_running, spawn_background
 
                 spawn_background(
-                    async_mark_subtask_running(str(task_id)),
+                    await async_mark_subtask_running(str(task_id)),
                     label=f"subtask_running:{expert_type}:{task_id}",
                 )
             except (RuntimeError, ValueError) as mark_err:
@@ -645,8 +639,7 @@ async def expert_worker_node(
                     from utils.async_task_queue import spawn_background
 
                     spawn_background(
-                        asyncio.to_thread(
-                            add_run_token_usage,
+                        await add_run_token_usage(
                             run_id,
                             task_usage["prompt"],
                             task_usage["completion"],
@@ -845,7 +838,7 @@ async def expert_worker_node(
                 )
                 # 使用后台线程异步保存，不阻塞 LLM 响应返回（持引用防 GC + 失败可见）
                 spawn_background(
-                    async_save_expert_result(
+                    await async_save_expert_result(
                         task_id=task_id,
                         expert_type=expert_type,
                         output_result=response.content,
@@ -898,8 +891,7 @@ async def expert_worker_node(
             try:
                 from services.chat.expert_message import fail_expert_message_standalone
 
-                await asyncio.to_thread(
-                    fail_expert_message_standalone,
+                await fail_expert_message_standalone(
                     thread_id=thread_id,
                     task_id=str(task_id),
                     error=str(e),
@@ -926,7 +918,7 @@ async def expert_worker_node(
                 from utils.async_task_queue import async_append_run_event, spawn_background
 
                 spawn_background(
-                    async_append_run_event(
+                    await async_append_run_event(
                         run_id=run_id,
                         event_type="task_failed",
                         thread_id=thread_id,

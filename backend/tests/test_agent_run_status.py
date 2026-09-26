@@ -40,13 +40,13 @@ class _FakeSession:
             # 原地对象即断言载体，无需登记
             pass
 
-    def flush(self):
+    async def flush(self):
         return None
 
-    def commit(self):
+    async def commit(self):
         self.commit_called = True
 
-    def get(self, model, object_id):
+    async def get(self, model, object_id):
         if model is Thread and object_id == self.thread.id:
             return self.thread
         if model is AgentRun:
@@ -105,7 +105,7 @@ def test_derive_thread_status_from_run_status():
     assert derive_thread_status_from_run_status(RunStatus.FAILED) == "idle"
 
 
-def test_agent_run_status_updates_sync_thread_status(monkeypatch):
+async def test_agent_run_status_updates_sync_thread_status(monkeypatch):
     thread = Thread(
         id="thread-1",
         title="demo",
@@ -119,7 +119,7 @@ def test_agent_run_status_updates_sync_thread_status(monkeypatch):
     session = _FakeSession(thread)
     monkeypatch.setattr(settings, "run_deadline_seconds", 30)
 
-    run = create_agent_run(
+    run = await create_agent_run(
         session,
         thread_id="thread-1",
         user_id="user-1",
@@ -136,14 +136,14 @@ def test_agent_run_status_updates_sync_thread_status(monkeypatch):
         RunEventType.RUN_STARTED,
     ]
 
-    update_run_status(session, run, RunStatus.WAITING_FOR_APPROVAL, current_node="approval")
+    await update_run_status(session, run, RunStatus.WAITING_FOR_APPROVAL, current_node="approval")
     assert thread.status == "paused"
 
-    mark_run_completed(session, run)
+    await mark_run_completed(session, run)
     assert thread.status == "idle"
 
 
-def test_mark_run_failed_syncs_thread_status_to_idle():
+async def test_mark_run_failed_syncs_thread_status_to_idle():
     thread = Thread(
         id="thread-1",
         title="demo",
@@ -166,13 +166,13 @@ def test_mark_run_failed_syncs_thread_status_to_idle():
     session = _FakeSession(thread)
     session.runs[run.id] = run
 
-    mark_run_failed(session, run, error_message="boom")
+    await mark_run_failed(session, run, error_message="boom")
 
     assert run.status == RunStatus.FAILED
     assert thread.status == "idle"
 
 
-def test_touch_and_timeout_helpers_update_run_and_thread():
+async def test_touch_and_timeout_helpers_update_run_and_thread():
     thread = Thread(
         id="thread-1",
         title="demo",
@@ -196,12 +196,12 @@ def test_touch_and_timeout_helpers_update_run_and_thread():
     session = _FakeSession(thread)
     session.runs[run.id] = run
 
-    touched = touch_run_heartbeat_by_id(session, "run-1", current_node="generic")
+    touched = await touch_run_heartbeat_by_id(session, "run-1", current_node="generic")
     assert touched is not None
     assert touched.current_node == "generic"
     assert touched.last_heartbeat_at is not None
 
-    timed_out = mark_run_timed_out_by_id(session, "run-1", current_node="generic")
+    timed_out = await mark_run_timed_out_by_id(session, "run-1", current_node="generic")
     assert timed_out is not None
     assert timed_out.status == RunStatus.TIMED_OUT
     assert timed_out.error_code == ErrorCode.RUN_TIMED_OUT
@@ -210,7 +210,7 @@ def test_touch_and_timeout_helpers_update_run_and_thread():
     assert session.events[-1].event_type == RunEventType.RUN_TIMED_OUT
 
 
-def test_mark_run_cancelled_syncs_thread_status_to_idle():
+async def test_mark_run_cancelled_syncs_thread_status_to_idle():
     thread = Thread(
         id="thread-1",
         title="demo",
@@ -234,7 +234,7 @@ def test_mark_run_cancelled_syncs_thread_status_to_idle():
     session = _FakeSession(thread)
     session.runs[run.id] = run
 
-    cancelled = mark_run_cancelled_by_id(session, "run-1", current_node="generic")
+    cancelled = await mark_run_cancelled_by_id(session, "run-1", current_node="generic")
 
     assert cancelled is not None
     assert cancelled.status == RunStatus.CANCELLED
@@ -243,7 +243,7 @@ def test_mark_run_cancelled_syncs_thread_status_to_idle():
     assert thread.status == "idle"
 
 
-def test_ensure_no_active_run_for_thread_raises_conflict():
+async def test_ensure_no_active_run_for_thread_raises_conflict():
     """有**存活租约**的活跃 run 才挡新任务（决定 2：死活的唯一判据是租约）。"""
     thread = Thread(
         id="thread-1",
@@ -271,7 +271,7 @@ def test_ensure_no_active_run_for_thread_raises_conflict():
     session.runs[run.id] = run
 
     try:
-        ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
+        await ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
     except AppError as exc:
         assert exc.code == ErrorCode.ACTIVE_RUN_CONFLICT
         assert exc.status_code == 409
@@ -281,7 +281,7 @@ def test_ensure_no_active_run_for_thread_raises_conflict():
         raise AssertionError("Expected active run conflict to be raised")
 
 
-def test_expired_lease_paused_run_still_holds_thread():
+async def test_expired_lease_paused_run_still_holds_thread():
     """停在审批点的 run：租约过期也仍然占着会话（不让新任务插进来）。
 
     为什么与「过期僵尸让位」相反：HITL 暂停的 run **不是僵尸**——它等的是人，
@@ -315,7 +315,7 @@ def test_expired_lease_paused_run_still_holds_thread():
     session.runs[paused.id] = paused
 
     try:
-        ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
+        await ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
     except AppError as exc:
         assert exc.code == ErrorCode.ACTIVE_RUN_CONFLICT
         assert exc.details["active_run_id"] == "run-paused"
@@ -323,7 +323,7 @@ def test_expired_lease_paused_run_still_holds_thread():
         raise AssertionError("停在审批点的 run 必须继续占着会话")
 
 
-def test_expired_lease_run_does_not_block_new_run():
+async def test_expired_lease_run_does_not_block_new_run():
     """租约过期的活跃 run = 僵尸，不再挡住新任务。
 
     行为变化（决定 2）：旧口径下这种僵尸要等清理循环「猜」满 30 分钟才放行，
@@ -367,7 +367,7 @@ def test_expired_lease_run_does_not_block_new_run():
     session.runs[homeless.id] = homeless
 
     # 不抛异常 = 放行
-    ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
+    await ensure_no_active_run_for_thread(session, thread_id="thread-1", user_id="user-1")
 
 
 class _FakePlan:
@@ -379,7 +379,7 @@ class _FakePlan:
         self.updated_at = None
 
 
-def test_terminal_run_closes_stale_plan_and_pending_subtask():
+async def test_terminal_run_closes_stale_plan_and_pending_subtask():
     """run 异常终态必须收口计划与未完结子任务（2026-09-24 僵尸缺口回归钉）。
 
     曾只收 RUNNING 子任务、不碰 ExecutionPlan——计划挂 waiting_for_approval
@@ -413,7 +413,7 @@ def test_terminal_run_closes_stale_plan_and_pending_subtask():
     session.runs[run.id] = run
     session.plans = [waiting_plan, done_plan]
 
-    timed_out = mark_run_timed_out_by_id(session, "run-1")
+    timed_out = await mark_run_timed_out_by_id(session, "run-1")
 
     assert timed_out is not None
     # 等审批的计划被收口为 failed；已完结的计划不动
@@ -422,7 +422,7 @@ def test_terminal_run_closes_stale_plan_and_pending_subtask():
     assert done_plan.status == TaskStatus.COMPLETED
 
 
-def test_cancelled_run_closes_stale_plan_as_cancelled():
+async def test_cancelled_run_closes_stale_plan_as_cancelled():
     from models.enums import TaskStatus
 
     thread = Thread(
@@ -450,13 +450,13 @@ def test_cancelled_run_closes_stale_plan_as_cancelled():
     session.runs[run.id] = run
     session.plans = [running_plan]
 
-    cancelled = mark_run_cancelled_by_id(session, "run-1")
+    cancelled = await mark_run_cancelled_by_id(session, "run-1")
 
     assert cancelled is not None
     assert running_plan.status == TaskStatus.CANCELLED
 
 
-def test_mark_run_completed_closes_stale_plan_defensively():
+async def test_mark_run_completed_closes_stale_plan_defensively():
     """完成路径的防御性收口：正常应为无操作，但漏网的未终态计划按 completed 收。"""
     from models.enums import TaskStatus
 
@@ -485,7 +485,7 @@ def test_mark_run_completed_closes_stale_plan_defensively():
     session.runs[run.id] = run
     session.plans = [stale_plan]
 
-    mark_run_completed(session, run)
+    await mark_run_completed(session, run)
 
     assert run.status == RunStatus.COMPLETED
     assert stale_plan.status == TaskStatus.COMPLETED

@@ -36,14 +36,14 @@ from fastapi.encoders import ENCODERS_BY_TYPE
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlmodel import Session, select
+from sqlmodel import select
 
 # 路由导入
 from auth import router as auth_router
 from config import settings
 
 # 内部模块导入
-from database import create_db_and_tables, engine
+from database import SessionFactory, create_db_and_tables
 from models import SkillTemplate, SystemExpert
 from routers import (
     admin,
@@ -72,37 +72,37 @@ ENCODERS_BY_TYPE[_dt] = lambda o: o.isoformat() + "Z" if o.tzinfo is None else o
 # ============================================================================
 
 
-def _init_experts_sync():
+async def _init_experts_sync():
     """同步初始化系统专家数据（在后台线程中执行）"""
     from expert_config import EXPERT_DEFAULTS
 
-    with Session(engine) as session:
-        existing_experts = session.exec(select(SystemExpert)).all()
+    async with SessionFactory() as session:
+        existing_experts = await session.exec(select(SystemExpert)).all()
 
         if not existing_experts:
             logger.info("[Lifespan] No experts found, initializing default experts...")
             for expert_config in EXPERT_DEFAULTS:
                 expert = SystemExpert(**expert_config)
                 session.add(expert)
-            session.commit()
+            await session.commit()
             logger.info(f"[Lifespan] Initialized {len(EXPERT_DEFAULTS)} experts")
         else:
             logger.info(f"[Lifespan] Found {len(existing_experts)} experts in database")
 
 
-def _init_library_templates_sync():
+async def _init_library_templates_sync():
     """同步初始化 Library 默认模板。"""
     from library_defaults import TEMPLATE_DEFAULTS
 
-    with Session(engine) as session:
+    async with SessionFactory() as session:
         existing_keys = {
-            template.template_key for template in session.exec(select(SkillTemplate)).all()
+            template.template_key for template in await session.exec(select(SkillTemplate)).all()
         }
         for template_config in TEMPLATE_DEFAULTS:
             if template_config["template_key"] in existing_keys:
                 continue
             session.add(SkillTemplate(**template_config))
-        session.commit()
+        await session.commit()
 
 
 @asynccontextmanager
@@ -120,13 +120,11 @@ async def lifespan(app: FastAPI):
     # 修订任务启动兜底：BackgroundTasks 不随进程存活，重启会让"修订中"悬置。
     # 对超时未终态的修订补写 FAILED 事件（原计划保持待审，用户可继续操作）。
     try:
-        from sqlmodel import Session
-
         from crud.run_event import fail_stale_revision_jobs
-        from database import engine
+        from database import SessionFactory
 
-        with Session(engine) as session:
-            repaired = fail_stale_revision_jobs(session)
+        async with SessionFactory() as session:
+            repaired = await fail_stale_revision_jobs(session)
         if repaired:
             logger.warning(
                 f"[Lifespan] 有 {repaired} 个修订任务被重启中断，已标记失败（原计划保持待审）"
@@ -149,20 +147,21 @@ async def lifespan(app: FastAPI):
         logger.error(f"[Lifespan] Checkpointer 建表/预热失败，启动中止: {e}")
         raise
 
-    # 初始化系统专家数据（使用 asyncio.to_thread 避免阻塞事件循环）
-    await asyncio.to_thread(_init_experts_sync)
-    await asyncio.to_thread(_init_library_templates_sync)
+    # 初始化系统专家数据
+    await _init_experts_sync()
+    await _init_library_templates_sync()
 
     # 🔥 初始化管理员（从环境变量）
     from utils.admin_init import init_admin_from_env
 
-    def _init_admin_sync():
-        """同步初始化管理员（在后台线程中执行）"""
-        with Session(engine) as session:
-            init_admin_from_env(session, settings.initial_admin_email, settings.initial_admin_phone)
+    async def _init_admin():
+        async with SessionFactory() as session:
+            await init_admin_from_env(
+                session, settings.initial_admin_email, settings.initial_admin_phone
+            )
 
     try:
-        await asyncio.to_thread(_init_admin_sync)
+        await _init_admin()
     except Exception as e:
         logger.warning(f"[Lifespan] 初始化管理员失败（非致命错误）: {e}")
 

@@ -4,7 +4,7 @@
 `except AppError: raise / except Exception: logger.error(...)` 吞掉一切。
 后果链：`finally` 仍会往 sse_queue 投 `{"type": "done"}` → 消费者收到 done 正常
 退出 → `await producer_task` 正常返回（任务内异常已被捕）→ 恢复流程继续
-`_process_collected_artifacts` → `_update_run_status(COMPLETED)` → 推 `[DONE]`。
+`_process_collected_artifacts` → `await _update_run_status(COMPLETED)` → 推 `[DONE]`。
 于是**一次彻底失败的 HITL 恢复被标成 COMPLETED**：客户端收到干净的 [DONE]、
 无 error 事件、无 message.done，而 recovery_service 里专门写好的
 「标失败 + 推 RESUME_ERROR」分支永远不会执行。
@@ -56,7 +56,7 @@ def _run(monkeypatch, svc: StreamService) -> None:
     monkeypatch.setattr("utils.db.get_shared_checkpointer", lambda: object())
 
     async def _drain() -> None:
-        async for _ in svc.execute_langgraph_stream(
+        async for _ in await svc.execute_langgraph_stream(
             thread_id="t-1",
             stream_queue=asyncio.Queue(),
             sse_queue=asyncio.Queue(),
@@ -107,7 +107,7 @@ class TestProducerFailurePropagates:
         from utils.exceptions import AppError
 
         async def _drain() -> None:
-            async for _ in svc.execute_langgraph_stream(
+            async for _ in await svc.execute_langgraph_stream(
                 thread_id="t-1",
                 stream_queue=asyncio.Queue(),
                 sse_queue=asyncio.Queue(),

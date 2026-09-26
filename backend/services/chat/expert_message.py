@@ -27,7 +27,9 @@ EXPERT_MESSAGE_KIND = "expert_result"
 RUN_THINKING_MESSAGE_KIND = "run_thinking"
 
 
-def insert_run_thinking_message(db: Session, *, thread_id: str, run_id: str | None) -> int | None:
+async def insert_run_thinking_message(
+    db: Session, *, thread_id: str, run_id: str | None
+) -> int | None:
     """插入本轮复杂执行的「思考载体」消息（content 恒空——思考步骤不入库，
     真相源是 runevent 账本，前端刷新时重建挂回本条）。
 
@@ -35,7 +37,7 @@ def insert_run_thinking_message(db: Session, *, thread_id: str, run_id: str | No
     时思考卡自然位于专家卡与聚合正文之前。幂等（同 run 已有思考行即返回
     其 id）：驳回修订会重跑 commander，不得产生第二行。
     """
-    rows = db.exec(
+    rows = await db.exec(
         select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
     ).all()
     for m in rows:
@@ -52,24 +54,24 @@ def insert_run_thinking_message(db: Session, *, thread_id: str, run_id: str | No
         },
     )
     db.add(msg)
-    db.commit()
-    db.refresh(msg)
+    await db.commit()
+    await db.refresh(msg)
     return msg.id
 
 
-def insert_run_thinking_message_standalone(
+async def insert_run_thinking_message_standalone(
     *,
     thread_id: str,
     run_id: str | None,
 ) -> int | None:
-    """线程池形态（独立 Session），commander 经 asyncio.to_thread 调用。"""
-    from database import Session, engine
+    """自建会话形态：无会话上下文的调用方（commander 节点）直连。"""
+    from database import SessionFactory
 
-    with Session(engine) as db:
-        return insert_run_thinking_message(db, thread_id=thread_id, run_id=run_id)
+    async with SessionFactory() as db:
+        return await insert_run_thinking_message(db, thread_id=thread_id, run_id=run_id)
 
 
-def insert_expert_message_standalone(
+async def insert_expert_message_standalone(
     *,
     thread_id: str,
     task_id: str,
@@ -79,11 +81,11 @@ def insert_expert_message_standalone(
     total_steps: int,
     run_id: str | None = None,
 ) -> int | None:
-    """线程池形态的插入（独立 Session），返回 message id 供事件携带。"""
-    from database import Session, engine
+    """自建会话形态的插入，返回 message id 供事件携带。"""
+    from database import SessionFactory
 
-    with Session(engine) as db:
-        msg = insert_expert_message(
+    async with SessionFactory() as db:
+        msg = await insert_expert_message(
             db,
             thread_id=thread_id,
             task_id=task_id,
@@ -96,12 +98,12 @@ def insert_expert_message_standalone(
         return msg.id if msg else None
 
 
-def fail_expert_message_standalone(*, thread_id: str, task_id: str, error: str) -> None:
-    """线程池形态的失败更新（独立 Session）。"""
-    from database import Session, engine
+async def fail_expert_message_standalone(*, thread_id: str, task_id: str, error: str) -> None:
+    """自建会话形态的失败更新。"""
+    from database import SessionFactory
 
-    with Session(engine) as db:
-        fail_expert_message(db, thread_id=thread_id, task_id=task_id, error=error)
+    async with SessionFactory() as db:
+        await fail_expert_message(db, thread_id=thread_id, task_id=task_id, error=error)
 
 
 def _expert_extra(
@@ -138,7 +140,7 @@ def _expert_extra(
     }
 
 
-def insert_expert_message(
+async def insert_expert_message(
     db: Session,
     *,
     thread_id: str,
@@ -165,8 +167,8 @@ def insert_expert_message(
         ),
     )
     db.add(msg)
-    db.commit()
-    db.refresh(msg)
+    await db.commit()
+    await db.refresh(msg)
     logger.info(
         "[ExpertMessage] 插入 running 态专家消息: task=%s expert=%s msg=%s",
         task_id,
@@ -176,10 +178,10 @@ def insert_expert_message(
     return msg
 
 
-def _find_expert_message(db: Session, thread_id: str, task_id: str) -> Message | None:
+async def _find_expert_message(db: Session, thread_id: str, task_id: str) -> Message | None:
     """按 task_id 定位该线程的专家消息（extra_data 是 JSON 列，thread 内
     助手消息量级是个位数，内存过滤比 JSONB 表达式更可移植且够快）。"""
-    rows = db.exec(
+    rows = await db.exec(
         select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
     ).all()
     for m in rows:
@@ -189,13 +191,15 @@ def _find_expert_message(db: Session, thread_id: str, task_id: str) -> Message |
     return None
 
 
-def _tool_snapshot_from_ledger(db: Session, run_id: str | None, task_id: str) -> dict[str, Any]:
+async def _tool_snapshot_from_ledger(
+    db: Session, run_id: str | None, task_id: str
+) -> dict[str, Any]:
     """从 runevent 账本聚合该任务的工具调用：聚合统计 + 逐次明细（完成时刻
     快照，与 duration 同性质——真相源仍是账本）。明细截 50 条防超长。"""
     stats: dict[str, int] = {"count": 0, "total_ms": 0, "failed": 0}
     calls: list[dict[str, Any]] = []
     if run_id:
-        rows = db.exec(
+        rows = await db.exec(
             select(RunEvent.event_data).where(
                 RunEvent.run_id == run_id, RunEvent.event_type == RunEventType.TOOL_RESULT
             )
@@ -220,7 +224,7 @@ def _tool_snapshot_from_ledger(db: Session, run_id: str | None, task_id: str) ->
     return {"tool_stats": stats, "tool_calls": calls[:50]}
 
 
-def complete_expert_message(
+async def complete_expert_message(
     db: Session,
     *,
     thread_id: str,
@@ -231,7 +235,7 @@ def complete_expert_message(
     summary: str | None,
 ) -> Message | None:
     """task 完成：原位更新为 completed（含产物引用与工具统计快照）。"""
-    msg = _find_expert_message(db, thread_id, task_id)
+    msg = await _find_expert_message(db, thread_id, task_id)
     if msg is None:
         logger.warning("[ExpertMessage] 完成更新未找到专家消息: task=%s", task_id)
         return None
@@ -239,18 +243,18 @@ def complete_expert_message(
     extra.update(
         status="completed",
         artifact_ids=artifact_ids,
-        **_tool_snapshot_from_ledger(db, run_id, task_id),
+        **await _tool_snapshot_from_ledger(db, run_id, task_id),
         duration_ms=duration_ms,
         summary=summary,
     )
     msg.extra_data = extra
     db.add(msg)
-    db.commit()
-    db.refresh(msg)
+    await db.commit()
+    await db.refresh(msg)
     return msg
 
 
-def fail_expert_message(
+async def fail_expert_message(
     db: Session,
     *,
     thread_id: str,
@@ -258,7 +262,7 @@ def fail_expert_message(
     error: str,
 ) -> Message | None:
     """task 失败：原位更新为 failed（如实保留错误，供回看诊断）。"""
-    msg = _find_expert_message(db, thread_id, task_id)
+    msg = await _find_expert_message(db, thread_id, task_id)
     if msg is None:
         logger.warning("[ExpertMessage] 失败更新未找到专家消息: task=%s", task_id)
         return None
@@ -266,18 +270,18 @@ def fail_expert_message(
     extra.update(status="failed", error=error[:300])
     msg.extra_data = extra
     db.add(msg)
-    db.commit()
-    db.refresh(msg)
+    await db.commit()
+    await db.refresh(msg)
     return msg
 
 
-def fail_running_expert_messages_for_run(
+async def fail_running_expert_messages_for_run(
     db: Session, *, thread_id: str, run_id: str | None, error: str
 ) -> int:
     """run 异常终态的收尾（close_orphaned_task_state 调用）：把该轮仍挂
     running 的专家执行消息置 failed——否则消息流的专家卡永远转圈，
     刷新后也恢复不出结果。返回收尾行数。"""
-    rows = db.exec(
+    rows = await db.exec(
         select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
     ).all()
     closed = 0
@@ -294,7 +298,7 @@ def fail_running_expert_messages_for_run(
             db.add(m)
             closed += 1
     if closed:
-        db.commit()
+        await db.commit()
         logger.warning(
             "[ExpertMessage] run %s 终态收尾：%d 条 running 专家消息置 failed",
             (run_id or "?")[:8],

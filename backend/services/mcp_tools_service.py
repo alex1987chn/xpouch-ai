@@ -18,9 +18,9 @@ from datetime import datetime
 from typing import Any
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from sqlmodel import Session, select
+from sqlmodel import select
 
-from database import engine
+from database import SessionFactory
 from models.mcp import MCPServer
 from utils.logger import logger
 from utils.time import utc_now
@@ -68,7 +68,7 @@ class MCPToolsService:
                 logger.debug("[MCP] 复用进行中的工具拉取任务（single-flight）")
                 inflight = self._inflight_task
             else:
-                self._inflight_task = asyncio.create_task(self._load_tools())
+                self._inflight_task = asyncio.create_task(await self._load_tools())
                 inflight = self._inflight_task
 
         try:
@@ -84,8 +84,10 @@ class MCPToolsService:
 
         try:
             # Python 3.13: 在异步函数中使用同步上下文管理器
-            with Session(engine) as session:
-                active_servers = session.exec(select(MCPServer).where(MCPServer.is_active)).all()
+            async with SessionFactory() as session:
+                active_servers = await session.exec(
+                    select(MCPServer).where(MCPServer.is_active)
+                ).all()
 
                 if not active_servers:
                     # 清空缓存（如果没有激活服务器）

@@ -166,7 +166,7 @@ def build_tool_call_wrapper(
     形参名用 handler 而非协议文档里的 execute：位置传入，改名不影响协议。
     """
 
-    def _ledger(result_data: ToolResultData) -> None:
+    async def _ledger(result_data: ToolResultData) -> None:
         """tool.result 落账本（后台线程，失败只告警不影响流）。"""
         if not (run_id and thread_id):
             return
@@ -174,7 +174,7 @@ def build_tool_call_wrapper(
             from utils.async_task_queue import async_append_run_event, spawn_background
 
             spawn_background(
-                async_append_run_event(
+                await async_append_run_event(
                     run_id=run_id,
                     event_type="tool_result",
                     thread_id=thread_id,

@@ -13,7 +13,8 @@ from datetime import timedelta
 import pytest
 from fastapi import HTTPException
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel, select
 
 from models import User
 from utils.jwt_handler import hash_password, verify_password
@@ -36,19 +37,19 @@ _PHONE = "13900000001"
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine, tables=[User.__table__])
-    with Session(engine) as session:
+    async with _test_session() as session:
         yield session
 
 
 @pytest.fixture
-def user_with_password(db):
+async def user_with_password(db):
     user = User(
         id="u-reset",
         username="重置用户",
@@ -56,7 +57,7 @@ def user_with_password(db):
         password_hash=hash_password(_PW_OLD),
     )
     db.add(user)
-    db.commit()
+    await db.commit()
     return user
 
 
@@ -103,41 +104,41 @@ def _send_code(db, phone: str, purpose: str = "login"):
     )
 
 
-def test_reset_success_then_new_password_works(db, user_with_password):
+async def test_reset_success_then_new_password_works(db, user_with_password):
     _stage_code(user_with_password)
     db.add(user_with_password)
-    db.commit()
+    await db.commit()
 
     resp = _reset(db, _PHONE, _CODE, _PW_NEW)
     assert "密码已重置" in resp["message"]
 
-    db.refresh(user_with_password)
+    await db.refresh(user_with_password)
     # 旧密码失效、新密码生效、验证码用后即清
     assert not verify_password(_PW_OLD, user_with_password.password_hash)
     assert verify_password(_PW_NEW, user_with_password.password_hash)
     assert not user_with_password.verification_code
 
 
-def test_reset_wrong_code_rejected_and_password_unchanged(db, user_with_password):
+async def test_reset_wrong_code_rejected_and_password_unchanged(db, user_with_password):
     _stage_code(user_with_password)
     db.add(user_with_password)
-    db.commit()
+    await db.commit()
 
     with pytest.raises(HTTPException) as exc:
         _reset(db, _PHONE, "000000", _PW_NEW)
     assert exc.value.status_code == 400
 
-    db.refresh(user_with_password)
+    await db.refresh(user_with_password)
     assert user_with_password.verification_code_attempts == 1
     assert verify_password(_PW_OLD, user_with_password.password_hash)
 
 
-def test_reset_locks_after_too_many_failures(db, user_with_password):
+async def test_reset_locks_after_too_many_failures(db, user_with_password):
     from config import settings
 
     _stage_code(user_with_password)
     db.add(user_with_password)
-    db.commit()
+    await db.commit()
 
     for _ in range(settings.verification_code_max_attempts):
         with pytest.raises(HTTPException):
@@ -149,10 +150,10 @@ def test_reset_locks_after_too_many_failures(db, user_with_password):
     assert exc.value.status_code == 429
 
 
-def test_reset_expired_code_400(db, user_with_password):
+async def test_reset_expired_code_400(db, user_with_password):
     _stage_code(user_with_password, expired=True)
     db.add(user_with_password)
-    db.commit()
+    await db.commit()
 
     with pytest.raises(HTTPException) as exc:
         _reset(db, _PHONE, _CODE, _PW_NEW)
@@ -166,18 +167,18 @@ def test_reset_nonexistent_user_404(db):
     assert exc.value.status_code == 404
 
 
-def test_send_code_reset_purpose_does_not_create_account(db, mock_sms):
+async def test_send_code_reset_purpose_does_not_create_account(db, mock_sms):
     with pytest.raises(HTTPException) as exc:
         _send_code(db, "13900000099", purpose="password_reset")
     assert exc.value.status_code == 404
     # 不像登录/注册那样自动建号
-    assert db.exec(select(User).where(User.phone_number == "13900000099")).first() is None
+    assert await db.exec(select(User).where(User.phone_number == "13900000099")).first() is None
     assert mock_sms == []
 
 
-def test_send_code_reset_purpose_existing_user_sends(db, user_with_password, mock_sms):
+async def test_send_code_reset_purpose_existing_user_sends(db, user_with_password, mock_sms):
     resp = _send_code(db, _PHONE, purpose="password_reset")
     assert resp["expires_in"] > 0
     assert len(mock_sms) == 1
-    db.refresh(user_with_password)
+    await db.refresh(user_with_password)
     assert user_with_password.verification_code

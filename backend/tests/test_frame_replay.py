@@ -10,28 +10,50 @@
 
 import pytest
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel
 
 from crud.run_stream_frame import append_frames, list_frames_after
 from models import AgentRun, RunStreamFrame, Thread
 from services.chat.frame_replay import load_gap_frames, load_replay_frames
 from utils.db import _prune_frames_for_runs
 
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
+
 TABLES = [Thread.__table__, AgentRun.__table__, RunStreamFrame.__table__]
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         session.add(Thread(id="t1", title="会话", user_id="u1"))
         session.add(AgentRun(id="r1", thread_id="t1", user_id="u1"))
-        session.commit()
+        await session.commit()
         yield session
 
 
@@ -44,85 +66,85 @@ def _id_of(wire: str) -> int:
 
 
 class TestGapReplay:
-    def test_no_gap_means_no_query(self, db):
+    async def test_no_gap_means_no_query(self, db):
         """客户端的位置就在窗口前一条 → 无需补放（也不该查库）。"""
-        assert load_gap_frames(db, "r1", last_event_id=5, next_live_seq=6) == []
-        assert load_gap_frames(db, "r1", last_event_id=5, next_live_seq=5) == []
+        assert await load_gap_frames(db, "r1", last_event_id=5, next_live_seq=6) == []
+        assert await load_gap_frames(db, "r1", last_event_id=5, next_live_seq=5) == []
 
-    def test_unknown_window_is_noop(self, db):
-        assert load_gap_frames(db, "r1", last_event_id=5, next_live_seq=None) == []
+    async def test_unknown_window_is_noop(self, db):
+        assert await load_gap_frames(db, "r1", last_event_id=5, next_live_seq=None) == []
 
-    def test_fills_exactly_the_gap(self, db):
+    async def test_fills_exactly_the_gap(self, db):
         """客户端停在 3，内存窗口从 7 开始 → 必须补回 4/5/6，且不多不少。"""
-        append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 11)])
+        await append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 11)])
 
-        wires = load_gap_frames(db, "r1", last_event_id=3, next_live_seq=7)
+        wires = await load_gap_frames(db, "r1", last_event_id=3, next_live_seq=7)
 
         assert [_id_of(w) for w in wires] == [4, 5, 6]
 
-    def test_shortfall_is_not_fatal(self, db):
+    async def test_shortfall_is_not_fatal(self, db):
         """库里只有一部分（其余已被终态清理）→ 补多少算多少，不抛。"""
-        append_frames(db, "r1", [(seq, _wire(seq)) for seq in (4, 5)])  # 缺 6
+        await append_frames(db, "r1", [(seq, _wire(seq)) for seq in (4, 5)])  # 缺 6
 
-        wires = load_gap_frames(db, "r1", last_event_id=3, next_live_seq=7)
+        wires = await load_gap_frames(db, "r1", last_event_id=3, next_live_seq=7)
 
         assert [_id_of(w) for w in wires] == [4, 5]
 
-    def test_does_not_touch_other_runs(self, db):
+    async def test_does_not_touch_other_runs(self, db):
         db.add(AgentRun(id="r2", thread_id="t1", user_id="u1"))
-        db.commit()
-        append_frames(db, "r2", [(4, _wire(4))])
+        await db.commit()
+        await append_frames(db, "r2", [(4, _wire(4))])
 
-        assert load_gap_frames(db, "r1", last_event_id=3, next_live_seq=7) == []
+        assert await load_gap_frames(db, "r1", last_event_id=3, next_live_seq=7) == []
 
 
 class TestReplayFrames:
     """整段重放：没有实时窗口可跟随时（run 停在审批点、本轮流已收尾）。"""
 
-    def test_takes_everything_after_last(self, db):
-        append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 6)])
+    async def test_takes_everything_after_last(self, db):
+        await append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 6)])
 
-        wires = load_replay_frames(db, "r1", last_event_id=0)
+        wires = await load_replay_frames(db, "r1", last_event_id=0)
 
         assert [_id_of(w) for w in wires] == [1, 2, 3, 4, 5]
 
-    def test_respects_client_position(self, db):
+    async def test_respects_client_position(self, db):
         """客户端已经收到一部分（last_event_id=4）→ 只补 5，不重复推送。"""
-        append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 6)])
+        await append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 6)])
 
-        wires = load_replay_frames(db, "r1", last_event_id=4)
+        wires = await load_replay_frames(db, "r1", last_event_id=4)
 
         assert [_id_of(w) for w in wires] == [5]
 
-    def test_truncates_at_cap(self, db, monkeypatch):
+    async def test_truncates_at_cap(self, db, monkeypatch):
         """上限兜底：超出即截断（重放尽力而为，不让一个请求拖着上万行）。"""
         monkeypatch.setattr("services.chat.frame_replay.MAX_REPLAY_FRAMES", 3)
-        append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 8)])
+        await append_frames(db, "r1", [(seq, _wire(seq)) for seq in range(1, 8)])
 
-        wires = load_replay_frames(db, "r1", last_event_id=0)
+        wires = await load_replay_frames(db, "r1", last_event_id=0)
 
         assert [_id_of(w) for w in wires] == [1, 2, 3]
 
 
 class TestTerminalPrune:
-    def test_prunes_frames_of_given_runs(self, db, monkeypatch):
+    async def test_prunes_frames_of_given_runs(self, db, monkeypatch):
         """终态清理必须真的把帧删掉（否则瞬时表会一直涨到 TTL 兜底）。"""
-        append_frames(db, "r1", [(seq, _wire(seq)) for seq in (1, 2, 3)])
+        await append_frames(db, "r1", [(seq, _wire(seq)) for seq in (1, 2, 3)])
         db.add(AgentRun(id="r2", thread_id="t1", user_id="u1"))
-        db.commit()
-        append_frames(db, "r2", [(1, _wire(1))])
+        await db.commit()
+        await append_frames(db, "r2", [(1, _wire(1))])
 
         import database
 
         monkeypatch.setattr(database, "engine", db.get_bind())
 
-        removed = _prune_frames_for_runs(["r1"])
+        removed = await _prune_frames_for_runs(["r1"])
 
         assert removed == 3
-        assert list_frames_after(db, "r1", 0) == []
-        assert len(list_frames_after(db, "r2", 0)) == 1, "不得误伤其它 run"
+        assert await list_frames_after(db, "r1", 0) == []
+        assert len(await list_frames_after(db, "r2", 0)) == 1, "不得误伤其它 run"
 
-    def test_failure_warns_instead_of_raising(self, monkeypatch):
+    async def test_failure_warns_instead_of_raising(self, monkeypatch):
         """清理属于收尾动作：DB 故障只告警，不能把取消/驳回流程打断。"""
 
         def _boom(*_args, **_kwargs):
@@ -130,4 +152,4 @@ class TestTerminalPrune:
 
         monkeypatch.setattr("crud.run_stream_frame.prune_run_frames", _boom)
 
-        assert _prune_frames_for_runs(["r1"]) == 0
+        assert await _prune_frames_for_runs(["r1"]) == 0

@@ -8,7 +8,6 @@
 分享卡片可见。内容全部转义 / markdown 安全渲染（html=False），无 XSS 面。
 """
 
-import asyncio
 from datetime import datetime
 from html import escape
 
@@ -225,7 +224,7 @@ async def share_page(token: str, request: Request, session: Session = Depends(ge
         return HTMLResponse(_TOO_MANY_HTML, status_code=429)
 
     service = ShareService(session)
-    artifact = await asyncio.to_thread(service.resolve, token)
+    artifact = await service.resolve(token)
     if not artifact:
         return HTMLResponse(_NOT_FOUND_HTML, status_code=404)
 

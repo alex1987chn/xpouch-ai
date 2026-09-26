@@ -260,12 +260,12 @@ def get_default_embedding_provider() -> str:
     return embeddings.get("default_provider", "siliconflow")
 
 
-def get_embedding_client():
+def get_embedding_client_async():
     """
-    获取嵌入模型的 OpenAI 客户端（基于配置）
+    嵌入模型的官方异步客户端（与 get_embedding_client 同一配置源）。
 
-    Returns:
-        tuple: (OpenAI客户端, 模型名称, 向量维度)
+    全异步治理（2026-09-27）后 embedding 调用点都在事件循环里，
+    同步 OpenAI 客户端会阻塞循环——官方形态即 AsyncOpenAI。
     """
     provider = get_default_embedding_provider()
     config = get_embedding_provider_config(provider)
@@ -282,14 +282,10 @@ def get_embedding_client():
     if not api_key:
         raise ValueError(f"未设置嵌入模型 API Key: {env_key}\n请在 .env 文件中配置此变量")
 
-    from openai import OpenAI
+    from openai import AsyncOpenAI
 
-    client = OpenAI(api_key=api_key, base_url=config.get("base_url"))
-
-    model = config.get("default_model")
-    dimensions = config.get("dimensions", 1024)
-
-    return client, model, dimensions
+    client = AsyncOpenAI(api_key=api_key, base_url=config.get("base_url"))
+    return client, config.get("default_model"), config.get("dimensions", 1024)
 
 
 def print_embedding_status():

@@ -45,13 +45,13 @@ class _SessionStub:
         if obj not in self._messages:
             self._messages.append(obj)
 
-    def commit(self) -> None:
+    async def commit(self) -> None:
         pass
 
-    def refresh(self, obj) -> None:
+    async def refresh(self, obj) -> None:
         pass
 
-    def rollback(self) -> None:
+    async def rollback(self) -> None:
         pass
 
     def _session_query(self, statement):
@@ -101,11 +101,11 @@ def fresh(monkeypatch):
     return counter
 
 
-def test_lifecycle_running_to_completed(monkeypatch, fresh):
+async def test_lifecycle_running_to_completed(monkeypatch, fresh):
     messages: list = []
     db = _SessionStub(messages)
 
-    msg = insert_expert_message(db, **_inserted())
+    msg = await insert_expert_message(db, **_inserted())
     assert msg.extra_data["message_kind"] == EXPERT_MESSAGE_KIND
     assert msg.extra_data["status"] == "running"
 
@@ -134,7 +134,7 @@ def test_lifecycle_running_to_completed(monkeypatch, fresh):
         ),
     ]
     db2 = _SessionStub(messages, ledger_rows=ledger)
-    updated = complete_expert_message(
+    updated = await complete_expert_message(
         db2,
         thread_id="th-1",
         task_id="task-1",
@@ -158,25 +158,25 @@ def test_lifecycle_running_to_completed(monkeypatch, fresh):
     ]
 
 
-def test_fail_keeps_error(monkeypatch, fresh):
+async def test_fail_keeps_error(monkeypatch, fresh):
     messages: list = []
     db = _SessionStub(messages)
-    insert_expert_message(db, **_inserted())
+    await insert_expert_message(db, **_inserted())
 
-    updated = fail_expert_message(
+    updated = await fail_expert_message(
         _SessionStub(messages), thread_id="th-1", task_id="task-1", error="boom"
     )
     assert updated.extra_data["status"] == "failed"
     assert updated.extra_data["error"] == "boom"
 
 
-def test_missing_message_degrades_to_none(monkeypatch, fresh):
+async def test_missing_message_degrades_to_none(monkeypatch, fresh):
     messages: list = []
     db = _SessionStub(messages)
-    insert_expert_message(db, **_inserted())
+    await insert_expert_message(db, **_inserted())
 
     assert (
-        complete_expert_message(
+        await complete_expert_message(
             _SessionStub(messages),
             thread_id="th-1",
             task_id="ghost",
@@ -188,7 +188,7 @@ def test_missing_message_degrades_to_none(monkeypatch, fresh):
         is None
     )
     assert (
-        fail_expert_message(_SessionStub(messages), thread_id="th-1", task_id="ghost", error="x")
+        await fail_expert_message(_SessionStub(messages), thread_id="th-1", task_id="ghost", error="x")
         is None
     )
 
@@ -198,7 +198,7 @@ def test_missing_message_degrades_to_none(monkeypatch, fresh):
 # ---------------------------------------------------------------------------
 
 
-def test_run_thinking_insert_shape_and_idempotency(monkeypatch):
+async def test_run_thinking_insert_shape_and_idempotency(monkeypatch):
     from services.chat.expert_message import insert_run_thinking_message
 
     messages: list = []
@@ -213,7 +213,7 @@ def test_run_thinking_insert_shape_and_idempotency(monkeypatch):
 
     monkeypatch.setattr(_SessionStub, "add", _add_with_id)
 
-    first = insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-1")
+    first = await insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-1")
     assert first == 500
     msg = messages[0]
     assert msg.role == "assistant"
@@ -221,23 +221,23 @@ def test_run_thinking_insert_shape_and_idempotency(monkeypatch):
     assert msg.extra_data == {"message_kind": "run_thinking", "run_id": "run-1"}
 
     # 幂等：驳回修订重跑 commander 时同 run 不得插第二行
-    second = insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-1")
+    second = await insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-1")
     assert second == 500
     assert len(messages) == 1
 
     # 不同 run 各有一行（多轮对话）
-    third = insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-2")
+    third = await insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-2")
     assert third == 501
     assert len(messages) == 2
 
 
-def test_fail_running_expert_messages_for_run():
+async def test_fail_running_expert_messages_for_run():
     """run 异常终态收尾：只收 running 态、按 run_id 归属（旧行无 run_id 也收）。"""
     from services.chat.expert_message import fail_running_expert_messages_for_run
 
     messages: list = []
     db = _SessionStub(messages)
-    insert_expert_message(
+    await insert_expert_message(
         db,
         thread_id="th-1",
         task_id="task-1",
@@ -247,7 +247,7 @@ def test_fail_running_expert_messages_for_run():
         total_steps=2,
         run_id="run-A",
     )
-    insert_expert_message(
+    await insert_expert_message(
         db,
         thread_id="th-1",
         task_id="task-2",
@@ -258,7 +258,7 @@ def test_fail_running_expert_messages_for_run():
         run_id="run-A",
     )
     # 已完成的另一条 + 别的 run 的 running 条
-    done = insert_expert_message(
+    done = await insert_expert_message(
         db,
         thread_id="th-1",
         task_id="task-3",
@@ -269,7 +269,7 @@ def test_fail_running_expert_messages_for_run():
         run_id="run-A",
     )
     done.extra_data = {**done.extra_data, "status": "completed"}
-    insert_expert_message(
+    await insert_expert_message(
         db,
         thread_id="th-1",
         task_id="task-4",
@@ -280,7 +280,7 @@ def test_fail_running_expert_messages_for_run():
         run_id="run-B",
     )
 
-    closed = fail_running_expert_messages_for_run(
+    closed = await fail_running_expert_messages_for_run(
         _SessionStub(messages), thread_id="th-1", run_id="run-A", error="运行超时终止"
     )
 

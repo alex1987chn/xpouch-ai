@@ -76,7 +76,7 @@ async def list_skill_templates(
     )
     if not include_inactive:
         statement = statement.where(SkillTemplate.is_active)
-    return list(session.exec(statement).all())
+    return list(await session.exec(statement).all())
 
 
 @router.post("/templates", response_model=SkillTemplateResponse)
@@ -87,15 +87,15 @@ async def create_skill_template(
 ):
     _require_editor(current_user)
     _validate_mode(payload.recommended_mode)
-    exists = session.exec(
+    exists = await session.exec(
         select(SkillTemplate).where(SkillTemplate.template_key == payload.template_key)
     ).first()
     if exists is not None:
         raise ValidationError("template_key 已存在")
     template = SkillTemplate(**payload.model_dump(), is_builtin=False)
     session.add(template)
-    session.commit()
-    session.refresh(template)
+    await session.commit()
+    await session.refresh(template)
     return template
 
 
@@ -107,7 +107,7 @@ async def update_skill_template(
     current_user: User = Depends(get_current_user),
 ):
     _require_editor(current_user)
-    template = session.get(SkillTemplate, template_id)
+    template = await session.get(SkillTemplate, template_id)
     if template is None:
         raise NotFoundError("模板")
     updates = payload.model_dump(exclude_none=True)
@@ -116,8 +116,8 @@ async def update_skill_template(
     for field_name, value in updates.items():
         setattr(template, field_name, value)
     session.add(template)
-    session.commit()
-    session.refresh(template)
+    await session.commit()
+    await session.refresh(template)
     return template
 
 
@@ -128,13 +128,13 @@ async def delete_skill_template(
     current_user: User = Depends(get_current_user),
 ):
     _require_editor(current_user)
-    template = session.get(SkillTemplate, template_id)
+    template = await session.get(SkillTemplate, template_id)
     if template is None:
         raise NotFoundError("模板")
     if template.is_builtin:
         raise ValidationError("内置模板不允许删除，可改为停用")
-    session.delete(template)
-    session.commit()
+    await session.delete(template)
+    await session.commit()
     return {"success": True}
 
 
@@ -252,7 +252,7 @@ async def export_skill_template(
     Returns:
         TemplateExportSchema 结构的 JSON
     """
-    template = session.exec(
+    template = await session.exec(
         select(SkillTemplate).where(SkillTemplate.template_key == template_key)
     ).first()
 
@@ -274,7 +274,7 @@ async def share_skill_template(
     from services.chat.share_service import ShareService
 
     _require_editor(current_user)
-    template = session.exec(
+    template = await session.exec(
         select(SkillTemplate).where(
             SkillTemplate.template_key == template_key,
             SkillTemplate.is_active == True,  # noqa: E712
@@ -326,7 +326,7 @@ async def preview_import_template(
             return TemplateImportPreviewResponse(valid=False, error=error)
 
         # 检查冲突
-        existing = session.exec(
+        existing = await session.exec(
             select(SkillTemplate).where(SkillTemplate.template_key == template_data.template_key)
         ).first()
 
@@ -394,7 +394,7 @@ async def import_skill_template(
         target_key = original_key
 
         # 检查冲突
-        existing = session.exec(
+        existing = await session.exec(
             select(SkillTemplate).where(SkillTemplate.template_key == original_key)
         ).first()
 
@@ -413,7 +413,7 @@ async def import_skill_template(
                 target_key = request.target_key or _generate_suggested_key(original_key)
 
                 # 确保新 key 也不冲突
-                while session.exec(
+                while await session.exec(
                     select(SkillTemplate).where(SkillTemplate.template_key == target_key)
                 ).first():
                     target_key = _generate_suggested_key(target_key)
@@ -427,8 +427,8 @@ async def import_skill_template(
                         message="内置模板不允许覆盖",
                     )
                 # 删除现有模板
-                session.delete(existing)
-                session.commit()
+                await session.delete(existing)
+                await session.commit()
 
         # 创建新模板
         new_template = SkillTemplate(
@@ -448,8 +448,8 @@ async def import_skill_template(
         )
 
         session.add(new_template)
-        session.commit()
-        session.refresh(new_template)
+        await session.commit()
+        await session.refresh(new_template)
 
         actual_strategy = (
             "clone" if target_key != original_key else (request.strategy if existing else "new")
@@ -469,7 +469,7 @@ async def import_skill_template(
         )
 
     except Exception as e:
-        session.rollback()
+        await session.rollback()
         logger.error(f"[Template Import] 导入失败: {e}", exc_info=True)
         return TemplateImportResponse(
             success=False, strategy=request.strategy, message=f"导入失败: {str(e)}"

@@ -54,7 +54,7 @@ def test_update_expert_contract(sample_user, monkeypatch):
         def add(self, _obj) -> None:
             pass
 
-        def commit(self) -> None:
+        async def commit(self) -> None:
             pass
 
     monkeypatch.setattr(admin_router, "refresh_cache", lambda _session: None)
@@ -96,7 +96,7 @@ def test_promote_user_contract(sample_user, monkeypatch):
         def add(self, _obj) -> None:
             pass
 
-        def commit(self) -> None:
+        async def commit(self) -> None:
             pass
 
     app = FastAPI()
@@ -130,10 +130,10 @@ def test_delete_expert_contract(sample_user, monkeypatch):
         def add(self, _obj) -> None:
             pass
 
-        def delete(self, _obj) -> None:
+        async def delete(self, _obj) -> None:
             pass
 
-        def commit(self) -> None:
+        async def commit(self) -> None:
             pass
 
     monkeypatch.setattr(admin_router, "refresh_cache", lambda _session: None)
@@ -155,7 +155,7 @@ def test_quota_and_concurrency_contract(sample_user, monkeypatch):
         def add(self, _obj) -> None:
             pass
 
-        def commit(self) -> None:
+        async def commit(self) -> None:
             pass
 
     monkeypatch.setattr("services.run_quota.save_daily_token_quota", lambda _s, value: value)
@@ -187,7 +187,7 @@ def test_user_phone_contract(sample_user):
         phone_number = "+8613800000000"
 
     class _SessionStub:
-        def get(self, _model, _pk):
+        async def get(self, _model, _pk):
             return _FakeUser()
 
     app = FastAPI()
@@ -213,7 +213,7 @@ def test_delete_user_contract(sample_user, monkeypatch):
             return []
 
     class _SessionStub:
-        def get(self, _model, _pk):
+        async def get(self, _model, _pk):
             return _FakeUser()
 
         def _session_exec(self, _statement):
@@ -224,10 +224,10 @@ def test_delete_user_contract(sample_user, monkeypatch):
         def add(self, _obj) -> None:
             pass
 
-        def commit(self) -> None:
+        async def commit(self) -> None:
             pass
 
-        def delete(self, _obj) -> None:
+        async def delete(self, _obj) -> None:
             pass
 
     async def _noop_delete_thread(self, *a, **kw):

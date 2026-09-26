@@ -34,7 +34,7 @@ class _Recorder:
 
     def fake_spawn(self, coro, label=None):
         # 真实 spawn_background 是同步调度（后台任务）；测试里挂到当前循环，
-        # 断言前 drain() 让它真正执行完。
+        # 断言前 await drain() 让它真正执行完。
         self._tasks.append(asyncio.get_running_loop().create_task(coro))
 
     async def drain(self):

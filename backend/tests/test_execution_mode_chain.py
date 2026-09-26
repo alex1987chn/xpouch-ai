@@ -15,7 +15,8 @@ import json
 
 import pytest
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel
 
 from agents.nodes.commander import ExecutionPlan, Task, derive_plan_execution_mode
 from models import ExecutionPlan as ExecutionPlanRow
@@ -23,18 +24,39 @@ from models import SubTask, Thread
 from models.enums import ExecutionMode
 from schemas.task import SubTaskCreate
 
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
+
 TABLES = [Thread.__table__, ExecutionPlanRow.__table__, SubTask.__table__]
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         yield session
 
 
@@ -92,7 +114,7 @@ class TestPlanModeDerivation:
 class TestPersistenceChain:
     """执行模式真的能落到 SubTask 行上（批次 C 的数据来源）。"""
 
-    def _persist(self, db: Session, *, mode: ExecutionMode) -> SubTask:
+    async def _persist(self, db: Session, *, mode: ExecutionMode) -> SubTask:
         db.add(Thread(id="t1", title="会话", user_id="u1"))
         db.add(
             ExecutionPlanRow(
@@ -120,15 +142,15 @@ class TestPersistenceChain:
             execution_mode=create_payload.execution_mode,
         )
         db.add(subtask)
-        db.commit()
+        await db.commit()
         return subtask
 
-    def test_parallel_survives_to_subtask_row(self, db):
-        subtask = self._persist(db, mode=ExecutionMode.PARALLEL)
-        db.refresh(subtask)
+    async def test_parallel_survives_to_subtask_row(self, db):
+        subtask = await self._persist(db, mode=ExecutionMode.PARALLEL)
+        await db.refresh(subtask)
         assert subtask.execution_mode == ExecutionMode.PARALLEL
 
-    def test_plan_level_mode_follows_task(self, db):
-        self._persist(db, mode=ExecutionMode.PARALLEL)
-        plan = db.get(ExecutionPlanRow, "p1")
+    async def test_plan_level_mode_follows_task(self, db):
+        await self._persist(db, mode=ExecutionMode.PARALLEL)
+        plan = await db.get(ExecutionPlanRow, "p1")
         assert plan.execution_mode == ExecutionMode.PARALLEL

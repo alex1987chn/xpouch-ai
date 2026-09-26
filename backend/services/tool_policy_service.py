@@ -8,9 +8,9 @@ import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Session, select
+from sqlmodel import select
 
-from database import engine
+from database import SessionFactory
 from models import ToolPolicy
 from utils.time import utc_now
 
@@ -32,7 +32,7 @@ class ToolPolicyService:
 
     ⚠️ 时间基准必须与 `utc_now()` 一致（aware UTC，2026-09-22 起全链路 aware）。
     历史教训：本项目曾两度因 naive/aware 混用在此翻车——先有 aware 基准撞
-    naive 的 now（TypeError → get_overrides() 每次失败 → 被 generic 的宽
+    naive 的 now（TypeError → await get_overrides() 每次失败 → 被 generic 的宽
     except 吞掉 → **所有专家的工具调用静默失效**），aware 化后又须把基准
     一起翻成 aware。结论：任何"过期基准哨兵值"必须随全局时间策略同步改，
     见 docs/TARGET-ARCHITECTURE.md 的时区约定。
@@ -51,7 +51,7 @@ class ToolPolicyService:
             now = utc_now()
             if now < self._cache_expire_at:
                 return self._cache
-            overrides = await asyncio.to_thread(self._load_overrides_sync)
+            overrides = await self._load_overrides_sync()
             self._cache = overrides
             self._cache_expire_at = now + timedelta(seconds=30)
             return overrides
@@ -61,9 +61,9 @@ class ToolPolicyService:
             self._cache = {}
             self._cache_expire_at = datetime.min.replace(tzinfo=UTC)  # aware，见类 docstring
 
-    def _load_overrides_sync(self) -> dict[tuple[str, str], ToolPolicyOverride]:
-        with Session(engine) as session:
-            records = session.exec(select(ToolPolicy)).all()
+    async def _load_overrides_sync(self) -> dict[tuple[str, str], ToolPolicyOverride]:
+        async with SessionFactory() as session:
+            records = await session.exec(select(ToolPolicy)).all()
         return {
             (record.tool_name, record.source): ToolPolicyOverride(
                 tool_name=record.tool_name,

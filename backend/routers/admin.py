@@ -159,7 +159,7 @@ async def get_all_experts(
     权限：ADMIN
     """
     # 按创建时间倒序：新建的专家排在最前（id 兜底打破同秒并列）
-    experts = session.exec(
+    experts = await session.exec(
         select(SystemExpert).order_by(SystemExpert.created_at.desc(), SystemExpert.id.desc())
     ).all()
 
@@ -192,7 +192,7 @@ async def get_expert(
 
     权限：ADMIN
     """
-    expert = session.exec(
+    expert = await session.exec(
         select(SystemExpert).where(SystemExpert.expert_type == expert_type)
     ).first()
 
@@ -237,7 +237,7 @@ async def update_expert(
     注意：更新后会自动刷新 LangGraph 缓存，下次任务立即生效
     """
     # 先查询专家（用于权限检查等）
-    expert = session.exec(
+    expert = await session.exec(
         select(SystemExpert).where(SystemExpert.expert_type == expert_type)
     ).first()
 
@@ -266,7 +266,7 @@ async def update_expert(
     if expert.is_dynamic and expert_update.name is not None:
         update_values["name"] = expert_update.name
 
-    result = session.execute(
+    result = await session.execute(
         update(SystemExpert)
         .where(SystemExpert.id == expert.id)
         .where(SystemExpert.config_version == expert_update.expected_version)
@@ -276,7 +276,7 @@ async def update_expert(
     # 检查是否更新成功（rowcount == 0 表示版本号不匹配）
     if result.rowcount == 0:
         # 获取当前版本号用于错误提示
-        current_expert = session.exec(
+        current_expert = await session.exec(
             select(SystemExpert).where(SystemExpert.expert_type == expert_type)
         ).first()
         current_version = current_expert.config_version if current_expert else "未知"
@@ -293,10 +293,10 @@ async def update_expert(
         target=expert_type,
         detail={"expected_version": expert_update.expected_version},
     )
-    session.commit()
+    await session.commit()
 
     # 重新查询获取更新后的值
-    updated_expert = session.exec(
+    updated_expert = await session.exec(
         select(SystemExpert).where(SystemExpert.expert_type == expert_type)
     ).first()
 
@@ -335,7 +335,7 @@ async def promote_user(
         request: 包含用户邮箱的请求体
     """
     # 查找用户
-    user = session.exec(select(User).where(User.email == request.email)).first()
+    user = await session.exec(select(User).where(User.email == request.email)).first()
 
     if not user:
         raise HTTPException(
@@ -349,7 +349,7 @@ async def promote_user(
     # 升级为管理员
     user.role = UserRole.ADMIN
     session.add(user)
-    session.commit()
+    await session.commit()
 
     logger.info(f"[Admin] User '{user.username}' promoted to admin")
 
@@ -382,7 +382,7 @@ async def preview_expert(
     from utils.llm_factory import get_llm_instance
 
     # 获取专家配置（不从缓存读取，确保使用最新配置）
-    expert_config = get_expert_config(request.expert_type, session)
+    expert_config = await get_expert_config(request.expert_type, session)
 
     if not expert_config:
         raise HTTPException(
@@ -533,7 +533,7 @@ async def create_expert(
     """
 
     # 检查 expert_type 是否已存在
-    existing_expert = session.exec(
+    existing_expert = await session.exec(
         select(SystemExpert).where(SystemExpert.expert_type == expert_create.expert_type)
     ).first()
 
@@ -565,17 +565,17 @@ async def create_expert(
         detail={"name": expert_create.name, "model": expert_create.model},
     )
     try:
-        session.commit()
-        session.refresh(new_expert)
+        await session.commit()
+        await session.refresh(new_expert)
     except IntegrityError as exc:
-        session.rollback()
+        await session.rollback()
         logger.warning(f"[Admin] Create expert integrity error: {exc}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="创建专家失败：expert_type 重复或字段约束不满足",
         ) from exc
     except Exception as exc:
-        session.rollback()
+        await session.rollback()
         logger.error(f"[Admin] Create expert failed: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="创建专家失败：数据库写入异常"
@@ -621,7 +621,7 @@ async def delete_expert(
     - 删除后会自动刷新 LangGraph 缓存
     """
     # 查找专家
-    expert = session.exec(
+    expert = await session.exec(
         select(SystemExpert).where(SystemExpert.expert_type == expert_type)
     ).first()
 
@@ -639,7 +639,7 @@ async def delete_expert(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="系统内置专家不可删除")
 
     # 删除专家
-    session.delete(expert)
+    await session.delete(expert)
     record_audit(
         session,
         actor_user_id=admin.id,
@@ -647,7 +647,7 @@ async def delete_expert(
         action="expert.delete",
         target=expert_type,
     )
-    session.commit()
+    await session.commit()
 
     logger.info(f"[Admin] Expert '{expert_type}' deleted by admin")
 
@@ -692,7 +692,7 @@ async def get_system_status(
     db_version: str | None = None
     migration_head: str | None = None
     try:
-        row = session.exec(sa_text("SELECT version_num FROM alembic_version")).first()
+        row = await session.exec(sa_text("SELECT version_num FROM alembic_version")).first()
         db_version = row[0] if row else None
     except Exception as e:
         db_connected = False
@@ -706,8 +706,8 @@ async def get_system_status(
     except Exception as e:
         logger.warning(f"[SystemStatus] 迁移链 head 读取失败: {e}")
 
-    user_count = session.exec(select(func.count()).select_from(User)).one()
-    admin_count = session.exec(
+    user_count = await session.exec(select(func.count()).select_from(User)).one()
+    admin_count = await session.exec(
         select(func.count()).select_from(User).where(User.role == UserRole.ADMIN)
     ).one()
 
@@ -723,11 +723,11 @@ async def get_system_status(
         "providers": validate_all_providers(),
         "default_model": get_default_model(),
         "users": {"total": user_count, "admin": admin_count},
-        "user_daily_token_quota": load_daily_token_quota(session),
+        "user_daily_token_quota": await load_daily_token_quota(session),
         # 并发上限：`configured` = 设置表里的值（None = 未配置，走 env），
         # `effective` = 本次运行实际会用的值（设置表 → env → 串行）
         "graph_max_concurrency": {
-            "configured": load_graph_max_concurrency(session),
+            "configured": await load_graph_max_concurrency(session),
             "effective": resolve_graph_max_concurrency(session),
             "env_default": app_settings.graph_max_concurrency,
             "limit": MAX_CONCURRENCY_LIMIT,
@@ -744,7 +744,7 @@ async def update_daily_token_quota(
     """设置每用户日 token 配额（全实例生效；None/0 = 不限量）"""
     from services.run_quota import save_daily_token_quota
 
-    quota = save_daily_token_quota(session, request.daily_token_quota)
+    quota = await save_daily_token_quota(session, request.daily_token_quota)
     record_audit(
         session,
         actor_user_id=admin.id,
@@ -753,7 +753,7 @@ async def update_daily_token_quota(
         target="user_daily_token_quota",
         detail={"daily_token_quota": quota},
     )
-    session.commit()
+    await session.commit()
     logger.info(f"[Admin] 每用户日 token 配额更新为: {quota or '不限量'}")
     return {"user_daily_token_quota": quota}
 
@@ -771,7 +771,7 @@ async def update_graph_max_concurrency(
     """
     from services.run_concurrency import save_graph_max_concurrency
 
-    value = save_graph_max_concurrency(session, request.graph_max_concurrency)
+    value = await save_graph_max_concurrency(session, request.graph_max_concurrency)
     record_audit(
         session,
         actor_user_id=admin.id,
@@ -780,7 +780,7 @@ async def update_graph_max_concurrency(
         target="graph_max_concurrency",
         detail={"graph_max_concurrency": value},
     )
-    session.commit()
+    await session.commit()
     logger.info("[Admin] 同层任务并发上限更新为: %s", value)
     return {"graph_max_concurrency": value}
 
@@ -865,9 +865,9 @@ async def create_user(
     username = request.username.strip()
     email = (request.email.strip() or None) if request.email else None
 
-    if session.exec(select(User).where(User.phone_number == phone)).first():
+    if await session.exec(select(User).where(User.phone_number == phone)).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="手机号已被使用")
-    if email and session.exec(select(User).where(User.email == email)).first():
+    if email and await session.exec(select(User).where(User.email == email)).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="邮箱已被使用")
 
     generated_password: str | None = None
@@ -897,8 +897,8 @@ async def create_user(
         target=username,
         detail={"user_id": user.id, "role": str(request.role)},
     )
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
     logger.info(f"[Admin] 用户 {user.id} 已创建（username={username}）")
 
     result = _user_to_dto(user)
@@ -931,7 +931,7 @@ async def list_users(
     _: User = Depends(get_current_admin),
 ):
     """全实例用户列表（按注册时间倒序，最近注册在前；手机号仅脱敏值）"""
-    users = session.exec(select(User).order_by(User.created_at.desc(), User.id.desc())).all()
+    users = await session.exec(select(User).order_by(User.created_at.desc(), User.id.desc())).all()
     return [_user_to_dto(u) for u in users]
 
 
@@ -942,7 +942,7 @@ async def get_user_phone(
     _: User = Depends(get_current_admin),
 ):
     """查看完整手机号（按需揭示，admin only）"""
-    user = session.get(User, user_id)
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
     if not user.phone_number:
@@ -962,7 +962,7 @@ async def update_user(
     保护：不能修改自己的角色（防最后一个管理员自锁）。
     邮箱/手机号唯一性冲突返回 409。
     """
-    user = session.get(User, user_id)
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
@@ -979,7 +979,7 @@ async def update_user(
     if request.email is not None:
         email = request.email.strip() or None
         if email:
-            duplicate = session.exec(
+            duplicate = await session.exec(
                 select(User).where(User.email == email, User.id != user_id)
             ).first()
             if duplicate:
@@ -991,7 +991,7 @@ async def update_user(
     if request.phone_number is not None:
         phone = request.phone_number.strip() or None
         if phone:
-            duplicate = session.exec(
+            duplicate = await session.exec(
                 select(User).where(User.phone_number == phone, User.id != user_id)
             ).first()
             if duplicate:
@@ -1010,8 +1010,8 @@ async def update_user(
         target=user_id,
         detail={"username": user.username, "role": str(user.role)},
     )
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
     logger.info(f"[Admin] 用户 {user_id} 资料已更新")
     return _user_to_dto(user)
 
@@ -1032,11 +1032,11 @@ async def delete_user(
             status_code=status.HTTP_400_BAD_REQUEST, detail="不能删除当前登录的账号"
         )
 
-    user = session.get(User, user_id)
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
-    threads = session.exec(select(Thread).where(Thread.user_id == user_id)).all()
+    threads = await session.exec(select(Thread).where(Thread.user_id == user_id)).all()
     thread_ids = [t.id for t in threads]
 
     thread_service = ChatThreadService(session)
@@ -1045,12 +1045,14 @@ async def delete_user(
 
     # 孤儿产物清理（artifact.thread_id 仅是索引，无 FK 级联）
     if thread_ids:
-        artifacts = session.exec(select(Artifact).where(Artifact.thread_id.in_(thread_ids))).all()
+        artifacts = await session.exec(
+            select(Artifact).where(Artifact.thread_id.in_(thread_ids))
+        ).all()
         for artifact in artifacts:
-            session.delete(artifact)
+            await session.delete(artifact)
 
     # custom_agents 走 ORM 级联（all, delete-orphan）
-    session.delete(user)
+    await session.delete(user)
     record_audit(
         session,
         actor_user_id=current_admin.id,
@@ -1059,7 +1061,7 @@ async def delete_user(
         target=user_id,
         detail={"username": user.username, "deleted_threads": len(thread_ids)},
     )
-    session.commit()
+    await session.commit()
     logger.info(f"[Admin] 用户 {user_id} 已删除（含 {len(thread_ids)} 个会话）")
     return {"message": "用户已删除", "deleted_threads": len(thread_ids)}
 
@@ -1079,7 +1081,7 @@ async def admin_reset_password(
     交付约定：不通过短信发送明文密码（运营商/终端留痕是安全反模式），
     由管理员通过可信渠道一次性交付给用户。
     """
-    user = session.get(User, user_id)
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
@@ -1105,7 +1107,7 @@ async def admin_reset_password(
         target=user_id,
         detail={"mode": request.mode},
     )
-    session.commit()
+    await session.commit()
     logger.info(f"[Admin] 用户 {user_id} 密码已重置（mode={request.mode}）")
 
     # 随机密码仅此一次返回，服务端不留明文

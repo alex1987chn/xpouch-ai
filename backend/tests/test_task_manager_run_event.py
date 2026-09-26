@@ -12,10 +12,10 @@ class _FakeSession:
     def add(self, obj):
         self.added.append(obj)
 
-    def commit(self):
+    async def commit(self):
         self.commits += 1
 
-    def refresh(self, obj):
+    async def refresh(self, obj):
         self.refreshed.append(obj)
 
 

@@ -50,21 +50,21 @@ def make_graph():
     return _build
 
 
-def _run_until_pause(app, thread: str) -> dict:
+async def _run_until_pause(app, thread: str) -> dict:
     async def _go():
         cfg = {"configurable": {"thread_id": thread}}
         await app.ainvoke({"trace": []}, config=cfg)
         return await app.aget_state(cfg)
 
-    return asyncio.run(_go())
+    return asyncio.run(await _go())
 
 
-def _resume(app, thread: str, decision: dict) -> dict:
+async def _resume(app, thread: str, decision: dict) -> dict:
     async def _go():
         cfg = {"configurable": {"thread_id": thread}}
         return await app.ainvoke(Command(resume=decision), config=cfg)
 
-    return asyncio.run(_go())
+    return asyncio.run(await _go())
 
 
 class TestEmptyPlanSkipsApproval:

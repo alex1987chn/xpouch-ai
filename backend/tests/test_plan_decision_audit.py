@@ -17,13 +17,35 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel, select
 
 from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread, User
 from models.enums import RunStatus
 from services.chat.recovery_service import RecoveryService
 from utils.exceptions import ValidationError
 from utils.time import utc_now
+
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
 
 TABLES = [
     Thread.__table__,
@@ -37,14 +59,14 @@ TABLES = [
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         now = utc_now()
         session.add(User(id="u1", username="tester"))
         session.add(Thread(id="t1", title="会话", user_id="u1"))
@@ -63,13 +85,13 @@ def db():
                 id="p1", thread_id="t1", user_query="做个页面", run_id="r1", plan_version=1
             )
         )
-        session.commit()
+        await session.commit()
         yield session
     engine.dispose()
 
 
-def _audit_rows(db: Session) -> list[AuditLog]:
-    return list(db.exec(select(AuditLog)).all())
+async def _audit_rows(db: Session) -> list[AuditLog]:
+    return list(await db.exec(select(AuditLog)).all())
 
 
 async def _noop_cleanup(*_args, **_kwargs) -> None:
@@ -150,7 +172,7 @@ class TestListAuditLogs:
     """回归：列表查询的计数写法（.first()[0] 在本版本 sqlmodel 上炸，
     接口 500 → 面板吞错渲染成空态——审计页从上线起就没出过列表）。"""
 
-    def _add_second_run(self, db: Session) -> None:
+    async def _add_second_run(self, db: Session) -> None:
         now = utc_now()
         db.add(
             AgentRun(
@@ -167,34 +189,34 @@ class TestListAuditLogs:
                 id="p2", thread_id="t1", user_query="第二任务", run_id="r2", plan_version=1
             )
         )
-        db.commit()
+        await db.commit()
 
-    def test_list_returns_entries_and_total(self, db):
+    async def test_list_returns_entries_and_total(self, db):
         from crud.audit_log import list_audit_logs
 
-        self._add_second_run(db)
+        await self._add_second_run(db)
         svc = RecoveryService(db)
         with patch("utils.db.cleanup_terminal_run", _noop_cleanup):
-            asyncio_run(svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
+            asyncio_run(await svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
             asyncio_run(
-                svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
+                await svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
             )
 
-        entries, total = list_audit_logs(db)
+        entries, total = await list_audit_logs(db)
         assert total == 2
         assert [e.action for e in entries] == ["plan.revise", "plan.terminate"]  # 时间倒序
 
-    def test_search_filters(self, db):
+    async def test_search_filters(self, db):
         from crud.audit_log import list_audit_logs
 
-        self._add_second_run(db)
+        await self._add_second_run(db)
         svc = RecoveryService(db)
         with patch("utils.db.cleanup_terminal_run", _noop_cleanup):
-            asyncio_run(svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
+            asyncio_run(await svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
             asyncio_run(
-                svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
+                await svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
             )
 
-        entries, total = list_audit_logs(db, search="plan.terminate")
+        entries, total = await list_audit_logs(db, search="plan.terminate")
         assert total == 1
         assert entries[0].action == "plan.terminate"

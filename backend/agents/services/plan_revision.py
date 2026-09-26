@@ -43,7 +43,7 @@ REVISION_DIRECTIVE = """
 5. 只输出 JSON，不要对话、不要 markdown 代码块。"""
 
 
-def _load_commander_config() -> tuple[str, str, float]:
+async def _load_commander_config() -> tuple[str, str, float]:
     """加载 commander 配置（系统提示词 / 模型 / 温度），DB 优先，常量兜底。"""
     try:
         from sqlmodel import select
@@ -52,7 +52,7 @@ def _load_commander_config() -> tuple[str, str, float]:
         from models import SystemExpert
 
         with get_session() as session:
-            expert = session.exec(
+            expert = await session.exec(
                 select(SystemExpert).where(SystemExpert.expert_type == "commander")
             ).first()
         if expert:
@@ -116,7 +116,7 @@ async def revise_plan_tasks(
 
     超时（REVISION_TIMEOUT_SECONDS）或校验失败抛异常，由调用方兜底。
     """
-    system_prompt, model, temperature = _load_commander_config()
+    system_prompt, model, temperature = await _load_commander_config()
     llm = _build_llm(model, temperature)
     human_prompt = _build_revision_prompt(user_query, previous_tasks, plan_version, feedback)
 
@@ -133,7 +133,7 @@ async def revise_plan_tasks(
         return parsed
 
     try:
-        revised = await asyncio.wait_for(_invoke(), timeout=REVISION_TIMEOUT_SECONDS)
+        revised = await asyncio.wait_for(await _invoke(), timeout=REVISION_TIMEOUT_SECONDS)
         logger.info(
             f"[PLAN_REVISION] 修订完成：{len(revised.tasks)} 个任务（原 {len(previous_tasks)} 个）"
         )

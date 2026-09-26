@@ -104,7 +104,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
         import asyncio as _aio
 
         relevant_memories = await _aio.wait_for(
-            memory_manager.search_relevant_memories(user_id, user_query, limit=3),
+            await memory_manager.search_relevant_memories(user_id, user_query, limit=3),
             timeout=8,
         )
     except TimeoutError:
@@ -310,7 +310,7 @@ async def direct_reply_node(state: AgentState, config: RunnableConfig = None) ->
         # 与 router 节点对称：加 8s 超时。否则检索挂起时只会表现为「没有记忆的
         # 普通回复」（异常分支把它降级成无记忆），用户与排查者都看不到真实原因。
         relevant_memories = await asyncio.wait_for(
-            memory_manager.search_relevant_memories(user_id, user_query, limit=5),
+            await memory_manager.search_relevant_memories(user_id, user_query, limit=5),
             timeout=8,
         )
     except TimeoutError:

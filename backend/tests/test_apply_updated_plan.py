@@ -46,10 +46,10 @@ def _task(task_id: str, *, db_id: str | None = None, deps=None, status="pending"
     }
 
 
-def _apply(current: list[dict], updated: list[dict]) -> dict:
+async def _apply(current: list[dict], updated: list[dict]) -> dict:
     service = StreamService.__new__(StreamService)  # 不触碰 db
     graph = _FakeGraph({"task_list": current, "expert_results": []})
-    asyncio.run(service._apply_updated_plan(graph, {}, updated))
+    asyncio.run(await service._apply_updated_plan(graph, {}, updated))
     assert graph.updated is not None, "必须写回状态"
     return graph.updated
 

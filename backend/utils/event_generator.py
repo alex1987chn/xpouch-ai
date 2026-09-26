@@ -413,7 +413,7 @@ async def sse_stream_from_events(events: AsyncGenerator[SSEEvent]) -> AsyncGener
             ...
 
         return StreamingResponse(
-            sse_stream_from_events(event_generator()),
+            await sse_stream_from_events(await event_generator()),
             media_type="text/event-stream"
         )
     """

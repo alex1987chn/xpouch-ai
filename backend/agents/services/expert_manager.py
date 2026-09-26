@@ -23,7 +23,7 @@ from utils.logger import logger
 _expert_cache: ConfigCache = ConfigCache(maxsize=100, ttl=300, name="expert_global")
 
 
-def get_expert_config(expert_type: str, session: Session) -> dict | None:
+async def get_expert_config(expert_type: str, session: Session) -> dict | None:
     """
     从数据库获取专家配置
 
@@ -40,7 +40,7 @@ def get_expert_config(expert_type: str, session: Session) -> dict | None:
             "temperature": float
         }
     """
-    expert = session.exec(
+    expert = await session.exec(
         select(SystemExpert).where(SystemExpert.expert_type == expert_type)
     ).first()
 
@@ -97,7 +97,7 @@ def _infer_provider(model: str) -> str | None:
     return None
 
 
-def get_expert_prompt(expert_type: str, session: Session) -> str | None:
+async def get_expert_prompt(expert_type: str, session: Session) -> str | None:
     """
     获取专家 Prompt（便捷函数）
 
@@ -108,11 +108,11 @@ def get_expert_prompt(expert_type: str, session: Session) -> str | None:
     Returns:
         str: 专家系统提示词
     """
-    config = get_expert_config(expert_type, session)
+    config = await get_expert_config(expert_type, session)
     return config["system_prompt"] if config else None
 
 
-def load_all_experts(session: Session) -> dict[str, dict]:
+async def load_all_experts(session: Session) -> dict[str, dict]:
     """
     从数据库加载所有专家配置
 
@@ -122,11 +122,11 @@ def load_all_experts(session: Session) -> dict[str, dict]:
     Returns:
         Dict: 所有专家配置 {expert_type: config}
     """
-    experts = session.exec(select(SystemExpert)).all()
+    experts = await session.exec(select(SystemExpert)).all()
     return {expert.expert_type: _build_config(expert) for expert in experts}
 
 
-def get_expert_prompt_cached(expert_type: str, session: Session | None = None) -> str | None:
+async def get_expert_prompt_cached(expert_type: str, session: Session | None = None) -> str | None:
     """
     获取专家 Prompt（带缓存）
 
@@ -148,7 +148,7 @@ def get_expert_prompt_cached(expert_type: str, session: Session | None = None) -
 
     # 缓存未命中，加载所有专家
     if session:
-        experts = load_all_experts(session)
+        experts = await load_all_experts(session)
         _expert_cache.update(experts)
         config = _expert_cache.get(expert_type)
         if config:
@@ -158,7 +158,7 @@ def get_expert_prompt_cached(expert_type: str, session: Session | None = None) -
     return None
 
 
-def get_expert_config_cached(expert_type: str, session: Session | None = None) -> dict | None:
+async def get_expert_config_cached(expert_type: str, session: Session | None = None) -> dict | None:
     """
     获取专家完整配置（带缓存）
 
@@ -175,14 +175,14 @@ def get_expert_config_cached(expert_type: str, session: Session | None = None) -
 
     # 缓存未命中，加载所有专家
     if session:
-        experts = load_all_experts(session)
+        experts = await load_all_experts(session)
         _expert_cache.update(experts)
         return _expert_cache.get(expert_type)
 
     return None
 
 
-def refresh_cache(session: Session | None = None):
+async def refresh_cache(session: Session | None = None):
     """
     刷新专家配置缓存
 
@@ -200,7 +200,7 @@ def refresh_cache(session: Session | None = None):
 
     # 2. 重新加载到全局缓存（如果提供了 session）
     if session:
-        experts = load_all_experts(session)
+        experts = await load_all_experts(session)
         _expert_cache.update(experts)
         logger.info(f"[ExpertManager] 已重新加载 {len(experts)} 个专家到缓存")
 
@@ -214,7 +214,7 @@ def force_refresh_all():
     invalidate_config_caches()
 
 
-def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:
+async def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:
     """
     获取所有可用专家的列表（包括动态创建的专家）
 
@@ -238,7 +238,9 @@ def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:
         return fallback_experts
 
     try:
-        experts = db_session.exec(select(SystemExpert).order_by(SystemExpert.expert_type)).all()
+        experts = await db_session.exec(
+            select(SystemExpert).order_by(SystemExpert.expert_type)
+        ).all()
 
         result = [(e.expert_type, e.name, e.description or "暂无描述") for e in experts]
         logger.info(f"[ExpertManager] 从数据库加载了 {len(result)} 个专家")

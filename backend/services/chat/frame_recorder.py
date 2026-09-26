@@ -28,7 +28,7 @@
 多出来的只是行数——本表是瞬态表，run 终态即清，量级可接受。
 
 线程模型：`reserve_seq` / `flush` 都是协程，**只在事件循环线程里**被调用；
-只有 `append_frames` 经 `asyncio.to_thread` 到线程池执行。因此 `self._runs`
+全异步后 DB 写直接 await（2026-09-27）。`self._runs`
 不需要锁——请保持这个前提，不要从线程里直接访问它。
 """
 
@@ -105,7 +105,7 @@ class RunFrameRecorder:
         """
         buf = self._get_or_create(run_id)
         if buf.last_seq is None:
-            base = await asyncio.to_thread(self._read_latest_seq, run_id)
+            base = await self._read_latest_seq(run_id)
             buf.last_seq = base
             if base:
                 logger.info(
@@ -116,7 +116,7 @@ class RunFrameRecorder:
         buf.last_seq += 1
         return buf.last_seq
 
-    def record(self, run_id: str, seq: int, wire: str) -> None:
+    async def record(self, run_id: str, seq: int, wire: str) -> None:
         """把一帧收进待写缓冲，并确保有一个定时 flush 在跑。
 
         必须在事件循环线程里调用（要 create_task）。
@@ -125,7 +125,7 @@ class RunFrameRecorder:
         buf.pending.append((seq, wire))
         if buf.flush_task is None:
             buf.flush_task = asyncio.get_running_loop().create_task(
-                self._flush_later(run_id, self._next_delay(buf))
+                await self._flush_later(run_id, self._next_delay(buf))
             )
 
     async def flush(self, run_id: str) -> int:
@@ -133,14 +133,14 @@ class RunFrameRecorder:
         batch = self._take_pending(run_id)
         if not batch:
             return 0
-        written = await asyncio.to_thread(self._write_batch, run_id, batch)
+        written = await self._write_batch(run_id, batch)
         if written:
             return len(batch)
         # 写失败：整批放回队首等重试——一次 DB 抖动不该在重放里留下空洞。
         self._requeue_after_failure(run_id, batch)
         return 0
 
-    def finish_blocking(self, run_id: str) -> int:
+    async def finish_blocking(self, run_id: str) -> int:
         """run 终态收尾：刷净尾部、停掉定时器；返回**成功落库**的条数。
 
         缓冲条目**不删除**：本进程分配过的最大号（`last_seq`）要留着，因为同一
@@ -163,7 +163,7 @@ class RunFrameRecorder:
             return 0
         batch = buf.pending
         buf.pending = []
-        return len(batch) if self._write_batch(run_id, batch) else 0
+        return len(batch) if await self._write_batch(run_id, batch) else 0
 
     # ── 内部 ──────────────────────────────────────────────────────────────
 
@@ -210,11 +210,11 @@ class RunFrameRecorder:
         await asyncio.sleep(delay)
         await self.flush(run_id)
 
-    def _write_batch(self, run_id: str, batch: list[tuple[int, str]]) -> bool:
+    async def _write_batch(self, run_id: str, batch: list[tuple[int, str]]) -> bool:
         """写一批帧；返回是否**整批**落库成功。任何异常都吞掉（只告警）。"""
         try:
             with self._session_factory() as db:
-                written = append_frames(db, run_id, batch)
+                written = await append_frames(db, run_id, batch)
             return written == len(batch)
         except Exception as exc:  # noqa: BLE001
             # `append_frames` 自己已兜住写失败；这里再兜一层是防「拿不到 session」
@@ -226,10 +226,10 @@ class RunFrameRecorder:
             )
             return False
 
-    def _read_latest_seq(self, run_id: str) -> int:
+    async def _read_latest_seq(self, run_id: str) -> int:
         try:
             with self._session_factory() as db:
-                return latest_seq(db, run_id) or 0
+                return await latest_seq(db, run_id) or 0
         except Exception as exc:  # noqa: BLE001
             # 读不到就按 0 起号：宁可冒「号段重叠 → 整批回滚并告警」的风险，
             # 也不要让首帧的发送被一次 DB 抖动挡住。

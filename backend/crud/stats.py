@@ -19,7 +19,7 @@ from models.enums import RunEventType, RunStatus
 from utils.time import utc_now
 
 
-def get_run_metrics(
+async def get_run_metrics(
     db: Session,
     *,
     user_id: str | None = None,
@@ -70,7 +70,7 @@ def get_run_metrics(
         ).label("avg_duration_ms"),
     ).where(*base_conditions)
 
-    result = db.exec(stmt).first()
+    result = await db.exec(stmt).first()
 
     # 单独查询 HITL 次数（需要 join RunEvent）
     hitl_stmt = select(func.count(RunEvent.id)).where(
@@ -82,7 +82,7 @@ def get_run_metrics(
     if since:
         hitl_stmt = hitl_stmt.where(RunEvent.timestamp >= since)
 
-    hitl_result = db.exec(hitl_stmt).first()
+    hitl_result = await db.exec(hitl_stmt).first()
     hitl_count = hitl_result[0] if hitl_result else 0
 
     total_runs = result.total_runs or 0
@@ -99,7 +99,7 @@ def get_run_metrics(
     }
 
 
-def get_daily_trends(
+async def get_daily_trends(
     db: Session,
     *,
     user_id: str | None = None,
@@ -150,7 +150,7 @@ def get_daily_trends(
     if user_id:
         stmt = stmt.where(AgentRun.user_id == user_id)
 
-    results = db.exec(stmt).all()
+    results = await db.exec(stmt).all()
 
     # 补零填满完整窗口：没跑任务的日期也要出现（否则趋势图缺柱、间距失真）
     by_day = {(row.date.strftime("%Y-%m-%d") if row.date else ""): row for row in results}
@@ -171,7 +171,7 @@ def get_daily_trends(
     ]
 
 
-def get_run_list(
+async def get_run_list(
     db: Session,
     *,
     user_id: str | None = None,
@@ -219,21 +219,21 @@ def get_run_list(
                 AgentRun.user_id.in_(select(User.id).where(User.username.ilike(like))),
             )
         )
-    total_result = db.exec(count_stmt).first()
+    total_result = await db.exec(count_stmt).first()
     total_count = total_result[0] if total_result else 0
 
     # 获取列表（按创建时间倒序）
     # 计算耗时（completed_at - started_at）
     stmt = base_stmt.order_by(AgentRun.created_at.desc()).limit(limit).offset(offset)
 
-    runs = db.exec(stmt).scalars().all()
+    runs = await db.exec(stmt).scalars().all()
 
     # 获取用户名（仅全局查询需要 join）
     user_names = {}
     if user_id is None:
         user_ids = {r.user_id for r in runs if r.user_id}
         if user_ids:
-            users = db.exec(select(User).where(User.id.in_(user_ids))).scalars().all()
+            users = await db.exec(select(User).where(User.id.in_(user_ids))).scalars().all()
             user_names = {u.id: u.username or u.id[:8] for u in users}
 
     # 构建结果
@@ -260,14 +260,14 @@ def get_run_list(
     return result, total_count
 
 
-def get_today_token_usage(
+async def get_today_token_usage(
     db: Session,
     *,
     user_id: str,
 ) -> int:
     """该用户今日（UTC 日界，与配额判定同口径）已产生的 token 总量"""
     today_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
-    used = db.exec(
+    used = await db.exec(
         select(func.coalesce(func.sum(AgentRun.total_tokens), 0)).where(
             AgentRun.user_id == user_id,
             AgentRun.started_at >= today_start,

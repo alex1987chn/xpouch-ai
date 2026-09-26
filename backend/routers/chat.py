@@ -312,8 +312,8 @@ async def chat_endpoint(
         today_token_usage_exceeds_quota,
     )
 
-    daily_quota = load_daily_token_quota(session)
-    if daily_quota and today_token_usage_exceeds_quota(session, current_user.id, daily_quota):
+    daily_quota = await load_daily_token_quota(session)
+    if daily_quota and await today_token_usage_exceeds_quota(session, current_user.id, daily_quota):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"今日 token 用量已达配额上限（{daily_quota}），将于 {quota_reset_hint()} 重置",
@@ -355,7 +355,7 @@ async def chat_endpoint(
     # 3. 构建 LangChain 消息列表
     langchain_messages = await thread_service.build_langchain_messages(thread_id)
 
-    agent_run = create_agent_run(
+    agent_run = await create_agent_run(
         session,
         thread_id=thread_id,
         user_id=current_user.id,
@@ -363,15 +363,15 @@ async def chat_endpoint(
         mode=None,
         checkpoint_namespace=thread_id,
     )
-    session.commit()
-    session.refresh(agent_run)
+    await session.commit()
+    await session.refresh(agent_run)
 
     # 4. 路由到对应的处理逻辑（统一走主链路：router 判断简单/复杂）
     # 读取全局模型偏好（simple 模式使用；失败静默降级为系统默认）
     try:
         from services.user_preferences import load_model_preferences
 
-        user_preferences = load_model_preferences(session)
+        user_preferences = await load_model_preferences(session)
     except Exception:
         user_preferences = {"simple_model": None, "simple_thinking": "auto"}
 
@@ -393,7 +393,7 @@ async def chat_endpoint(
     try:
         from tools.artifacts import get_recent_artifacts_for_thread
 
-        recent_artifacts = get_recent_artifacts_for_thread(session, thread_id, limit=5)
+        recent_artifacts = await get_recent_artifacts_for_thread(session, thread_id, limit=5)
     except Exception:
         recent_artifacts = []
 
@@ -564,7 +564,7 @@ async def create_artifact_share(
 ):
     """创建产物分享链接（返回明文 token 一次；每次调用生成新链接）"""
     service = ShareService(session)
-    return await asyncio.to_thread(service.create_share, artifact_id, current_user.id)
+    return await service.create_share(artifact_id, current_user.id)
 
 
 @router.delete("/artifacts/{artifact_id}/share", response_model=RevokedResponse)
@@ -575,7 +575,7 @@ async def revoke_artifact_share(
 ):
     """撤销该产物的全部分享链接"""
     service = ShareService(session)
-    return await asyncio.to_thread(service.revoke_shares, artifact_id, current_user.id)
+    return await service.revoke_shares(artifact_id, current_user.id)
 
 
 # ============================================================================
@@ -616,9 +616,9 @@ async def resume_stream(
     # 与全站 NotFoundError/AuthorizationError 两段模型不一致）
     from services.chat.thread_service import get_thread_or_raise
 
-    get_thread_or_raise(session, thread_id, current_user.id)
+    await get_thread_or_raise(session, thread_id, current_user.id)
 
-    run = session.exec(
+    run = await session.exec(
         select(AgentRun).where(AgentRun.thread_id == thread_id).order_by(AgentRun.started_at.desc())
     ).first()
     if not run or run.status in _RUN_TERMINAL_STATUSES:
@@ -640,7 +640,7 @@ async def resume_stream(
             )
             raise HTTPException(status_code=410, detail=detail)
 
-        replay = await asyncio.to_thread(load_replay_frames, session, run.id, last_event_id)
+        replay = await load_replay_frames(session, run.id, last_event_id)
 
         async def _paused_replay_gen():
             for wire in replay:
@@ -649,7 +649,7 @@ async def resume_stream(
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(
-            _paused_replay_gen(),
+            await _paused_replay_gen(),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
@@ -657,8 +657,7 @@ async def resume_stream(
     backlog, queue, _closed = subscription
 
     # 缺口补放（无缺口时不查库）：内存窗口最早一条的 seq 与客户端的位置之间
-    prefix = await asyncio.to_thread(
-        load_gap_frames,
+    prefix = await load_gap_frames(
         session,
         run.id,
         last_event_id,
@@ -691,7 +690,7 @@ async def resume_stream(
             get_stream_hub().unsubscribe(run.id, queue)
 
     return StreamingResponse(
-        _resume_gen(),
+        await _resume_gen(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

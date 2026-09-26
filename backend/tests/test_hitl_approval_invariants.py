@@ -20,7 +20,8 @@
 
 import pytest
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel
 
 from crud.run_event import fail_stale_revision_jobs
 from models import AgentRun, ExecutionPlan, RunEvent, Thread
@@ -31,6 +32,27 @@ from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, NotFoundError, ValidationError
 from utils.time import utc_now
 
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
+
 TABLES = [
     Thread.__table__,
     ExecutionPlan.__table__,
@@ -40,18 +62,18 @@ TABLES = [
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         yield session
 
 
-def _make_plan(
+async def _make_plan(
     db: Session, *, plan_id: str = "p1", run_id: str = "r1", version: int = 1
 ) -> ExecutionPlan:
     db.add(Thread(id="t1", title="会话", user_id="u1"))
@@ -60,7 +82,7 @@ def _make_plan(
         id=plan_id, thread_id="t1", user_query="q", run_id=run_id, plan_version=version
     )
     db.add(plan)
-    db.commit()
+    await db.commit()
     return plan
 
 
@@ -80,19 +102,19 @@ class TestPlanVersionCas:
         svc.db = db
         return svc
 
-    def test_bumps_version_when_expected_matches(self, db):
+    async def test_bumps_version_when_expected_matches(self, db):
         plan = _make_plan(db, version=1)
         self._service(db)._bump_plan_version_with_cas("r1", 1)
-        db.refresh(plan)
+        await db.refresh(plan)
         assert plan.plan_version == 2
 
-    def test_stale_version_raises_conflict_and_leaves_version_untouched(self, db):
+    async def test_stale_version_raises_conflict_and_leaves_version_untouched(self, db):
         plan = _make_plan(db, version=2)
         with pytest.raises(AppError) as exc:
             self._service(db)._bump_plan_version_with_cas("r1", 1)
         assert exc.value.code == ErrorCode.PLAN_VERSION_CONFLICT
         assert exc.value.status_code == 409
-        db.refresh(plan)
+        await db.refresh(plan)
         assert plan.plan_version == 2, "冲突时不得改写版本号"
 
     def test_missing_plan_version_is_rejected(self, db):
@@ -169,7 +191,7 @@ class TestDeadlinePauseResume:
     进入等待态时挂起（deadline_at 置 NULL），每轮批准时重置完整预算。
     """
 
-    def _run_with_deadline(self, db: Session, run_id: str = "r1") -> AgentRun:
+    async def _run_with_deadline(self, db: Session, run_id: str = "r1") -> AgentRun:
         db.add(Thread(id="t1", title="会话", user_id="u1"))
         run = AgentRun(
             id=run_id,
@@ -178,33 +200,33 @@ class TestDeadlinePauseResume:
             deadline_at=utc_now(),
         )
         db.add(run)
-        db.commit()
+        await db.commit()
         return run
 
-    def test_pause_clears_deadline(self, db):
-        run = self._run_with_deadline(db)
-        pause_deadline(db, "r1")
-        db.refresh(run)
+    async def test_pause_clears_deadline(self, db):
+        run = await self._run_with_deadline(db)
+        await pause_deadline(db, "r1")
+        await db.refresh(run)
         assert run.deadline_at is None
 
-    def test_pause_is_idempotent_when_already_paused(self, db):
-        run = self._run_with_deadline(db)
-        pause_deadline(db, "r1")
-        pause_deadline(db, "r1")  # 二次挂起不应报错
-        db.refresh(run)
+    async def test_pause_is_idempotent_when_already_paused(self, db):
+        run = await self._run_with_deadline(db)
+        await pause_deadline(db, "r1")
+        await pause_deadline(db, "r1")  # 二次挂起不应报错
+        await db.refresh(run)
         assert run.deadline_at is None
 
-    def test_reset_sets_future_deadline(self, db):
-        run = self._run_with_deadline(db)
-        pause_deadline(db, "r1")
-        reset_deadline(db, "r1", 900)
-        db.refresh(run)
+    async def test_reset_sets_future_deadline(self, db):
+        run = await self._run_with_deadline(db)
+        await pause_deadline(db, "r1")
+        await reset_deadline(db, "r1", 900)
+        await db.refresh(run)
         assert run.deadline_at is not None
         remaining = (run.deadline_at - utc_now()).total_seconds()
         assert 895 <= remaining <= 900, f"重置后应剩约 900s，实际 {remaining}"
 
-    def test_pause_on_missing_run_is_noop(self, db):
-        pause_deadline(db, "no-such-run")  # 不应抛出
+    async def test_pause_on_missing_run_is_noop(self, db):
+        await pause_deadline(db, "no-such-run")  # 不应抛出
 
 
 # ---------------------------------------------------------------------------
@@ -222,13 +244,13 @@ class TestStaleRevisionFallback:
     2026-09-13 修复，这些用例锁住修复。
     """
 
-    def _emit(self, db: Session, run_id: str, event_type: RunEventType, *, ago_seconds: int = 0):
+    async def _emit(self, db: Session, run_id: str, event_type: RunEventType, *, ago_seconds: int = 0):
         from datetime import timedelta
 
         # 评审后语义收窄：fail_stale_revision_jobs 只扫**活跃 run**（join AgentRun），
         # 所以每个用例需要一个 RUNNING 的归属 run（与生产一致：事件必有归属 run）。
         # 同一 run 多次 emit 时复用已有行（测试里同 run 会发多个事件）。
-        if db.get(AgentRun, run_id) is None:
+        if await db.get(AgentRun, run_id) is None:
             db.add(
                 AgentRun(
                     id=run_id,
@@ -249,39 +271,39 @@ class TestStaleRevisionFallback:
             created_at=utc_now() - timedelta(seconds=ago_seconds),
         )
         db.add(ev)
-        db.commit()
+        await db.commit()
         return ev
 
-    def _event_types(self, db: Session, run_id: str) -> list[str]:
+    async def _event_types(self, db: Session, run_id: str) -> list[str]:
         from sqlmodel import select
 
-        rows = db.exec(
+        rows = await db.exec(
             select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.created_at)
         ).all()
         return [str(r.event_type) for r in rows]
 
-    def test_stale_revision_is_marked_failed(self, db):
-        self._emit(db, "r1", RunEventType.HITL_REVISION_STARTED, ago_seconds=3600)
-        repaired = fail_stale_revision_jobs(db, stale_after_seconds=1800)
+    async def test_stale_revision_is_marked_failed(self, db):
+        await self._emit(db, "r1", RunEventType.HITL_REVISION_STARTED, ago_seconds=3600)
+        repaired = await fail_stale_revision_jobs(db, stale_after_seconds=1800)
         assert repaired == 1
-        assert RunEventType.HITL_REVISION_FAILED in self._event_types(db, "r1")
+        assert RunEventType.HITL_REVISION_FAILED in await self._event_types(db, "r1")
 
-    def test_fresh_revision_is_left_alone(self, db):
-        self._emit(db, "r2", RunEventType.HITL_REVISION_STARTED, ago_seconds=10)
-        repaired = fail_stale_revision_jobs(db, stale_after_seconds=1800)
+    async def test_fresh_revision_is_left_alone(self, db):
+        await self._emit(db, "r2", RunEventType.HITL_REVISION_STARTED, ago_seconds=10)
+        repaired = await fail_stale_revision_jobs(db, stale_after_seconds=1800)
         assert repaired == 0
-        assert RunEventType.HITL_REVISION_FAILED not in self._event_types(db, "r2")
+        assert RunEventType.HITL_REVISION_FAILED not in await self._event_types(db, "r2")
 
-    def test_revision_already_terminal_is_left_alone(self, db):
+    async def test_revision_already_terminal_is_left_alone(self, db):
         """STARTED 之后已有终态事件（PLAN_UPDATED）→ 不算悬置。"""
-        self._emit(db, "r3", RunEventType.HITL_REVISION_STARTED, ago_seconds=3600)
-        self._emit(db, "r3", RunEventType.PLAN_UPDATED, ago_seconds=3500)
-        repaired = fail_stale_revision_jobs(db, stale_after_seconds=1800)
+        await self._emit(db, "r3", RunEventType.HITL_REVISION_STARTED, ago_seconds=3600)
+        await self._emit(db, "r3", RunEventType.PLAN_UPDATED, ago_seconds=3500)
+        repaired = await fail_stale_revision_jobs(db, stale_after_seconds=1800)
         assert repaired == 0
 
-    def test_failed_revision_already_repaired_is_not_double_counted(self, db):
+    async def test_failed_revision_already_repaired_is_not_double_counted(self, db):
         """幂等：已在 STARTED 之后补过 FAILED 的 run 不应被再次处理。"""
-        self._emit(db, "r4", RunEventType.HITL_REVISION_STARTED, ago_seconds=3600)
-        self._emit(db, "r4", RunEventType.HITL_REVISION_FAILED, ago_seconds=3500)
-        repaired = fail_stale_revision_jobs(db, stale_after_seconds=1800)
+        await self._emit(db, "r4", RunEventType.HITL_REVISION_STARTED, ago_seconds=3600)
+        await self._emit(db, "r4", RunEventType.HITL_REVISION_FAILED, ago_seconds=3500)
+        repaired = await fail_stale_revision_jobs(db, stale_after_seconds=1800)
         assert repaired == 0

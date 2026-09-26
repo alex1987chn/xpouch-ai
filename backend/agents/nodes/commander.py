@@ -41,14 +41,12 @@ CommanderOutput:
 - 确认后 Dispatcher 按新计划执行
 """
 
-import asyncio
 import logging
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlmodel import Session
 from tenacity import (
     before_sleep_log,
     retry,
@@ -61,7 +59,7 @@ from agents.plan_tasks import attach_subtask_ids, build_plan_tasks
 from agents.state import AgentState
 from config import settings
 from constants import COMMANDER_SYSTEM_PROMPT
-from database import engine
+from database import SessionFactory
 from models.enums import ExecutionMode
 from utils.config_cache import ConfigCache
 from utils.llm_factory import get_llm_instance
@@ -183,11 +181,11 @@ async def _preload_expert_configs(task_list: list[dict]) -> None:
     logger.info(f"[COMMANDER] P1优化: 预加载 {len(expert_types)} 个专家配置...")
 
     # P0 修复: 将数据库操作包装在 to_thread 中
-    def _load_configs():
+    async def _load_configs():
         from agents.services.expert_manager import get_expert_config, get_expert_config_cached
 
         loaded_count = 0
-        with Session(engine) as db_session:
+        async with SessionFactory() as db_session:
             for expert_type in expert_types:
                 try:
                     # 先从缓存检查
@@ -197,14 +195,14 @@ async def _preload_expert_configs(task_list: list[dict]) -> None:
                         continue
 
                     # 缓存未命中，从数据库加载
-                    config = get_expert_config(expert_type, db_session)
+                    config = await get_expert_config(expert_type, db_session)
                     if config:
                         loaded_count += 1
                 except Exception as e:
                     logger.warning(f"[COMMANDER] 预加载专家 '{expert_type}' 失败: {e}")
         return loaded_count
 
-    loaded_count = await asyncio.to_thread(_load_configs)
+    loaded_count = await _load_configs()
     logger.info(f"[COMMANDER] P1优化: 成功预加载 {loaded_count}/{len(expert_types)} 个专家配置")
 
 
@@ -256,11 +254,11 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 # 3️⃣ 缓存未命中，使用线程池查数据库
                 logger.info("[COMMANDER] 缓存未命中，查询数据库: commander 配置")
 
-                def _load_commander_config():
-                    with Session(engine) as db_session:
-                        return get_expert_config("commander", db_session)
+                async def _load_commander_config():
+                    async with SessionFactory() as db_session:
+                        return await get_expert_config("commander", db_session)
 
-                commander_config = await asyncio.to_thread(_load_commander_config)
+                commander_config = await _load_commander_config()
                 # 4️⃣ 写入本地缓存
                 if commander_config:
                     _commander_config_cache["commander"] = commander_config
@@ -289,12 +287,11 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                 else:
                     logger.info("[COMMANDER] 缓存未命中，查询数据库: 专家列表")
 
-                    # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
-                    def _load_all_experts():
-                        with Session(engine) as db_session:
-                            return get_all_expert_list(db_session)
+                    async def _load_all_experts():
+                        async with SessionFactory() as db_session:
+                            return await get_all_expert_list(db_session)
 
-                    all_experts = await asyncio.to_thread(_load_all_experts)
+                    all_experts = await _load_all_experts()
                     # 写入本地缓存
                     if all_experts:
                         _all_experts_cache["all_experts"] = all_experts
@@ -430,18 +427,17 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
 
             # v3.0: 立即持久化到数据库 (通过 TaskManager)
             # 🔥 v3.3: 使用 preview_execution_plan_id 确保事件和数据库记录一致
-            # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
             execution_plan_id = None
             sub_tasks_list = []
             if thread_id:
                 run_id = state.get("run_id")
 
-                def _create_execution_plan():
+                async def _create_execution_plan():
                     from crud.execution_plan import get_subtasks_by_execution_plan
                     from crud.run_event import emit_plan_created
 
-                    with Session(engine) as db_session:
-                        created_plan, is_reused = get_or_create_execution_plan(
+                    async with SessionFactory() as db_session:
+                        created_plan, is_reused = await get_or_create_execution_plan(
                             db=db_session,
                             thread_id=thread_id,
                             run_id=run_id,
@@ -454,7 +450,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                         )
 
                         # 在会话关闭前完成子任务数据读取，避免 detached 实例懒加载
-                        persisted_subtasks = get_subtasks_by_execution_plan(
+                        persisted_subtasks = await get_subtasks_by_execution_plan(
                             db_session, created_plan.id
                         )
                         serialized_subtasks = [
@@ -477,12 +473,10 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                                 task_count=len(persisted_subtasks),
                                 strategy=commander_response.strategy,
                             )
-                            db_session.commit()
+                            await db_session.commit()
                         return created_plan.id, is_reused, serialized_subtasks
 
-                execution_plan_id, is_reused, sub_tasks_list = await asyncio.to_thread(
-                    _create_execution_plan
-                )
+                execution_plan_id, is_reused, sub_tasks_list = await _create_execution_plan()
                 session_source = "复用" if is_reused else "新建"
                 logger.info(f"[COMMANDER] ExecutionPlan {session_source}: {execution_plan_id}")
 
@@ -496,8 +490,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                         insert_run_thinking_message_standalone,
                     )
 
-                    thinking_message_id = await asyncio.to_thread(
-                        insert_run_thinking_message_standalone,
+                    thinking_message_id = await insert_run_thinking_message_standalone(
                         thread_id=thread_id,
                         run_id=state.get("run_id"),
                     )
@@ -507,21 +500,20 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
                     )
 
                 # 🔥🔥🔥 更新 thread.execution_plan_id，确保前端能查询到
-                # P0 修复: 使用 asyncio.to_thread 避免阻塞事件循环
                 from models import Thread
 
-                def _update_thread():
-                    with Session(engine) as db_session:
-                        thread = db_session.get(Thread, thread_id)
+                async def _update_thread():
+                    async with SessionFactory() as db_session:
+                        thread = await db_session.get(Thread, thread_id)
                         if thread:
                             thread.execution_plan_id = execution_plan_id
                             thread.agent_type = "ai"  # 🔥 同时更新 agent_type
                             db_session.add(thread)
-                            db_session.commit()
+                            await db_session.commit()
                             return True
                         return False
 
-                updated = await asyncio.to_thread(_update_thread)
+                updated = await _update_thread()
                 if updated:
                     logger.info(
                         f"[COMMANDER] ✅ 已更新 thread.execution_plan_id: {execution_plan_id}"

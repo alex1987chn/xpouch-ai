@@ -34,7 +34,8 @@ from unittest.mock import patch
 import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel, select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -56,6 +57,27 @@ from models import (  # noqa: E402
 from services.chat.frame_recorder import RunFrameRecorder  # noqa: E402
 from services.chat.stream_service import StreamService  # noqa: E402
 from utils.time import utc_now  # noqa: E402
+
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
 
 # handle_langgraph_stream 会碰到的全部表（含只读的 SystemSetting——
 # resolve_graph_max_concurrency 对它做 session.get，表缺了会直接抛）。
@@ -90,18 +112,18 @@ _PLAN = [
 
 
 @pytest.fixture
-def engine(tmp_path):
+async def engine(tmp_path):
     # 用**临时文件库 + 默认池**而非 StaticPool 单连接：本测试的 producer
     # （后台任务 / to_thread）与测试轮询分属多个 session，StaticPool 的
     # 单连接会让跨 session 的事务可见性与回滚相互污染——这正是本测试
     # 偶发挂的土壤（CI/本地都随机复现过）。文件库提供真实的连接级
     # 事务隔离，贴近生产（PG 多连接）形态。
-    engine = create_engine(
-        f"sqlite:///{tmp_path}/producer-test.db",
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        f"sqlite+aiosqlite:///{tmp_path}/producer-test.db",
         connect_args={"check_same_thread": False},
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         session.add(Thread(id="t1", title="会话", user_id="u1"))
         session.add(
             AgentRun(
@@ -120,13 +142,13 @@ def engine(tmp_path):
                 id="p1", thread_id="t1", user_query="做个页面", run_id="r1", plan_version=1
             )
         )
-        session.commit()
+        await session.commit()
     yield engine
     engine.dispose()
 
 
 def _db(engine) -> Session:
-    return Session(engine)
+    return _test_session()
 
 
 async def _wait_for_frame(engine, needle: str, timeout: float = 5.0) -> list[RunStreamFrame]:
@@ -136,7 +158,7 @@ async def _wait_for_frame(engine, needle: str, timeout: float = 5.0) -> list[Run
     frames: list[RunStreamFrame] = []
     while loop.time() < deadline:
         with _db(engine) as db:
-            frames = list_frames_after(db, "r1", 0)
+            frames = await list_frames_after(db, "r1", 0)
         if any(needle in frame.wire for frame in frames):
             return frames
         await asyncio.sleep(0.02)
@@ -147,7 +169,7 @@ async def _wait_for_frame(engine, needle: str, timeout: float = 5.0) -> list[Run
 async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engine):
     monkeypatch.setattr(settings, "stream_timeout", 0.05)  # 心跳加速：断连不必等 120s
     saver = MemorySaver()
-    recorder = RunFrameRecorder(session_factory=lambda: Session(engine), flush_interval=5)
+    recorder = RunFrameRecorder(session_factory=lambda: _test_session(), flush_interval=5)
 
     async def _fake_router(state, config=None):
         return {"router_decision": "complex", "router_reason": "test"}
@@ -161,7 +183,7 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
             "execution_plan_id": "p1",
         }
 
-    svc = StreamService(Session(engine))
+    svc = StreamService(_test_session())
 
     async def _fake_mcp_tools() -> list:
         return []
@@ -203,13 +225,13 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
 
     # ④ run 终态与账本
     with _db(engine) as db:
-        run = db.get(AgentRun, "r1")
+        run = await db.get(AgentRun, "r1")
         assert run.status == RunStatus.WAITING_FOR_APPROVAL, (
             f"producer 应把 run 停在审批点，实际 {run.status}"
         )
         assert run.deadline_at is None, "HITL 等待期应挂起执行预算"
         event_types = {
-            row.event_type for row in db.exec(select(RunEvent).where(RunEvent.run_id == "r1")).all()
+            row.event_type for row in await db.exec(select(RunEvent).where(RunEvent.run_id == "r1")).all()
         }
         assert RunEventType.HITL_INTERRUPTED in event_types, "缺 hitl_interrupted 账本事件"
         assert RunEventType.ROUTER_DECIDED in event_types, "断连前已发生的事件不得丢账本"

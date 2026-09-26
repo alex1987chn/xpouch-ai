@@ -9,7 +9,8 @@
 
 import pytest
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel
 
 from models import User
 from utils.jwt_handler import hash_password
@@ -21,14 +22,14 @@ _NEW_PW = "another-" + "pw-9"
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine, tables=[User.__table__])
-    with Session(engine) as session:
+    async with _test_session() as session:
         yield session
 
 
@@ -42,7 +43,7 @@ def clear_password_limiter():
 
 
 @pytest.fixture
-def user_with_password(db):
+async def user_with_password(db):
     user = User(
         id="u-pw",
         username="密码用户",
@@ -50,15 +51,15 @@ def user_with_password(db):
         password_hash=hash_password(_GOOD_PW),
     )
     db.add(user)
-    db.commit()
+    await db.commit()
     return user
 
 
 @pytest.fixture
-def user_without_password(db):
+async def user_without_password(db):
     user = User(id="u-nopw", username="无密码用户", phone_number="13800000002")
     db.add(user)
-    db.commit()
+    await db.commit()
     return user
 
 
@@ -84,10 +85,10 @@ def test_login_by_phone_success(db, user_with_password):
     assert resp.message == "登录成功"
 
 
-def test_login_by_email_success(db, user_with_password):
+async def test_login_by_email_success(db, user_with_password):
     user_with_password.email = "pw@example.com"
     db.add(user_with_password)
-    db.commit()
+    await db.commit()
 
     resp = _login(db, "pw@example.com", _GOOD_PW)
     assert resp.user_id == "u-pw"
@@ -125,7 +126,7 @@ def test_login_locks_after_too_many_failures(db, user_with_password):
     assert exc.value.status_code == 429
 
 
-def test_set_password_first_time_no_old_needed(db, user_without_password):
+async def test_set_password_first_time_no_old_needed(db, user_without_password):
     import asyncio
 
     from auth.routes_password import set_password
@@ -134,7 +135,7 @@ def test_set_password_first_time_no_old_needed(db, user_without_password):
     request = SetPasswordRequest(password=_NEW_PW)
     result = asyncio.run(set_password(request, db, user_without_password))
     assert result.id == "u-nopw"
-    db.refresh(user_without_password)
+    await db.refresh(user_without_password)
     assert user_without_password.password_hash
 
 

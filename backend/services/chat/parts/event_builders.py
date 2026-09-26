@@ -33,22 +33,22 @@ class EventBuildersMixin:
     _build_error_event = staticmethod(build_error_event)
     _build_human_interrupt_event = staticmethod(build_human_interrupt_event)
 
-    def _touch_agent_run(self, run_id: str, *, current_node: str | None = None) -> None:
+    async def _touch_agent_run(self, run_id: str, *, current_node: str | None = None) -> None:
         """轻量刷新运行心跳，可选同步当前节点。"""
         from crud.agent_run import touch_run_heartbeat_by_id
 
-        updated = touch_run_heartbeat_by_id(self.db, run_id, current_node=current_node)
+        updated = await touch_run_heartbeat_by_id(self.db, run_id, current_node=current_node)
         if updated is not None:
-            self.db.commit()
+            await self.db.commit()
 
-    def _raise_if_run_cancelled(self, run_id: str) -> None:
+    async def _raise_if_run_cancelled(self, run_id: str) -> None:
         """在流式执行中协作检查运行是否已被取消或已超出截止时间。"""
         from crud.agent_run import mark_run_timed_out_by_id
         from models.enums import RunStatus
         from utils.exceptions import AppError
         from utils.run_lease import is_deadline_exceeded
 
-        agent_run = self.db.get(AgentRun, run_id)
+        agent_run = await self.db.get(AgentRun, run_id)
         if agent_run is None:
             return
 
@@ -56,14 +56,14 @@ class EventBuildersMixin:
         # 就立刻终止并给出明确错误；进程已不在时由 supervisor 回收。两处口径若不一致，
         # 会出现「流里认为没超、回收认为超了」这类自相矛盾的终止原因。
         if is_deadline_exceeded(agent_run.deadline_at):
-            timed_out = mark_run_timed_out_by_id(
+            timed_out = await mark_run_timed_out_by_id(
                 self.db,
                 run_id,
                 error_message="运行超过 deadline，已自动终止",
                 current_node=agent_run.current_node,
             )
             if timed_out is not None:
-                self.db.commit()
+                await self.db.commit()
             raise AppError(
                 message="运行已超时",
                 code=ErrorCode.RUN_TIMED_OUT,
@@ -79,7 +79,7 @@ class EventBuildersMixin:
                 details={"run_id": run_id},
             )
 
-    def _sync_run_progress_from_token(self, token: dict[str, Any], run_id: str) -> None:
+    async def _sync_run_progress_from_token(self, token: dict[str, Any], run_id: str) -> None:
         """从 LangGraph token 中提取当前节点，并刷新运行心跳。"""
         event_type = token.get("event", "")
         if event_type != "on_chain_start":
@@ -90,4 +90,4 @@ class EventBuildersMixin:
         if not node_name:
             return
 
-        self._touch_agent_run(run_id, current_node=str(node_name))
+        await self._touch_agent_run(run_id, current_node=str(node_name))

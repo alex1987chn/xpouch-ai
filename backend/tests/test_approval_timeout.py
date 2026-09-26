@@ -83,10 +83,10 @@ class _FakeSession:
         if obj.__class__.__name__ == "Message":
             self.notes.append(obj)
 
-    def commit(self):
+    async def commit(self):
         self.committed += 1
 
-    def get(self, model, object_id):
+    async def get(self, model, object_id):
         if model is Thread and object_id == self.thread.id:
             return self.thread
         if model is AgentRun:
@@ -115,11 +115,11 @@ def _thread():
     )
 
 
-def test_expired_waiting_run_cancelled_with_visible_note():
+async def test_expired_waiting_run_cancelled_with_visible_note():
     run = _waiting_run(waiting_since=utc_now() - timedelta(hours=25))
     session = _FakeSession([run], _thread())
 
-    reclaimed = reclaim_expired_leases(session)
+    reclaimed = await reclaim_expired_leases(session)
 
     assert run.status == RunStatus.CANCELLED
     assert run.cancelled_at is not None
@@ -131,23 +131,23 @@ def test_expired_waiting_run_cancelled_with_visible_note():
     assert session.notes[0].extra_data["run_id"] == run.id
 
 
-def test_fresh_waiting_run_never_touched():
+async def test_fresh_waiting_run_never_touched():
     run = _waiting_run(waiting_since=utc_now() - timedelta(hours=1))
     session = _FakeSession([run], _thread())
 
-    reclaimed = reclaim_expired_leases(session)
+    reclaimed = await reclaim_expired_leases(session)
 
     assert run.status == RunStatus.WAITING_FOR_APPROVAL
     assert reclaimed == []
     assert session.notes == []
 
 
-def test_waiting_without_stamp_never_touched():
+async def test_waiting_without_stamp_never_touched():
     # 历史行（无计时起点）不判死——宁可漏杀不可误杀（09-13 教训）
     run = _waiting_run(waiting_since=None)
     session = _FakeSession([run], _thread())
 
-    reclaimed = reclaim_expired_leases(session)
+    reclaimed = await reclaim_expired_leases(session)
 
     assert run.status == RunStatus.WAITING_FOR_APPROVAL
     assert reclaimed == []
@@ -156,7 +156,7 @@ def test_waiting_without_stamp_never_touched():
 # ---------- 3. 计时起点 ----------
 
 
-def test_update_run_status_stamps_waiting_since():
+async def test_update_run_status_stamps_waiting_since():
     run = AgentRun(
         id="run-s1",
         thread_id="thread-1",
@@ -168,14 +168,14 @@ def test_update_run_status_stamps_waiting_since():
     before = utc_now()
     session = _FakeSession([run], _thread())
 
-    update_run_status(session, run, RunStatus.WAITING_FOR_APPROVAL)
+    await update_run_status(session, run, RunStatus.WAITING_FOR_APPROVAL)
 
     assert run.waiting_since_at is not None
     assert run.waiting_since_at >= before
 
     # 离开等待不回擦（保留审计痕迹），重入等待重新盖章
     old_stamp = run.waiting_since_at
-    update_run_status(session, run, RunStatus.RESUMING)
+    await update_run_status(session, run, RunStatus.RESUMING)
     assert run.waiting_since_at == old_stamp
-    update_run_status(session, run, RunStatus.WAITING_FOR_APPROVAL)
+    await update_run_status(session, run, RunStatus.WAITING_FOR_APPROVAL)
     assert run.waiting_since_at >= old_stamp

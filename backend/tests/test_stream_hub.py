@@ -107,7 +107,7 @@ def test_backlog_window_drops_old_events():
     assert [seq for seq, _w in backlog] == [4, 5]
 
 
-def test_asyncio_queue_wait():
+async def test_asyncio_queue_wait():
     async def _flow():
         hub = RunStreamHub()
         hub.publish("run-1", "event: a\ndata: {}\n\n", 1)
@@ -119,4 +119,4 @@ def test_asyncio_queue_wait():
         item = await asyncio.wait_for(queue.get(), timeout=1)
         assert item[0] == 2
 
-    asyncio.run(_flow())
+    asyncio.run(await _flow())

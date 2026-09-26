@@ -15,12 +15,34 @@ import asyncio
 
 import pytest
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, SQLModel, SQLModel
 
 from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread, User
 from services.chat.recovery_service import RecoveryService
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
+
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+
+async def _init_tables(engine, tables=None):
+    from sqlmodel import SQLModel
+
+    async with engine.begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+        )
+
+
+def _test_session() -> "AsyncSession":
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
 
 # 审计扩范围后 resume_chat 的成功路径会落审计/反馈消息/账本，
 # 夹具需带上对应表（守卫拒绝路径不触碰它们）
@@ -38,21 +60,21 @@ TERMINAL = ["cancelled", "completed", "failed", "timed_out"]
 
 
 @pytest.fixture
-def db():
-    engine = create_engine(
-        "sqlite://",
+async def db():
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=TABLES)
-    with Session(engine) as session:
+    await _init_tables(engine, tables=TABLES)
+    async with _test_session() as session:
         yield session
 
 
-def _seed(db: Session, status: str, run_id: str = "r1") -> None:
+async def _seed(db: Session, status: str, run_id: str = "r1") -> None:
     db.add(Thread(id="t1", title="会话", user_id="u1"))
     db.add(AgentRun(id=run_id, thread_id="t1", user_id="u1", status=status))
-    db.commit()
+    await db.commit()
 
 
 def _service(db: Session) -> RecoveryService:
@@ -63,7 +85,7 @@ def _service(db: Session) -> RecoveryService:
 
 class TestTerminalRunGuard:
     @pytest.mark.parametrize("status", TERMINAL)
-    def test_approve_on_terminal_run_is_rejected(self, db, status):
+    async def test_approve_on_terminal_run_is_rejected(self, db, status):
         _seed(db, status)
 
         with pytest.raises(AppError) as exc:
@@ -74,7 +96,7 @@ class TestTerminalRunGuard:
         assert exc.value.code == ErrorCode.RESUME_INVALID_STATE
         assert exc.value.status_code == 409
         db.expire_all()
-        assert db.get(AgentRun, "r1").status == status, "终态不得被批准流程改写（曾翻回 resuming）"
+        assert await db.get(AgentRun, "r1").status == status, "终态不得被批准流程改写（曾翻回 resuming）"
 
     @pytest.mark.parametrize("status", TERMINAL)
     def test_revise_on_terminal_run_is_rejected(self, db, status):

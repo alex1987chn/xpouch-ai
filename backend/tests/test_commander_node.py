@@ -139,29 +139,46 @@ def _stub_db_stack(stack):
     """
     from types import SimpleNamespace
 
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
     from sqlalchemy.pool import StaticPool
-    from sqlmodel import SQLModel, create_engine
+    from sqlmodel import SQLModel
+    from sqlmodel.ext.asyncio.session import AsyncSession as _SQLModelAsyncSession
 
     import agents.nodes.commander as commander_mod
     from models import Thread
 
-    # 行为测试不依赖真实数据库：把 commander 的 engine 指向一次性内存 SQLite，
+    # 行为测试不依赖真实数据库：把 commander 的 SessionFactory 指向一次性
+    # 内存 SQLite（StaticPool 共享单连接——内存库否则每个连接都是独立空库），
     # 规划收尾的 thread 回写按"线程不存在"静默跳过（与本地空线程行为一致）。
-    # StaticPool 共享单连接——内存库否则每个连接都是独立空库。
-    sqlite_engine = create_engine(
-        "sqlite://",
+    sqlite_engine = create_async_engine(
+        "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(sqlite_engine, tables=[Thread.__table__])
-    stack.enter_context(patch.object(commander_mod, "engine", new=sqlite_engine))
 
-    def _fake_get_or_create(**kw):
+    async def _init_tables():
+        async with sqlite_engine.begin() as conn:
+            await conn.run_sync(lambda c: SQLModel.metadata.create_all(c, tables=[Thread.__table__]))
+
+    _init_tables_loop = __import__("asyncio").new_event_loop()
+    try:
+        _init_tables_loop.run_until_complete(_init_tables())
+    finally:
+        _init_tables_loop.close()
+    stack.enter_context(
+        patch.object(
+            commander_mod,
+            "SessionFactory",
+            new=async_sessionmaker(sqlite_engine, class_=_SQLModelAsyncSession, expire_on_commit=False),
+        )
+    )
+
+    async def _fake_get_or_create(**kw):
         plan = _FakePlan()
         plan.task_count = len(kw.get("subtasks_data") or [])
         return plan, False
 
-    def _fake_get_subtasks(_db, _plan_id):
+    async def _fake_get_subtasks(_db, _plan_id):
         # 依据 commander 最后一次传给 get_or_create 的 subtasks_data 数量生成
         count = getattr(_fake_get_or_create, "last_count", 1)
         return [
@@ -176,8 +193,8 @@ def _stub_db_stack(stack):
             for i in range(count)
         ]
 
-    def _wrapped_get_or_create(**kw):
-        result = _fake_get_or_create(**kw)
+    async def _wrapped_get_or_create(**kw):
+        result = await _fake_get_or_create(**kw)
         _fake_get_or_create.last_count = len(kw.get("subtasks_data") or [])
         return result
 

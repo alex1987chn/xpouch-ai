@@ -24,9 +24,9 @@ DEFAULT_MODEL_PREFERENCES: dict = {"simple_model": None, "simple_thinking": "aut
 VALID_THINKING_MODES = {"auto", "enabled", "disabled"}
 
 
-def load_model_preferences(session: Session) -> dict:
+async def load_model_preferences(session: Session) -> dict:
     """读取全局模型偏好并与默认值合并（缺失、脏 JSON、脏字段回落默认值）"""
-    stored = session.get(SystemSetting, MODEL_PREFERENCES_KEY)
+    stored = await session.get(SystemSetting, MODEL_PREFERENCES_KEY)
     prefs: dict = {}
     if stored:
         try:
@@ -44,17 +44,17 @@ def load_model_preferences(session: Session) -> dict:
     return merged
 
 
-def save_model_preferences(
+async def save_model_preferences(
     session: Session, *, simple_model: str | None, simple_thinking: str
 ) -> dict:
     """写入全局模型偏好（upsert），返回合并后的生效值"""
     preferences = {"simple_model": simple_model, "simple_thinking": simple_thinking}
     payload = json.dumps(preferences, ensure_ascii=False)
-    stored = session.get(SystemSetting, MODEL_PREFERENCES_KEY)
+    stored = await session.get(SystemSetting, MODEL_PREFERENCES_KEY)
     if stored:
         stored.value = payload
         session.add(stored)
     else:
         session.add(SystemSetting(key=MODEL_PREFERENCES_KEY, value=payload))
-    session.commit()
-    return load_model_preferences(session)
+    await session.commit()
+    return await load_model_preferences(session)
