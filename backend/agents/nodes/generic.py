@@ -65,6 +65,7 @@ from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from services.tool_policy_service import tool_policy_service
 from tools import ASYNC_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集（异步版，避免阻塞事件循环）
+from tools.memory import MEMORY_TOOL_NAMES, build_memory_tools
 from utils.artifacts import strip_code_fence
 from utils.config_cache import ConfigCache
 from utils.llm_factory import get_effective_model, get_expert_llm
@@ -83,6 +84,20 @@ class GenericWorkerError(Exception):
 
 class ExpertExecutionError(GenericWorkerError):
     """专家执行失败（LLM 调用 / 工具流程）异常。"""
+
+
+def _branch_used_memory_tools(branch_messages: list) -> bool:
+    """本分支是否调用过记忆管理工具（检索/删除）。
+
+    用过 = 输出是操作报告（"已删除 N 条：…"）而非记忆素材，逐行入库必须
+    跳过——否则删除报告自己会被存成记忆（历史"已为您删除…"回声即此形态，
+    见 docs/BACKLOG.md 记忆系统条目）。
+    """
+    for message in branch_messages:
+        for call in getattr(message, "tool_calls", None) or []:
+            if isinstance(call, dict) and call.get("name") in MEMORY_TOOL_NAMES:
+                return True
+    return False
 
 
 def normalize_message_content(content: str | list | Any) -> str:
@@ -441,6 +456,12 @@ async def expert_worker_node(
 
             # 🔥 MCP: 合并基础工具和动态 MCP 工具
             runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+            # 记忆管理工具（2026-09-26 记忆删除能力）：仅记忆专家 + 已知 user_id
+            # 时注入——闭包捕获用户身份（tools/memory.py），模型不可填报；
+            # 缺 user_id 不注入，与写入端 fail-loud 同一隔离铁律
+            memory_user_id = branch_context.get("user_id")
+            if expert_type == "memorize_expert" and memory_user_id:
+                runtime_tools.extend(build_memory_tools(memory_user_id))
             policy_overrides = await tool_policy_service.get_overrides()
             bindable_tools, blocked_tools = filter_tools_for_binding(
                 runtime_tools,
@@ -694,16 +715,12 @@ async def expert_worker_node(
             # 请求都能检索到（跨用户串记忆，存量 default_user 脏数据即其产物）
             user_id = branch_context.get("user_id")
 
-            # 教材约定「一行一条记忆、无值得记录时只输出：无」（见
-            # expert_config.memorize_expert）——逐行入库（分条存储检索精度更高），
-            # 「无」/空行不是记忆，跳过。曾把整段输出（含 JSON 数组形态的
-            # 结构包裹）当一条 content 存：结构字段无人承接，空数组 [] 也是垃圾记忆。
-            memory_lines = [
-                ln.strip()
-                for ln in memory_content.splitlines()
-                if ln.strip() and ln.strip() != "无"
-            ]
-            if not user_id:
+            # 删除/查看类操作：用过记忆工具的分支，输出是操作报告不是记忆素材，
+            # 逐行入库必须跳过（否则"已删除 3 条…"会被存成记忆）
+            if _branch_used_memory_tools(existing_messages):
+                logger.info("[GenericWorker] 记忆管理操作完成，跳过记忆写入（输出为操作报告）")
+                response.content = memory_content
+            elif not user_id:
                 logger.warning(
                     "[GenericWorker] branch_context 缺 user_id，记忆拒绝入库（不落共享账号）: "
                     "thread=%s run=%s",
@@ -711,25 +728,37 @@ async def expert_worker_node(
                     branch_context.get("run_id"),
                 )
                 response.content = "未能识别当前用户，本次记忆未保存。"
-            elif memory_lines:
-                logger.info(f"[GenericWorker] 正在保存 {len(memory_lines)} 条记忆")
-                try:
-                    for line in memory_lines:
-                        await memory_manager.add_memory(
-                            user_id=user_id,
-                            content=line,
-                            source="conversation",
-                            memory_type="fact",
-                        )
-                    logger.info("[GenericWorker] 记忆保存成功!")
-                    response.content = "已为您记录：\n" + "\n".join(memory_lines)
-                except (RuntimeError, ValueError) as mem_err:
-                    # 如实上报失败——不说"我会记住"（没存上就是没存上）；
-                    # 重试安全：已入库的行会被 MemoryManager 的同内容去重挡住
-                    logger.warning(f"[GenericWorker] 记忆保存失败: {mem_err}")
-                    response.content = "记忆保存失败（向量生成或写入出错），本次未记住，请重试。"
             else:
-                response.content = "本次对话没有需要记住的内容。"
+                # 教材约定「一行一条记忆、无值得记录时只输出：无」（见
+                # expert_config.memorize_expert）——逐行入库（分条存储检索精度更高），
+                # 「无」/空行不是记忆，跳过。曾把整段输出（含 JSON 数组形态的
+                # 结构包裹）当一条 content 存：结构字段无人承接，空数组 [] 也是垃圾记忆。
+                memory_lines = [
+                    ln.strip()
+                    for ln in memory_content.splitlines()
+                    if ln.strip() and ln.strip() != "无"
+                ]
+                if memory_lines:
+                    logger.info(f"[GenericWorker] 正在保存 {len(memory_lines)} 条记忆")
+                    try:
+                        for line in memory_lines:
+                            await memory_manager.add_memory(
+                                user_id=user_id,
+                                content=line,
+                                source="conversation",
+                                memory_type="fact",
+                            )
+                        logger.info("[GenericWorker] 记忆保存成功!")
+                        response.content = "已为您记录：\n" + "\n".join(memory_lines)
+                    except (RuntimeError, ValueError) as mem_err:
+                        # 如实上报失败——不说"我会记住"（没存上就是没存上）；
+                        # 重试安全：已入库的行会被 MemoryManager 的同内容去重挡住
+                        logger.warning(f"[GenericWorker] 记忆保存失败: {mem_err}")
+                        response.content = (
+                            "记忆保存失败（向量生成或写入出错），本次未记住，请重试。"
+                        )
+                else:
+                    response.content = "本次对话没有需要记住的内容。"
         # -------------------------------------------------------------
 
         # 🔥 输出截断检测：finish_reason=length 说明内容被 max_tokens 掐断，

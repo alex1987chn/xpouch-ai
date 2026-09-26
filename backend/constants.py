@@ -132,7 +132,7 @@ COMMANDER_SYSTEM_PROMPT = """
 4. 下游任务应在描述中说明如何使用上游产出
 
 【特殊场景处理】
-- 记忆请求：如果用户说"记住..."、"保存..."，分配给 memorize_expert
+- 记忆请求：如果用户说"记住..."、"保存..."，或要求"删除/查看记忆"，分配给 memorize_expert
 - 实时数据：涉及天气、股票、新闻，优先使用 search
 - 代码相关：分配给 coder，可能配合 search 获取最新技术资料
 - 复杂分析：researcher → analyzer 的流水线

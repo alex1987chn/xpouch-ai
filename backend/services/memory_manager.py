@@ -76,6 +76,50 @@ class MemoryManager:
             # 裸 psycopg 异常会穿透到执行框架层
             raise RuntimeError(f"记忆数据库写入失败: {e}") from e
 
+    def _list_memories_sync(self, user_id: str, limit: int = 50) -> list[str]:
+        """列出当前用户的记忆（按时间正序），供"查看我的记忆"类请求出具清单。"""
+        try:
+            with Session(engine) as session:
+                rows = session.exec(
+                    select(UserMemory)
+                    .where(UserMemory.user_id == user_id)
+                    .order_by(UserMemory.created_at)
+                    .limit(limit)
+                ).all()
+                return [r.content for r in rows]
+        except Exception as e:
+            raise RuntimeError(f"记忆查询失败: {e}") from e
+
+    def _delete_memories_sync(
+        self, user_id: str, keyword: str, *, dry_run: bool = False
+    ) -> list[str]:
+        """按关键词匹配删除（或预览）当前用户的记忆。
+
+        匹配规则：content ILIKE %keyword%，**严格限定 user_id**（跨用户零交集）。
+        返回被删除（dry_run 时为预览命中）的记忆内容列表，供调用方向用户出具
+        清单。硬删除：记忆是可再生数据（用户随时可再"记住"），无软删除必要。
+        """
+        keyword = (keyword or "").strip()
+        if not keyword:
+            return []
+        pattern = f"%{keyword}%"
+        try:
+            with Session(engine) as session:
+                rows = session.exec(
+                    select(UserMemory)
+                    .where(UserMemory.user_id == user_id, UserMemory.content.ilike(pattern))
+                    .order_by(UserMemory.created_at)
+                ).all()
+                contents = [r.content for r in rows]
+                if not dry_run:
+                    for r in rows:
+                        session.delete(r)
+                    session.commit()
+                    logger.info(f"[Memory] 🗑️ 已删除 {len(contents)} 条记忆（关键词: {keyword}）")
+                return contents
+        except Exception as e:
+            raise RuntimeError(f"记忆删除失败: {e}") from e
+
     def _search_sync(self, user_id: str, query: str, limit: int = 5) -> str:
         """同步检索相关记忆"""
         if not query or not query.strip():
@@ -131,6 +175,18 @@ class MemoryManager:
         改用容器/WSL 跑后端绕开。
         """
         return await asyncio.to_thread(self._search_sync, user_id, query, limit)
+
+    async def list_memories(self, user_id: str, limit: int = 50) -> list[str]:
+        """异步列出用户记忆（to_thread 同上）。"""
+        return await asyncio.to_thread(self._list_memories_sync, user_id, limit)
+
+    async def delete_memories(
+        self, user_id: str, keyword: str, *, dry_run: bool = False
+    ) -> list[str]:
+        """异步删除（或 dry_run 预览）用户记忆（to_thread 同上）。"""
+        return await asyncio.to_thread(
+            self._delete_memories_sync, user_id, keyword, dry_run=dry_run
+        )
 
 
 # 全局记忆管理器实例

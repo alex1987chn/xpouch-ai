@@ -94,6 +94,27 @@ BUILTIN_TOOL_POLICIES: dict[str, ToolPolicyMetadata] = {
         approval_required=False,
         policy_note="只读时间信息，不涉及外部副作用。",
     ),
+    "search_memories": ToolPolicyMetadata(
+        name="search_memories",
+        source="builtin",
+        description="预览当前用户的长期记忆（关键词匹配/全量列出）",
+        risk_tier=ToolRiskTier.LOW,
+        approval_required=False,
+        allowed_experts=("memorize_expert",),
+        policy_note="只读本人记忆；user_id 由服务端闭包注入（tools/memory.py），模型不可填报。",
+    ),
+    "delete_memories": ToolPolicyMetadata(
+        name="delete_memories",
+        source="builtin",
+        description="删除当前用户匹配关键词的长期记忆",
+        risk_tier=ToolRiskTier.MEDIUM,
+        approval_required=False,
+        allowed_experts=("memorize_expert",),
+        policy_note=(
+            "删除类副作用，但记忆是可再生数据且由用户明确指令触发，v1 不设审批；"
+            "教材要求先 search_memories 预览再删除。user_id 同上由服务端注入。"
+        ),
+    ),
 }
 
 HIGH_RISK_KEYWORDS = (
