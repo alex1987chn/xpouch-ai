@@ -22,7 +22,6 @@
 ## 工程债（待排期）
 
 - [ ] T2 契约锚点余量（已锚 20 类型）：请求 DTO 锚点（待后端请求模型收敛）、`types/index.ts` 拆分（线上形状 vs 前端本地扩展字段如 ThinkingStep/isStreaming）、ToolPolicy 系 Literal 化（id 带业务语义默认值）
-- [ ] SSE 解析换 eventsource-parser（收掉自研解析面）
 - [ ] 事件双真相源统一：同一组 pydantic 模型约束 SSE 流与 run_events 账本
 - [ ] 后端半异步二选一（全同步线程池 vs 正规 async engine；**等 T4 生产确认**）
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）

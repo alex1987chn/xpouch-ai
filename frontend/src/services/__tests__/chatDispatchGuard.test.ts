@@ -8,10 +8,10 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const fetchEventSourceMock = vi.fn()
+const fetchSSEMock = vi.fn()
 
-vi.mock('@microsoft/fetch-event-source', () => ({
-  fetchEventSource: (...args: unknown[]) => fetchEventSourceMock(...args),
+vi.mock('@/services/sse', () => ({
+  fetchSSE: (...args: unknown[]) => fetchSSEMock(...args),
 }))
 
 import { useChatStore } from '@/store/chatStore'
@@ -19,13 +19,13 @@ import { sendMessage } from '@/services/chat'
 
 type MessageHandler = (msg: { id: string; event: string; data: string }) => void
 
-/** 捕获注册进 fetchEventSource 的 onmessage，让测试能手动喂帧 */
+/** 捕获注册进 fetchSSE 的 onmessage，让测试能手动喂帧 */
 let capturedOnMessage: MessageHandler | null = null
 
 describe('SSE 分发点会话归属守卫（评审 H5）', () => {
   beforeEach(() => {
     capturedOnMessage = null
-    fetchEventSourceMock.mockImplementation(async (_url: string, opts: Record<string, unknown>) => {
+    fetchSSEMock.mockImplementation(async (_url: string, opts: Record<string, unknown>) => {
       capturedOnMessage = opts.onmessage as MessageHandler
       // 挂住不返回：流保持“打开”状态，由测试手动喂帧
       await new Promise(() => {})
@@ -41,7 +41,7 @@ describe('SSE 分发点会话归属守卫（评审 H5）', () => {
       'thread-A',
     )
 
-    // 等待 fetchEventSource 被调用并捕获 onmessage
+    // 等待 fetchSSE 被调用并捕获 onmessage
     await vi.waitFor(() => expect(capturedOnMessage).not.toBeNull())
 
     // 用户切到会话 B
@@ -59,7 +59,7 @@ describe('SSE 分发点会话归属守卫（评审 H5）', () => {
     expect(messages.find(m => m.id === 'm-old')).toBeUndefined()
 
     // 收尾：让挂住的连接结束，避免测试悬挂
-    fetchEventSourceMock.mockImplementation(async () => {})
+    fetchSSEMock.mockImplementation(async () => {})
     p.catch(() => {})
   })
 })

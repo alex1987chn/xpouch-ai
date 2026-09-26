@@ -17,7 +17,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@microsoft/fetch-event-source": "^2.0.1",
     "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-label": "^2.1.15",
@@ -28,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "eventsource-parser": "^4.1.1",
     "immer": "^11.1.18",
     "katex": "^0.18.7",
     "lucide-react": "^1.45.0",

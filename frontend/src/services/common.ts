@@ -284,7 +284,7 @@ export async function handleResponse<T>(response: Response, errorMessage: string
 
 /**
  * 统一 SSE 连接错误处理
- * 用于 fetchEventSource 的 onopen 回调
+ * 用于 fetchSSE（services/sse.ts）的 onopen 回调
  * 
  * P1 注意: SSE 请求不自动刷新 Token，因为 SSE 是长连接
  * 如果 SSE 返回 401，需要用户手动刷新页面或重新登录

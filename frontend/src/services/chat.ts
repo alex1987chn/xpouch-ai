@@ -11,7 +11,7 @@
  * - Artifact 更新
  * 
  * [架构]
- * - 使用 @microsoft/fetch-event-source 处理 SSE 流式响应
+ * - SSE 传输走 ./sse（fetch + eventsource-parser，无自动重试——POST 非幂等）
  * - 事件分发：将 SSE 事件同时传递给 handleServerEvent（全局处理）和 onChunk 回调（组件级处理）
  * - 自动 Token 刷新：401 时尝试刷新 Token 后重试
  * 
@@ -35,7 +35,7 @@
  * - 认证错误：触发 Token 刷新或跳转登录
  */
 
-import { fetchEventSource, EventSourceMessage } from '@microsoft/fetch-event-source'
+import { fetchSSE, type EventSourceMessage } from './sse'
 import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError, authenticatedFetch } from './common'
 import { ApiMessage, StreamCallback, Thread, StreamRuntimeMeta } from '@/types'
 import type { TaskInfo } from '@/types/events'
@@ -257,14 +257,11 @@ function runSSEStream({
           return
         }
         let opened = false
-        fetchEventSource(
-          buildUrl(`/chat/${activeThreadId}/stream/resume?last_event_id=${lastSeq}`),
-          {
-            method: 'GET',
-            headers: { ...getHeaders(), Accept: 'text/event-stream' },
-            signal: ctrl.signal,
-            openWhenHidden: true,
-            async onopen(response) {
+        fetchSSE(buildUrl(`/chat/${activeThreadId}/stream/resume?last_event_id=${lastSeq}`), {
+          method: 'GET',
+          headers: { ...getHeaders(), Accept: 'text/event-stream' },
+          signal: ctrl.signal,
+          async onopen(response) {
               if (!response.ok) {
                 resolveHandover(false)
                 throw new FatalSSEError('resume unavailable', response.status)
@@ -298,7 +295,7 @@ function runSSEStream({
       })
     }
 
-    fetchEventSource(url, {
+    fetchSSE(url, {
       method: 'POST',
       headers: {
         ...getHeaders(),
@@ -306,7 +303,6 @@ function runSSEStream({
       },
       body: JSON.stringify(requestBody),
       signal: ctrl.signal,
-      openWhenHidden: true,
 
       async onopen(response) {
         if (!response.ok) {
@@ -360,23 +356,18 @@ function runSSEStream({
           logger.warn(`[chat.ts] ${logPrefix}SSE 收到 401 错误，触发登录弹窗`)
           showLoginDialog()
           safeReject(err instanceof Error ? err : new Error('认证失败'))
-          throw new FatalSSEError('认证失败', status)
+          return
         }
 
         if (status !== undefined && status >= 400 && status < 500) {
-          logger.error(`[chat.ts] ${logPrefix}SSE 收到 ${status} 客户端错误，停止重试:`, err)
+          logger.error(`[chat.ts] ${logPrefix}SSE 收到 ${status} 客户端错误，终止:`, err)
           safeReject(err instanceof Error ? err : new Error(`客户端错误: ${status}`))
-          const clientError = err as { code?: string; details?: unknown }
-          throw new FatalSSEError(
-            err instanceof Error ? err.message : `客户端错误: ${status}`,
-            status,
-            clientError.code,
-            clientError.details,
-          )
+          return
         }
 
-        // POST+SSE 非幂等：不能重发 POST。优先尝试断点续传（GET，只读重放）：
-        // 成功则交接后续事件处理；失败回到"终止 + 提示重试"的原语义
+        // POST+SSE 非幂等：传输层无自动重试（sse.ts 刻意设计）。优先尝试
+        // 断点续传（GET，只读重放）：成功则交接后续事件处理；失败回到
+        // "终止 + 提示重试"的原语义
         if (!doneMarkerReceived && activeRunId && activeThreadId && lastSeq > 0) {
           logger.warn(`[chat.ts] ${logPrefix}SSE 网络错误，尝试断点续传 (after seq=${lastSeq})`)
           void attemptResume().then((handover) => {
@@ -384,13 +375,11 @@ function runSSEStream({
               safeReject(err instanceof Error ? err : new Error('连接异常，请重试'))
             }
           })
-          // 抛出以停止主连接重试；异常由外层 catch 静默（结算权已交接）
-          throw new FatalSSEError('CONNECTION_HANDOVER')
+          return
         }
 
-        logger.error(`[chat.ts] ${logPrefix}SSE 网络错误，终止连接（不自动重发）:`, err)
+        logger.error(`[chat.ts] ${logPrefix}SSE 网络错误，终止连接:`, err)
         safeReject(err instanceof Error ? err : new Error('连接异常，请重试'))
-        throw new FatalSSEError('连接异常，请重试')
       },
 
       onclose() {
@@ -405,11 +394,8 @@ function runSSEStream({
         safeReject(new Error('连接中断，回答可能不完整，请重试'))
       },
     }).catch((swallowErr: unknown) => {
-      // CONNECTION_HANDOVER：结算权已交接给 resume 流；其余错误已由 safeReject 结算
-      const e = swallowErr as { message?: string }
-      if (e?.message !== 'CONNECTION_HANDOVER') {
-        logger.debug(`[chat.ts] ${logPrefix}主连接终止:`, swallowErr)
-      }
+      // onopen 抛出的 FatalSSEError（!ok/认证失败）在此收口；错误已由 safeReject 结算
+      logger.debug(`[chat.ts] ${logPrefix}主连接终止:`, swallowErr)
     })
   })
 }
