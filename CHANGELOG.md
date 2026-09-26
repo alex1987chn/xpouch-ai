@@ -5,6 +5,22 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 变更
+
+- **记忆删除/查看能力（长期记忆闭环）**：此前用户说"删除记忆"无链路承接——AI 只能口头答应（历史上有条记忆的内容就是"已为您删除所有苹果记忆"，实际什么都没发生）。现在 `search_memories` / `delete_memories` 闭包工具（user_id 服务端注入，绝不作为 LLM 参数——跨用户读删在结构上不可能）+ 教材双向协议（先预览后删除、输出操作报告）；配套护栏：用过记忆工具的分支跳过逐行入库（删除报告不再会被存成记忆），工具清单收敛为绑定/执行共用的单一真相源（修复上线首日"not a valid tool"双脑分裂）。教材经 20260926_000903 下发
+- **审批超时 24h 自动取消**：waiting_for_approval 的 run 被遗弃时由租约 supervisor 的独立第三判据兜底（`APPROVAL_TIMEOUT_HOURS` 默认 24、0=关闭）——此前 immortal waiter（实例挂 28h+）。语义是"等人等太久"而非"进程无响应"（09-13 误杀教训的铁律不变：等待审批永不走租约/预算判死），超时走 cancelled 并在会话留可见取消说明
+- **内置专家显示名收敛**：任务指挥官→编排专家（orchestrator）、首席联络官→汇总专家（synthesizer）、意图路由→意图识别专家、记忆助理→记忆专家——去掉官职味、统一「X专家」家族，提示词自称同步；expert_type 标识符不动（canonical 词汇）。迁移 20260924_000800 下发
+- **路由归一**："什么走 complex"的口径从三处散落（教材/代码兜底关键词/附件规则）收敛为 `agents/routing_rules.py` 单一真相源 + 教材镜像闸门测试；闸门首跑即抓到教材从未覆盖"最新"时效信息与出行路线两类的真实缺口（20260926_000904 补齐）。reason 词汇细化为规则名
+
+### 修复
+
+- **空库部署建不出 checkpoint 四表（阻断级）**：langgraph 建表迁移含 CREATE INDEX CONCURRENTLY 不能跑在事务里，池连接上 setup 必败且被 lifespan"非致命"吞掉——任何真·空库部署首次复杂对话直接 UndefinedTable（历史库都带着旧表所以从未炸过）。改 autocommit 专用连接 + lifespan fail-loud；CI 补冷启动守卫步骤（迁移链后跑 setup 并断言四表存在）
+- **run 终态必须级联收口**：超时/取消曾只收 RUNNING 子任务、不碰 ExecutionPlan——计划永久挂 waiting_for_approval/running，前端跟着 run 走什么都不显示，账面与界面脱节（审计实积 21 僵尸计划 + 51 条 pending 子任务）。`close_orphaned_task_state` 补齐（未完结子任务 + 计划按 run 终态映射），完成路径加防御性收口；存量由 20260924_000900/000901 清创
+- **记忆写入护栏**：缺 user_id 曾静默落共享 default_user（跨用户串记忆，存量 8 条脏数据已清）；embedding 失败曾静默 return 且兜底文案谎称"我会记住"。现 fail-loud 拒入共享账号、失败如实上报、同用户同内容幂等去重
+- **工具清单双脑分裂**：绑定侧（bind_tools 给模型看 schema）与执行侧（ToolNode）各自构建清单——记忆工具只注入了绑定侧，模型调用报 not a valid tool。收敛为 `collect_runtime_tools` 单一真相源，两侧结构上不可能再分叉
+
 ## [2026-09-23] - v3.5.6 专家执行消息化、MCP 认知通道与运行时收尾
 
 ### 变更

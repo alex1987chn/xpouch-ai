@@ -94,6 +94,13 @@ The current stable baseline includes:
 - The thinking stream scrolls ahead of the answer, then auto-collapses; it is persisted per message and survives refresh
 - Thinking is toggled per user in settings (see below); reasoning tokens are billed as output
 
+### Long-term memory
+
+- Per-user long-term memory with pgvector similarity retrieval — relevant memories are injected into both routing decisions and simple-mode replies
+- Say "remember…" and the memory expert distills durable third-person facts (one fact per line, deduplicated on write)
+- Natural-language management: "delete my memories about X" / "what do you remember about me" — the expert previews matches first, then deletes with a visible report
+- Strictly user-isolated: identity is injected server-side (closure-captured), never an LLM-supplied parameter — no cross-user reads or deletes
+
 ### Model configuration (admin)
 
 - Admins pick the global default simple-mode model and the thinking toggle in **System Management** — applied instance-wide, no restart
