@@ -143,11 +143,11 @@ async def lifespan(app: FastAPI):
         await setup_shared_checkpointer()
         logger.info("[Lifespan] Shared checkpointer ready (pool-backed)")
     except Exception as e:
-        logger.warning(f"[Lifespan WARN] Failed to set up checkpointer: {e}")
-        # 非致命错误，继续启动
-        logger.info("[Lifespan INFO] Run migrations if complex mode is not working:")
-        logger.info("              - Linux/macOS: cd backend/migrations && ./run_all_migrations.sh")
-        logger.info("              - Windows: cd backend/migrations && .\\run_all_migrations.ps1")
+        # fail-loud：checkpoint 表建不出来 = 复杂模式全瘫，带着雷"健康"启动
+        # 只会把故障推迟到用户第一次发复杂任务（真·空库部署曾因此 UndefinedTable）。
+        # setup 幂等（按 checkpoint_migrations 版本表跳过已应用项），存量库重跑安全。
+        logger.error(f"[Lifespan] Checkpointer 建表/预热失败，启动中止: {e}")
+        raise
 
     # 初始化系统专家数据（使用 asyncio.to_thread 避免阻塞事件循环）
     await asyncio.to_thread(_init_experts_sync)

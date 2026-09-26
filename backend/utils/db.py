@@ -153,12 +153,30 @@ def get_shared_checkpointer():
 
 
 async def setup_shared_checkpointer() -> None:
-    """应用启动时调用：建表并预热共享 checkpointer（lifespan 钩子）。"""
+    """应用启动时调用：建表并预热共享 checkpointer（lifespan 钩子）。
+
+    setup() 必须跑在 autocommit 连接上：langgraph 的建表迁移含
+    CREATE INDEX CONCURRENTLY，不能在事务块内执行——连接池默认事务模式，
+    在池连接上 setup 必失败（曾致真·空库部署永远建不出 checkpoint 四表、
+    首次复杂对话 UndefinedTable，且被 lifespan 的"非致命"兜底吞掉）。psycopg3
+    异步连接的 autocommit 只能在 connect 时指定，故开专用连接建表、建完即关。
+    """
     pool = get_connection_pool()
     if pool.closed:
         await pool.open()
-    saver = get_shared_checkpointer()
-    await saver.setup()
+
+    import psycopg
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+    conn = await psycopg.AsyncConnection.connect(
+        settings.get_database_url(sync_driver="plain"), autocommit=True
+    )
+    try:
+        await AsyncPostgresSaver(conn, serde=get_checkpointer_serializer()).setup()
+    finally:
+        await conn.close()
+    # 预热共享 saver（建表已由上面的专用连接完成，这里只完成实例化绑定池）
+    get_shared_checkpointer()
 
 
 async def delete_checkpoints_for_thread(thread_id: str, run_ids: list[str] | None = None) -> int:
