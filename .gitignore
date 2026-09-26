@@ -96,3 +96,4 @@ archive/
 
 # 设计参考（本地 only，UI 改造实现完成后归档到 archive/）
 docs/design/
+docker-compose.override.yml

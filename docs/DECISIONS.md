@@ -20,6 +20,7 @@
 
 ## 工程
 
+- **开发库存储= named volume（2026-09-26 事故后）**：Docker Desktop 对 WSL 路径的 bind mount 经 9p/virtiofs 跨系统共享，Windows 非干净关机（fast startup/强断电）曾把 `postgres_data/18/docker` 整树清空（PG 被入口脚本 initdb 重建、业务数据全失，自 D 盘快照恢复）。本地开发经 `docker-compose.override.yml`（gitignored）切 named volume `xpouch-ai_xpouch-pgdata`；生产（deploy.sh，原生 Linux）维持仓库根 bind mount 不变。伴生保险：每日 pg_dump 到 /mnt/d（WSL/Windows 双故障域）。同日修复空库部署建不出 checkpoint 四表的问题（langgraph setup 的 CONCURRENTLY 不能跑在事务里，改 autocommit 专用连接 + lifespan fail-loud）。
 - **审批超时 24h（2026-09-24 用户拍板）**：waiting_for_approval 的 run 被"遗弃"时由租约 supervisor 的独立第三判据兜底（`utils/run_lease.approval_deadline_exceeded`，计时起点 `agentrun.waiting_since_at`，配置 `APPROVAL_TIMEOUT_HOURS` 默认 24、0=关闭）——语义是"等人等太久"，走 cancelled 而非 timed_out，且**必须在会话留可见取消说明**（否则用户体验与 09-13 误杀事故无异：审批卡凭空消失）。铁律不变：等待审批永不走租约/预算判死（09-13 一小时误杀 5 条的教训），新鲜等待与无计时起点的历史行一律不碰。
 - **run 终态必须级联收口（2026-09-24 补齐）**：宿主 run 进入任一终态时，其计划（ExecutionPlan.status）、子任务（pending/waiting/running）、running 态专家消息必须全部落终态——收口点是 `crud/agent_run.close_orphaned_task_state`（异常终态）+ `mark_run_completed` 的防御性调用；映射：completed→completed、cancelled→cancelled、failed/timed_out→failed。此前只收 RUNNING 子任务不碰计划，账面与前端（跟着 run 走）脱节，积压过 21 个僵尸计划 + 51 条 pending 子任务（存量由 000900/000901 清创）。
 - **记忆写入护栏（2026-09-24）**：长期记忆（user_memories）按 user_id 隔离是硬约束——写入端缺 user_id 时 **fail-loud 拒绝入库**，禁止任何共享账号兜底（曾 `or "default_user"`，产出过 8 条跨用户可见的脏记忆，已清理）；embedding 失败抛错而非静默（调用方须如实上报"未记住"）；写入同用户同内容幂等去重。自然语言"删除记忆"仍无消费端（MemoryManager 无删除能力），见 BACKLOG。

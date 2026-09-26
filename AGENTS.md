@@ -11,7 +11,7 @@ AI 多智能体工作台（开源自托管）。后端：Python 3.13 / FastAPI /
 - UI 规范：`docs/DESIGN-SPEC.md`
 
 ## 启动与常用命令
-- 数据库：仓库根 `docker compose up -d db`（pgvector/pg18，5432）。数据目录是仓库根的 `postgres_data/`，导入既有数据也必须放这里——compose 挂载 `./postgres_data`，放到子目录会挂到空路径、初始化出空库
+- 数据库：仓库根 `docker compose up -d db`（pgvector/pg18，5432）。**本地开发数据在 named volume `xpouch-ai_xpouch-pgdata`**（经本地 `docker-compose.override.yml` 切换，gitignored）——Docker Desktop 对 WSL 目录的 bind mount 跨 9p 共享，Windows 非干净关机会整树丢数据（2026-09-26 事故实锤）。生产（deploy.sh，原生 Linux）仍走仓库根 `postgres_data/` bind mount。导入既有数据 = 临时容器拷入 volume 后 `chown -R 999:999`；每日备份脚本 `~/.local/bin/xpouch-db-backup.sh`（pg_dump 到 /mnt/d，cron 21:00）
 - 后端：`cd backend && uv run python run.py`（3002；无热重载，改代码须重启进程）
 - 前端：`cd frontend && pnpm build && pnpm preview`（4173）；开发 `pnpm dev`（仓库根 `pnpm dev` 可前后端并起，不含数据库）
 - 测试：`cd backend && uv run python -m pytest tests/ -q`；`cd frontend && pnpm test`（仓库根 `pnpm test` 两者全跑）
