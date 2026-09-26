@@ -58,6 +58,7 @@ from agents.routing_policy import should_trip_tool_loop_guard
 from agents.services.expert_manager import get_expert_config_cached
 from agents.task_outcome import DEPENDENCY_CONTEXT_LIMIT, build_task_outcome
 from agents.tool_policy import filter_tools_for_binding, get_builtin_tool_names
+from agents.tool_runtime import collect_runtime_tools
 from config import settings
 from event_types.events import TaskFailedData, TaskStartedData
 from models.enums import GraphTaskStatus
@@ -65,7 +66,7 @@ from providers_config import get_model_config, load_providers_config
 from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from services.tool_policy_service import tool_policy_service
 from tools import ASYNC_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集（异步版，避免阻塞事件循环）
-from tools.memory import MEMORY_TOOL_NAMES, build_memory_tools
+from tools.memory import MEMORY_TOOL_NAMES
 from utils.artifacts import strip_code_fence
 from utils.config_cache import ConfigCache
 from utils.llm_factory import get_effective_model, get_expert_llm
@@ -454,14 +455,14 @@ async def expert_worker_node(
             if config and hasattr(config, "get"):
                 mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
 
-            # 🔥 MCP: 合并基础工具和动态 MCP 工具
-            runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
-            # 记忆管理工具（2026-09-26 记忆删除能力）：仅记忆专家 + 已知 user_id
-            # 时注入——闭包捕获用户身份（tools/memory.py），模型不可填报；
-            # 缺 user_id 不注入，与写入端 fail-loud 同一隔离铁律
-            memory_user_id = branch_context.get("user_id")
-            if expert_type == "memorize_expert" and memory_user_id:
-                runtime_tools.extend(build_memory_tools(memory_user_id))
+            # 运行时工具清单 = 单一真相源（与执行侧 dynamic_tool_node 共用
+            # collect_runtime_tools——记忆删除上线时曾两侧各自构建，绑定侧
+            # 有记忆工具、执行侧没有，模型调用报 not a valid tool）
+            runtime_tools = collect_runtime_tools(
+                expert_type=expert_type,
+                branch_context=branch_context,
+                mcp_tools=mcp_tools,
+            )
             policy_overrides = await tool_policy_service.get_overrides()
             bindable_tools, blocked_tools = filter_tools_for_binding(
                 runtime_tools,

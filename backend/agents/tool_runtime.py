@@ -29,6 +29,7 @@ from agents.tool_policy import build_tool_policy_message, evaluate_tool_policy, 
 from event_types.events import ToolResultData
 from services.tool_policy_service import tool_policy_service
 from tools import ASYNC_TOOLS as BASE_TOOLS
+from tools.memory import MEMORY_TOOL_NAMES, build_memory_tools
 from utils.event_generator import event_tool_calling, event_tool_result
 from utils.logger import logger
 
@@ -278,6 +279,28 @@ def build_tool_call_wrapper(
 # ============================================================================
 
 
+def collect_runtime_tools(
+    *, expert_type: str | None, branch_context: dict | None, mcp_tools: list
+) -> list:
+    """运行时工具清单的**单一真相源**（绑定与执行两侧共用，2026-09-26 事故后收敛）。
+
+    此前 generic.py（绑定侧：bind_tools 给 LLM 看 schema）与
+    dynamic_tool_node（执行侧：ToolNode 真正跑工具）各自构建清单——记忆
+    删除能力上线时只注入了绑定侧，模型按教材调用、执行侧报
+    "not a valid tool"（典型双脑分裂）。两侧必须从同一函数取清单，
+    结构上不可能再分叉。
+
+    记忆管理工具注入条件：仅 memorize_expert + branch_context 带 user_id
+    （闭包捕获用户身份，模型不可填报；缺 user_id 不注入，与写入端
+    fail-loud 同一隔离铁律）。
+    """
+    runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
+    memory_user_id = (branch_context or {}).get("user_id")
+    if expert_type == "memorize_expert" and memory_user_id:
+        runtime_tools.extend(build_memory_tools(memory_user_id))
+    return runtime_tools
+
+
 async def dynamic_tool_node(
     state: AgentState, config: RunnableConfig | None = None
 ) -> dict[str, Any]:
@@ -294,8 +317,18 @@ async def dynamic_tool_node(
     if config and hasattr(config, "get"):
         mcp_tools = config.get("configurable", {}).get("mcp_tools", [])
 
-    runtime_tools = list(BASE_TOOLS) + list(mcp_tools)
-    builtin_tool_names = {get_tool_name(tool) for tool in BASE_TOOLS}
+    # 执行侧的专家身份在下方从 current_task 解析；为让 collect_runtime_tools
+    # 在此可用，先取一次（与下方 expert_type 同源）
+    _current_task = state.get("current_task") if isinstance(state, dict) else None
+    _expert_type = (_current_task or {}).get("expert_type")
+    _branch_context = state.get("branch_context") if isinstance(state, dict) else None
+
+    runtime_tools = collect_runtime_tools(
+        expert_type=_expert_type,
+        branch_context=_branch_context,
+        mcp_tools=mcp_tools,
+    )
+    builtin_tool_names = {get_tool_name(tool) for tool in BASE_TOOLS} | set(MEMORY_TOOL_NAMES)
     tool_name_to_tool = {get_tool_name(tool): tool for tool in runtime_tools}
 
     # 超时值在 build_tool_call_wrapper 内按**单个工具**选取，
