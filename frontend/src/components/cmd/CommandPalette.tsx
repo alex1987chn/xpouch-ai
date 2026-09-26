@@ -8,9 +8,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ComponentType } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Plus, LayoutGrid, Layers, LineChart, Settings, Search, MessageSquare, Sun, Moon } from 'lucide-react'
+
+import { GithubMark } from '@/components/common/GithubMark'
+import { GITHUB_REPO_URL } from '@/constants/links'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { Z_INDEX } from '@/constants/zIndex'
@@ -19,12 +23,11 @@ import { useChatStore } from '@/store/chatStore'
 import { useTaskStore } from '@/store/taskStore'
 import { useChatHistoryQuery } from '@/hooks/queries/useChatHistoryQuery'
 import { useThemeStore, THEMES } from '@/store/themeStore'
-import type { LucideIcon } from 'lucide-react'
 
 interface CommandItem {
   id: string
   label: string
-  icon: LucideIcon
+  icon: ComponentType<{ className?: string }>  // 放宽：GithubMark 等内联品牌图标非 LucideIcon
   hint?: string
   run: () => void
 }
@@ -88,6 +91,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       },
       { id: 'go-workbench', label: t('workbenchTitle'), icon: LayoutGrid, hint: 'G W', run: () => navigate('/workbench') },
       { id: 'go-library', label: t('railLibrary'), icon: Layers, hint: 'G L', run: () => navigate('/library') },
+      {
+        id: 'go-about',
+        label: `${t('navAbout')} XPouch`,
+        icon: GithubMark,
+        run: () => window.open(GITHUB_REPO_URL, '_blank', 'noopener,noreferrer'),
+      },
     ]
     if (isAdmin) {
       items.push({ id: 'go-stats', label: t('navStats'), icon: LineChart, hint: 'G S', run: () => navigate('/admin/stats') })

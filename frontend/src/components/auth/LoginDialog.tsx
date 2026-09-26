@@ -12,6 +12,8 @@ import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { OtpLoginForm } from './login/OtpLoginForm'
 import { PasswordLoginForm } from './login/PasswordLoginForm'
 import { ResetPasswordForm } from './login/ResetPasswordForm'
+import { GithubMark } from '@/components/common/GithubMark'
+import { GITHUB_REPO_URL } from '@/constants/links'
 
 interface LoginDialogProps {
   open: boolean
@@ -222,6 +224,17 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
                   : t('verifyIdentity')}
             </h2>
             <p className="text-xs text-content-muted">xpouch</p>
+            {/* GitHub 入口（BACKLOG 补位）：未登录访客/评估者唯一看到的就是登录弹窗，
+                在此给出源码入口——样式镜像 AboutSection 的仓库链接 */}
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex items-center gap-1.5 text-xs text-content-muted underline-offset-2 transition-colors hover:text-content-primary hover:underline"
+            >
+              <GithubMark className="h-3 w-3" />
+              GitHub
+            </a>
           </div>
 
           {/* 调试信息 */}

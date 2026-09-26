@@ -15,7 +15,6 @@
 - [ ] 图片进复杂任务的传递管道（image_analyzer 当前收不到图片）：用户消息附图只挂在初始消息（router 可见），commander 分派到专家执行无任何图片通道——image_analyzer 教材虽好但拿到的只有文字（2026-09-23 审计发现，用户拍板暂缓：管道就绪前该专家不可用，也未移出内置）
 - [ ] Selective approval UI 或记忆系统（二选一，方向待讨论）。记忆系统侧 2026-09-26 已落地删除/查看能力（闭包工具 + 教材 + 000903 下发，见 DECISIONS）；剩余可做：管理台记忆查看/清理入口、记忆改写（"把 XX 改成 YY"）、检索注入的时效衰减
 - [ ] BYOK（认可方向，未排期）
-- [ ] GitHub 入口补位：登录弹窗 wordmark 下方 + 命令面板"关于"条目（实现注意：lucide 1.x 无品牌图标，复用 `components/common/GithubMark`）
 - [ ] README 双语"30 秒跑起来"段：一张界面实拍 + 一条 self-host 命令 + 与 CrewAI/AutoGen/LangGraph 模板的一句差异
 - [ ] xpouch.ai 在线 demo 挂链（站已有，差入口串联）
 
