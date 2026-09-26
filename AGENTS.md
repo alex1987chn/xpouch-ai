@@ -12,7 +12,7 @@ AI 多智能体工作台（开源自托管）。后端：Python 3.13 / FastAPI /
 
 ## 启动与常用命令
 - 数据库：仓库根 `docker compose up -d db`（pgvector/pg18，5432）。**本地开发数据在 named volume `xpouch-ai_xpouch-pgdata`**（经本地 `docker-compose.override.yml` 切换，gitignored）——Docker Desktop 对 WSL 目录的 bind mount 跨 9p 共享，Windows 非干净关机会整树丢数据（2026-09-26 事故实锤）。生产（deploy.sh，原生 Linux）仍走仓库根 `postgres_data/` bind mount。导入既有数据 = 临时容器拷入 volume 后 `chown -R 999:999`；每日备份脚本 `~/.local/bin/xpouch-db-backup.sh`（pg_dump 到 /mnt/d，cron 21:00）
-- 后端：`cd backend && uv run python run.py`（3002；**改 backend 下 .py 文件进程会自重启**——`reload=False` 但实测文件变更触发重执行，机制未定位但稳定复现；重启窗口内 API 拒连，跑 e2e/调试前先等健康检查稳定）
+- 后端：`cd backend && uv run python run.py`（3002；**热重载**：run.py 用 `watchfiles.run_process` 包裹整个服务，backend 下任何文件变更即全进程重执行——`reload=False` 只是 uvicorn 层开关，两者不矛盾。重启窗口内 API 拒连，跑 e2e/调试前先等健康检查稳定。生产镜像直跑 uvicorn，无此行为）
 - 前端：`cd frontend && pnpm build && pnpm preview`（4173）；开发 `pnpm dev`（仓库根 `pnpm dev` 可前后端并起，不含数据库）
 - 测试：`cd backend && uv run python -m pytest tests/ -q`；`cd frontend && pnpm test`（仓库根 `pnpm test` 两者全跑）
 
