@@ -5,14 +5,15 @@
  */
 
 import { authenticatedFetch, buildUrl, handleResponse } from './common'
+import type { components } from '@/types/api.generated'
 
 // ============================================================================
 // 类型定义
 // ============================================================================
 
-export interface SendCodeRequest {
-  phone_number: string
-}
+// 请求 DTO：生成物别名（wire 形状由后端 auth/schemas.py 单一真相源决定；
+// 此前手写版已漂移——缺 purpose 字段，正是锚点要消灭的病）
+export type SendCodeRequest = components['schemas']['SendCodeRequest']
 
 export interface SendCodeResponse {
   message: string
@@ -22,10 +23,10 @@ export interface SendCodeResponse {
   user_id?: string
 }
 
-export interface VerifyCodeRequest {
-  phone_number: string
-  code: string
-}
+export type VerifyCodeRequest = components['schemas']['VerifyCodeRequest']
+export type PasswordLoginRequest = components['schemas']['PasswordLoginRequest']
+export type ResetPasswordRequest = components['schemas']['ResetPasswordRequest']
+export type SetPasswordRequest = components['schemas']['SetPasswordRequest']
 
 // P0 修复: 新的登录响应（不包含 Token）
 export interface LoginResponse {
@@ -68,7 +69,7 @@ export async function sendVerificationCode(
   const response = await fetch(buildUrl('/auth/send-code'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone_number: phoneNumber, purpose })
+    body: JSON.stringify({ phone_number: phoneNumber, purpose } satisfies SendCodeRequest)
   })
   return handleResponse<SendCodeResponse>(response, '发送验证码失败')
 }
@@ -86,7 +87,7 @@ export async function verifyCodeAndLogin(
     headers: { 'Content-Type': 'application/json' },
     // P0 修复: 允许携带 Cookie
     credentials: 'include',
-    body: JSON.stringify({ phone_number: phoneNumber, code })
+    body: JSON.stringify({ phone_number: phoneNumber, code } satisfies VerifyCodeRequest)
   })
   return handleResponse<LoginResponse>(response, '验证失败')
 }
@@ -118,7 +119,7 @@ export async function loginWithPasswordApi(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ identifier, password })
+    body: JSON.stringify({ identifier, password } satisfies PasswordLoginRequest)
   })
   return handleResponse<LoginResponse>(response, '登录失败')
 }
@@ -134,7 +135,7 @@ export async function resetPasswordApi(
   const response = await fetch(buildUrl('/auth/reset-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone_number: phoneNumber, code, password })
+    body: JSON.stringify({ phone_number: phoneNumber, code, password } satisfies ResetPasswordRequest)
   })
   return handleResponse<{ message: string }>(response, '重置密码失败')
 }
@@ -154,7 +155,7 @@ export async function setPasswordApi(
   const response = await authenticatedFetch(buildUrl('/auth/set-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password, old_password: oldPassword })
+    body: JSON.stringify({ password, old_password: oldPassword } satisfies SetPasswordRequest)
   })
   return handleResponse<SetPasswordResponse>(response, '设置密码失败')
 }

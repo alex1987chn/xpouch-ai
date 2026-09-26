@@ -30,10 +30,15 @@ export async function getUserProfile(): Promise<UserProfile> {
 export async function updateUserProfile(
   data: Partial<UserProfile>
 ): Promise<UserProfile> {
+  // wire 只发后端白名单字段（UpdateUserRequest 即边界），不带 UserProfile 其余键
+  const body: import('@/types/api.generated').components['schemas']['UpdateUserRequest'] = {
+    username: data.username,
+    avatar: data.avatar,
+  }
   const response = await authenticatedFetch(buildUrl('/user/me'), {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(body)
   })
   return handleResponse<UserProfile>(response, '更新用户资料失败')
 }

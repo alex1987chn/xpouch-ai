@@ -79,10 +79,14 @@ export async function getUserSettings(): Promise<UserSettingsResponse> {
 
 /** 更新当前用户偏好设置 */
 export async function updateUserSettings(preferences: UserPreferences): Promise<UserPreferences> {
+  const body: import('@/types/api.generated').components['schemas']['UpdateUserSettingsRequest'] = {
+    simple_model: preferences.simple_model,
+    simple_thinking: preferences.simple_thinking,
+  }
   const response = await authenticatedFetch(buildUrl('/user/settings'), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(preferences),
+    body: JSON.stringify(body),
   })
   if (!response.ok) {
     throw new Error(`保存用户设置失败: ${response.status}`)

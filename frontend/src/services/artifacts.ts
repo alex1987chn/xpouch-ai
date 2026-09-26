@@ -46,7 +46,7 @@ export async function updateArtifactContent(
   const response = await authenticatedFetch(buildUrl(`/artifacts/${artifactId}`), {
     method: 'PATCH',
     headers: getHeaders(),
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content } satisfies import('@/types/api.generated').components['schemas']['ArtifactUpdateRequest']),
   })
   return handleResponse(response, '更新产物失败')
 }

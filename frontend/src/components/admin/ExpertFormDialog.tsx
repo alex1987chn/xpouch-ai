@@ -223,7 +223,7 @@ export default function ExpertFormDialog({
               </label>
             </div>
             <textarea
-              value={formData.description}
+              value={formData.description ?? ''}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, description: e.target.value }))
               }
@@ -236,7 +236,7 @@ export default function ExpertFormDialog({
 
           {/* Model */}
           <ModelSelector
-            value={formData.model}
+            value={formData.model ?? ''}
             onChange={(modelId) =>
               setFormData((prev) => ({ ...prev, model: modelId }))
             }

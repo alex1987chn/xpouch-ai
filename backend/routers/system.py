@@ -13,34 +13,11 @@ from sqlmodel import Session, select
 from database import engine, get_session
 from dependencies import get_current_user_with_auth, require_role
 from models import Thread, User, UserRole
-from schemas.user_profile import UserProfileResponse
+from schemas.user_profile import UpdateUserRequest, UpdateUserSettingsRequest, UserProfileResponse
 from utils.exceptions import NotFoundError
 from utils.time import utc_now
 
 router = APIRouter(prefix="/api", tags=["system"])
-
-
-# ============================================================================
-# 请求模型
-# ============================================================================
-
-
-# 可更新字段白名单：此模型即边界，往 User 模型加敏感列（plan/quota/role 等）
-# 不会自动变成"用户可改"。plan 属配额语义，只能由管理侧流程变更。
-class UpdateUserRequest(BaseModel):
-    username: str | None = None
-    avatar: str | None = None
-
-
-class UpdateUserSettingsRequest(BaseModel):
-    """全局模型偏好更新请求（v3.4.7 起为实例级配置，仅 ADMIN 可写）。
-
-    simple_model 为 null 表示清除选择、跟随系统默认模型（env MODEL_NAME）；
-    simple_thinking 三态：auto（跟随系统默认）/ enabled / disabled。
-    """
-
-    simple_model: str | None = None
-    simple_thinking: str | None = None
 
 
 # 全局模型偏好的读写已迁至 services/user_preferences.py（system_setting 表）

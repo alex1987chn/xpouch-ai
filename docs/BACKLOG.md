@@ -14,7 +14,6 @@
 
 ## 工程债（待排期）
 
-- [ ] T2 请求 DTO 契约锚点（响应侧 20 类型、ToolPolicy 系 Literal 化、类型线上/本地分居均已锚；请求侧待后端请求模型收敛）
 - [ ] 事件双真相源统一：同一组 pydantic 模型约束 SSE 流与 run_events 账本
 - [ ] 后端半异步二选一（全同步线程池 vs 正规 async engine；T4 生产确认已过——2026-09-26 部署后日志干净，可排期）
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）

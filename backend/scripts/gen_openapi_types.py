@@ -129,7 +129,7 @@ def check() -> int:
     if generated == current:
         return 0
     print(f"{OUTPUT_PATH} 已过期：API 契约变更后未重新生成。", file=sys.stderr)
-    print("修复：just gen-openapi-types", file=sys.stderr)
+    print("修复：cd backend && uv run python -m scripts.gen_openapi_types", file=sys.stderr)
     return 1
 
 

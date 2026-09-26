@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [未发布]
 
+### 变更
+
+- **T2 请求 DTO 契约锚点（前后端契约全覆盖收口）**：请求侧此前是盲区——生成器只锚 response_model，前端 payload 全手写（auth 的 `SendCodeRequest` 手写版已实际漂移：缺 `purpose` 字段）。现在 ①后端请求模型归拢 schemas/（chat 域 6 个、admin 域 10 个、user 域 2 个，共 18 个从 routers 内联迁出，类名不变故生成物零漂移）②前端请求类型全部改为生成物别名/`satisfies` 锚定（chat/auth/admin/models/user/systemStatus/artifacts/mcp 八个 service）——不是"检测漂移"而是结构上不可能漂移：后端改字段前端编译期即红。暴露并修掉的真实偏差：`UpdateUserRequest` 边界收紧（user/me PUT 只发白名单字段，不再把 UserProfile 整个序列化上送）
+
 ### 修复
 
 - **断连后图驱动被杀成僵尸 run（e2e 实抓）**：客户端断连时 producer 按设计转后台继续，但请求级 Session 随请求关闭并把 ORM 实例过期——后台图驱动在取消检查点摸 `agent_run.id` 抛 `DetachedInstanceError`，异常处理器里同样摸实例二次炸掉，run 永远等不到终态标记，且租约仍被 supervisor 无差别续着，直到 deadline 兜底才回收（期间用户侧表现"发了没反应"）。修复：producer 体内（含异常处理器）一律使用请求域内捕获的 `run_id` 裸值，禁止再摸 ORM 实例

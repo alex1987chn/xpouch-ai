@@ -36,6 +36,10 @@
  */
 
 import { fetchSSE, type EventSourceMessage } from './sse'
+import type { components } from '@/types/api.generated'
+
+type ChatRequest = components['schemas']['ChatRequest']
+type ResumeRequest = components['schemas']['ResumeRequest']
 import { getHeaders, buildUrl, handleResponse, handleSSEConnectionError, authenticatedFetch } from './common'
 import { ApiMessage, StreamCallback, Thread, StreamRuntimeMeta } from '@/types'
 import type { TaskInfo } from '@/types/events'
@@ -482,18 +486,20 @@ export async function sendMessage(
   // 非流式分支已删：全站唯一调用链恒传 onChunk（流式是产品语义），
   // 后端 sync 端点保留为公开 API 语义（stream=false 可用）。
 
+  const requestBody: ChatRequest = {
+    message: messageContent,
+    images: images ?? [],
+    documents: documents ?? [],
+    history: history.map(m => ({ role: m.role, content: m.content })),
+    agent_id: agentId,
+    thread_id: threadId,
+    stream: true,
+    message_id: assistantMessageId,
+  }
+
   return runSSEStream({
     url,
-    requestBody: {
-      message: messageContent,
-      images: images ?? [],
-      documents: documents ?? [],
-      history: history.map(m => ({ role: m.role, content: m.content })),
-      agent_id: agentId,
-      thread_id: threadId,
-      stream: true,
-      message_id: assistantMessageId,
-    },
+    requestBody,
     errorContext: 'chat.ts',
     logPrefix: '',
     threadId: threadId || undefined,
@@ -520,6 +526,20 @@ export interface ResumeChatParams {
   feedback?: string
 }
 
+/** wire 请求体：形状由后端 ResumeRequest 锚定。updated_plan 在后端是
+ * dict[str, Any] 列表，前端 TaskInfo 是它的结构化视图——边界处显式断言。 */
+function _resumeBody(params: ResumeChatParams): ResumeRequest {
+  return {
+    thread_id: params.threadId,
+    run_id: params.runId,
+    plan_version: params.planVersion,
+    updated_plan: params.updatedPlan as ResumeRequest['updated_plan'],
+    approved: params.approved,
+    action: params.action,
+    feedback: params.feedback,
+  }
+}
+
 export async function resumeChat(
   params: ResumeChatParams,
   onChunk?: StreamCallback,
@@ -533,15 +553,7 @@ export async function resumeChat(
     const response = await authenticatedFetch(url, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        thread_id: params.threadId,
-        run_id: params.runId,
-        plan_version: params.planVersion,
-        updated_plan: params.updatedPlan,
-        approved: params.approved,
-        action: params.action,
-        feedback: params.feedback
-      }),
+      body: JSON.stringify(_resumeBody(params)),
       signal: abortSignal,
       // P0 修复: 允许携带 Cookie
       credentials: 'include'
@@ -554,15 +566,7 @@ export async function resumeChat(
   // 🔥 心跳检测：超时处理，防止 Promise 无限等待
   return runSSEStream({
     url,
-    requestBody: {
-      thread_id: params.threadId,
-      run_id: params.runId,
-      plan_version: params.planVersion,
-      updated_plan: params.updatedPlan,
-      approved: params.approved,
-      action: params.action,
-      feedback: params.feedback
-    },
+    requestBody: _resumeBody(params),
     errorContext: 'chat.ts resume',
     logPrefix: 'Resume ',
     threadId: params.threadId,

@@ -214,7 +214,7 @@ export default function ExpertEditor({
               {/* 模型选择 */}
               <div>
                 <ModelSelector
-                  value={formData.model}
+                  value={formData.model ?? ''}
                   onChange={(modelId) => handleFieldChange('model', modelId)}
                   label={t('modelConfig')}
                 />

@@ -40,7 +40,7 @@ export async function updateDailyTokenQuota(quota: number | null): Promise<{ use
   const response = await authenticatedFetch(buildUrl('/admin/user-daily-token-quota'), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ daily_token_quota: quota }),
+    body: JSON.stringify({ daily_token_quota: quota } satisfies import('@/types/api.generated').components['schemas']['DailyTokenQuotaRequest']),
   })
   return handleResponse(response, '更新配额失败')
 }
@@ -51,7 +51,7 @@ export async function updateGraphMaxConcurrency(
   const response = await authenticatedFetch(buildUrl('/admin/graph-max-concurrency'), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ graph_max_concurrency: value }),
+    body: JSON.stringify({ graph_max_concurrency: value } satisfies import('@/types/api.generated').components['schemas']['GraphConcurrencyRequest']),
   })
   return handleResponse(response, '更新并发上限失败')
 }

@@ -12,6 +12,26 @@ Pydantic DTO (数据传输对象)
   会 ImportError），见 models/__init__ 的说明。
 """
 
+from schemas.admin import (
+    AdminCreateUserRequest,
+    AdminResetPasswordRequest,
+    AdminUserUpdate,
+    DailyTokenQuotaRequest,
+    ExpertCreate,
+    ExpertPreviewRequest,
+    ExpertUpdate,
+    GenerateDescriptionRequest,
+    GraphConcurrencyRequest,
+    UserPromoteRequest,
+)
+from schemas.chat import (
+    ArtifactUpdateRequest,
+    BatchDeleteRequest,
+    ChatMessageDTO,
+    ChatRequest,
+    DocumentInput,
+    ResumeRequest,
+)
 from schemas.common import LangSmithConfig, RevokedResponse
 from schemas.mcp import MCPServerCreate, MCPServerResponse, MCPServerUpdate
 from schemas.message import (
@@ -62,9 +82,31 @@ from schemas.template_import_export import (
     XpouchTemplateHeader,
 )
 from schemas.tool_policy import ToolPolicyResponse, ToolPolicyUpdate
-from schemas.user_profile import UserProfileResponse
+from schemas.user_profile import (
+    UpdateUserRequest,
+    UpdateUserSettingsRequest,
+    UserProfileResponse,
+)
 
 __all__ = [
+    # Admin requests
+    "AdminCreateUserRequest",
+    "AdminResetPasswordRequest",
+    "AdminUserUpdate",
+    "DailyTokenQuotaRequest",
+    "ExpertCreate",
+    "ExpertPreviewRequest",
+    "ExpertUpdate",
+    "GenerateDescriptionRequest",
+    "GraphConcurrencyRequest",
+    "UserPromoteRequest",
+    # Chat requests
+    "ArtifactUpdateRequest",
+    "BatchDeleteRequest",
+    "ChatMessageDTO",
+    "ChatRequest",
+    "DocumentInput",
+    "ResumeRequest",
     # Common
     "LangSmithConfig",
     "RevokedResponse",
@@ -122,4 +164,6 @@ __all__ = [
     "ToolPolicyResponse",
     # User Profile
     "UserProfileResponse",
+    "UpdateUserRequest",
+    "UpdateUserSettingsRequest",
 ]

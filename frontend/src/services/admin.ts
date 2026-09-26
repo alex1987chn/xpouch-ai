@@ -1,11 +1,9 @@
 /**
  * 管理员相关 API 服务
  *
- * 契约真相源是后端（→ api.generated.ts）；本文件手写类型的 SameShape 锚点
- * 见文件底部——后端契约变更而这里没跟上时编译期报红。
- * 注意：锚点按需逐步添加（本会话已锚定 6 个恒有键形状），剩余请求 DTO
- * （Update/Create 类）因生成物与手写在「可空字段的 optional/null」语义上
- * 尚有差异，留待后端请求 DTO 一并收敛后再锚。
+ * 契约真相源是后端（→ api.generated.ts）。请求 DTO 直接取生成物别名
+ * （T2 请求侧锚点，2026-09-27）——不是"检测漂移"而是结构上不可能漂移：
+ * 后端改字段这里编译期即红。响应类型仍为手写 + 文件底部 SameShape 锚点。
  *
  * P0 修复: 添加 credentials: 'include' 以支持 HttpOnly Cookie
  */
@@ -17,6 +15,8 @@ import { getHeaders, buildUrl, handleResponse, authenticatedFetch } from './comm
 // ============================================================================
 // 类型定义
 // ============================================================================
+
+type Schemas = components['schemas']
 
 export interface SystemExpert {
   id: string
@@ -32,37 +32,24 @@ export interface SystemExpert {
   updated_at: string
 }
 
-export interface UpdateExpertRequest {
-  system_prompt: string
-  description?: string
-  model: string
-  temperature: number
-  expected_version: number  // 🔥 乐观锁：必须传当前版本号
-}
-
-export interface CreateExpertRequest {
-  expert_type: string
-  name: string
-  description?: string
-  system_prompt: string
-  model: string
-  temperature: number
-}
-
-export interface GenerateDescriptionRequest {
-  system_prompt: string
-}
+// 请求 DTO：生成物别名（wire 形状由后端单一真相源决定；可选性差异以契约为准）
+export type UpdateExpertRequest = Schemas['ExpertUpdate']
+export type CreateExpertRequest = Schemas['ExpertCreate']
+export type GenerateDescriptionRequest = Schemas['GenerateDescriptionRequest']
+export type PreviewExpertRequest = Schemas['ExpertPreviewRequest']
+export type PromoteUserRequest = Schemas['UserPromoteRequest']
+export type ToolPolicyUpdateRequest = Schemas['ToolPolicyUpdate']
+export type SkillTemplateCreateRequest = Schemas['SkillTemplateCreate']
+export type SkillTemplateUpdateRequest = Schemas['SkillTemplateUpdate']
+export type AdminUserUpdateRequest = Schemas['AdminUserUpdate']
+export type AdminResetPasswordRequest = Schemas['AdminResetPasswordRequest']
+export type AdminCreateUserRequest = Schemas['AdminCreateUserRequest']
 
 export interface GenerateDescriptionResponse {
   description: string
   generated_at: string
   temperature: number
   execution_time_ms: number
-}
-
-export interface PreviewExpertRequest {
-  expert_type: string
-  test_input: string
 }
 
 export interface PreviewExpertResponse {
@@ -72,11 +59,6 @@ export interface PreviewExpertResponse {
   model: string
   temperature: number
   execution_time_ms: number
-}
-
-export interface PromoteUserRequest {
-  email: string
-  role: 'admin'
 }
 
 // 🔥 工具相关类型
@@ -119,15 +101,6 @@ export interface ToolPolicyListResponse {
   total: number
 }
 
-export interface ToolPolicyUpdateRequest {
-  enabled?: boolean
-  risk_tier?: ToolRiskTier
-  approval_required?: boolean
-  allowed_experts?: string[] | null
-  blocked_experts?: string[] | null
-  policy_note?: string | null
-}
-
 export interface SkillTemplate {
   id: string
   template_key: string
@@ -145,35 +118,6 @@ export interface SkillTemplate {
   is_builtin: boolean
   created_at: string
   updated_at: string
-}
-
-export interface SkillTemplateCreateRequest {
-  template_key: string
-  name: string
-  description?: string | null
-  category: string
-  starter_prompt: string
-  system_hint?: string | null
-  recommended_mode: 'simple' | 'complex'
-  suggested_tags?: string[] | null
-  tool_hints?: string[] | null
-  expected_artifact_types?: string[] | null
-  artifact_schema_hint?: string | null
-  is_active?: boolean
-}
-
-export interface SkillTemplateUpdateRequest {
-  name?: string
-  description?: string | null
-  category?: string
-  starter_prompt?: string
-  system_hint?: string | null
-  recommended_mode?: 'simple' | 'complex'
-  suggested_tags?: string[] | null
-  tool_hints?: string[] | null
-  expected_artifact_types?: string[] | null
-  artifact_schema_hint?: string | null
-  is_active?: boolean
 }
 
 // ============================================================================
@@ -421,12 +365,13 @@ export async function shareSkillTemplate(
 export async function previewImportSkillTemplate(
   content: string
 ): Promise<TemplateImportPreviewResponse> {
+  const body: Schemas['TemplateImportPreviewRequest'] = { content }
   const response = await authenticatedFetch(
     buildUrl('/library/templates/import-preview'),
     {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ content }),
+      body: JSON.stringify(body),
     }
   )
   return handleResponse<TemplateImportPreviewResponse>(response, '预览导入失败')
@@ -440,16 +385,17 @@ export async function importSkillTemplate(
   strategy: ImportStrategy = 'clone',
   targetKey?: string
 ): Promise<TemplateImportResponse> {
+  const body: Schemas['TemplateImportRequest'] = {
+    content,
+    strategy,
+    target_key: targetKey,
+  }
   const response = await authenticatedFetch(
     buildUrl('/library/templates/import'),
     {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        content,
-        strategy,
-        target_key: targetKey,
-      }),
+      body: JSON.stringify(body),
     }
   )
   return handleResponse<TemplateImportResponse>(response, '导入模板失败')
@@ -472,32 +418,11 @@ export interface AdminUser {
   last_login_at: string | null
 }
 
-export interface AdminUserUpdateRequest {
-  username?: string
-  email?: string | null
-  phone_number?: string | null
-  role?: 'admin' | 'user'
-}
-
-export interface AdminResetPasswordRequest {
-  mode: 'custom' | 'random'
-  password?: string
-}
-
 export interface AdminResetPasswordResponse {
   message: string
   generated: boolean
   /** 随机模式下仅此一次返回明文 */
   password?: string
-}
-
-export interface AdminCreateUserRequest {
-  username: string
-  phone_number: string
-  email?: string | null
-  role?: 'admin' | 'user'
-  initial_password?: string | null
-  generate_random_password: boolean
 }
 
 export type AdminCreateUserResponse = AdminUser & { generated_password?: string }
@@ -588,7 +513,6 @@ export interface PaginatedAuditLogs {
 type SameShape<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 type Assert<T extends true> = T
 
-type Schemas = components['schemas']
 type _SystemExpert = Assert<SameShape<SystemExpert, Schemas['ExpertResponse']>>
 type _AdminUser = Assert<SameShape<AdminUser, Schemas['AdminUserResponse']>>
 type _AuditLogEntry = Assert<SameShape<AuditLogEntry, Schemas['AuditLogResponse']>>
