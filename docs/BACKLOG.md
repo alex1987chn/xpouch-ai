@@ -35,6 +35,7 @@
 ## 观察（不排期，条件触发再升级）
 
 - 等待审批 run 无消息载体=前端不可见（2026-09-24 审计实例：两个 run 冲到 waiting_for_approval，消息表零载体行，用户侧表现"发了没反应"）——恢复路径也无处置渲染审批卡的锚点；同会话 82 秒内两个 waiting run 并存，互斥未拦（waiting 态不持租约不挡新任务，疑似 by-design 但审批目标会有歧义）。数据已按取消语义清理；若再现需查 carrier 插入路径与审批恢复目标选取
+- 后端自重启机制（2026-09-26 四次复现，触发器已锁定）：backend 下任何 .py 文件新增/修改/删除都触发进程重执行（`reload=False` 与之矛盾，日志字符串 "1 change detected" 在应用代码和 uvicorn 包里均无出处）。行为上是热重载、无害自愈，但机制未归因——值得哪次顺手查清是谁在 watch（怀疑 uv run 或 main.py 的多进程结构）。连带影响：重启窗口内 API 拒连，e2e 前等健康稳定
 - TS7：等 7.1（tsgo Compiler API 稳定）+ typescript-eslint 支持双信号后一次性纯替换；当前 tsc --noEmit 5.6s 非瓶颈，vite/vitest 不走 tsc
 - Geist 挂 Google Fonts=大陆可达性隐患；未来要蓝本中文字感=全部字体自托管
 - git stash 有一条老 stash（986b76e LangSmith WIP，来历不明未动）
