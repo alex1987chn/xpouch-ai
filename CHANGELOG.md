@@ -5,6 +5,17 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [未发布]
+
+### 修复
+
+- **断连后图驱动被杀成僵尸 run（e2e 实抓）**：客户端断连时 producer 按设计转后台继续，但请求级 Session 随请求关闭并把 ORM 实例过期——后台图驱动在取消检查点摸 `agent_run.id` 抛 `DetachedInstanceError`，异常处理器里同样摸实例二次炸掉，run 永远等不到终态标记，且租约仍被 supervisor 无差别续着，直到 deadline 兜底才回收（期间用户侧表现"发了没反应"）。修复：producer 体内（含异常处理器）一律使用请求域内捕获的 `run_id` 裸值，禁止再摸 ORM 实例
+- **live 续传缺传输级 [DONE]（e2e 实抓）**：`[DONE]` 是传输级标记只进主连接队列、不经 hub 广播，而 live 续流的收尾哨兵处理直接 `return`——断线重连跟随到最后一帧后流静默关闭，前端 `onclose` 按「回答可能不完整」报错（内容其实一条不少）。修复：续流收到收尾哨兵时补发 `[DONE]`（与 paused-replay 路径同一条理由）
+
+### 变更
+
+- **取消/续传 e2e 安全网**：`scripts/e2e_cancel_resume_check.py` 三场景全程真实 LLM——A 审批点断连后审批卡自己回来（paused replay）、B 执行中断连后续传从断点+1 精确接续到 [DONE]（帧 seq 严格递增即不重不漏）、C 执行中取消级联收口（plan/subtask 零僵尸、账本留痕、终态 410、幂等）。为 StreamService / generic 分解重构铺路，首跑即抓到上述两 bug
+
 ## [2026-09-26] - v3.5.7 记忆闭环、审批超时与链路加固
 
 ### 变更

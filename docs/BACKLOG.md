@@ -36,7 +36,7 @@
 - Geist 挂 Google Fonts=大陆可达性隐患；未来要蓝本中文字感=全部字体自托管
 - git stash 有一条老 stash（986b76e LangSmith WIP，来历不明未动）
 - 多 worker 分布式锁（部署形态未定）
-- StreamService 五协作者分解 / generic 拆解（991 行）/ RunContext 值对象（曾认可方向，未排期；拆解前置=先补 cancel 路径与断线恢复的 e2e 场景）
+- StreamService 五协作者分解 / generic 拆解（991 行）/ RunContext 值对象（曾认可方向，未排期；拆解前置的 e2e 安全网已就位——`e2e_cancel_resume_check.py` 三场景，且首跑即抓出并修复断连僵尸/[DONE] 缺失两 bug，可以排期动手）
 - 曝光升档剩余项：在线 demo、英文 README 主入口强化（README 快速开始段单列于需求节；LICENSE 识别与 topics/description 已于 2026-09-15 修复；具体流量/star 数据属私有信息，不入仓库）
 
 ## 等用户拍板

@@ -156,12 +156,18 @@ class StreamService(EventBuildersMixin):
 
         # 日志上下文在 create_task 之前设好：create_task 复制当前 context，
         # producer（含后台继续执行的那段）里的日志行才会带 run= 字段
-        set_run_id(agent_run.id)
+        # 断连语义（StreamPipeline）下 producer 会转后台继续，而请求级 Session
+        # 随请求结束关闭并把 ORM 实例过期——producer 体内（含异常处理器）一律
+        # 用此处捕获的裸值，禁止再摸 agent_run 属性。2026-09-26 e2e 实测：
+        # 首帧断连后 agent_run.id 抛 DetachedInstanceError，图驱动被杀、
+        # run 永久卡 running 成僵尸（租约仍被 supervisor 续，直到 deadline 兜底）
+        run_id = agent_run.id
+        set_run_id(run_id)
 
         # 共享管道（事件出口/producer/消费循环/断连语义），与恢复流同一实现；
         # frames/hub 从本模块取（M4 回归测试桩的就是这里的符号）
         pipeline = StreamPipeline(
-            run_id=agent_run.id,
+            run_id=run_id,
             stream_timeout=settings.stream_timeout,
             frames=get_frame_recorder(),
             hub=get_stream_hub(),
@@ -174,9 +180,7 @@ class StreamService(EventBuildersMixin):
             aggregate_message_id = initial_state.get("aggregate_message_id") or str(uuid.uuid4())
             full_response = ""
             router_decision = "simple"
-            await self._update_agent_run_status(
-                agent_run.id, RunStatus.RUNNING, current_node="router"
-            )
+            await self._update_agent_run_status(run_id, RunStatus.RUNNING, current_node="router")
 
             # 收集任务列表和产物
             # 按 db uuid 归拢任务产物（同一任务可能被多轮/多事件重复上报）
@@ -198,7 +202,7 @@ class StreamService(EventBuildersMixin):
             from services.run_concurrency import resolve_graph_max_concurrency
 
             # 确定性的隔离 thread_id：新消息不受旧 checkpoint 影响，恢复可重建（见 helper）
-            isolated_thread_id = _build_isolated_thread_id(thread_id, agent_run.id)
+            isolated_thread_id = _build_isolated_thread_id(thread_id, run_id)
             config = {
                 "recursion_limit": settings.recursion_limit,
                 "configurable": {
@@ -223,8 +227,8 @@ class StreamService(EventBuildersMixin):
                     if not isinstance(token, dict):
                         continue
 
-                    self._raise_if_run_cancelled(agent_run.id)
-                    self._sync_run_progress_from_token(token, agent_run.id)
+                    self._raise_if_run_cancelled(run_id)
+                    self._sync_run_progress_from_token(token, run_id)
 
                     event_type = token.get("event", "")
                     name = token.get("name", "")
@@ -258,14 +262,12 @@ class StreamService(EventBuildersMixin):
                     ):
                         router_decision = output["router_decision"]
                         # 更新线程模式和运行实例模式
-                        await self._update_thread_mode(
-                            thread_id, router_decision, run_id=agent_run.id
-                        )
+                        await self._update_thread_mode(thread_id, router_decision, run_id=run_id)
                         # 🔥 写入 router_decided 事件到账本
                         await asyncio.to_thread(
                             emit_router_decided,
                             self.db,
-                            run_id=agent_run.id,
+                            run_id=run_id,
                             thread_id=thread_id,
                             mode=router_decision,
                             reason=output.get("router_reason"),
@@ -277,12 +279,12 @@ class StreamService(EventBuildersMixin):
                     await pipeline.emit(self._build_error_event(ErrorCode.RUN_CANCELLED, e.message))
                     return
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                await self._mark_agent_run_failed(agent_run.id, str(e))
+                await self._mark_agent_run_failed(run_id, str(e))
                 # 🔥 写入 run_failed 事件到账本
                 await asyncio.to_thread(
                     emit_run_failed,
                     self.db,
-                    run_id=agent_run.id,
+                    run_id=run_id,
                     thread_id=thread_id,
                     error_code=str(e.code) if e.code else None,
                     error_message=str(e),
@@ -292,12 +294,12 @@ class StreamService(EventBuildersMixin):
                 return
             except Exception as e:
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                await self._mark_agent_run_failed(agent_run.id, str(e))
+                await self._mark_agent_run_failed(run_id, str(e))
                 # 🔥 写入 run_failed 事件到账本
                 await asyncio.to_thread(
                     emit_run_failed,
                     self.db,
-                    run_id=agent_run.id,
+                    run_id=run_id,
                     thread_id=thread_id,
                     error_message=str(e),
                 )
@@ -351,7 +353,7 @@ class StreamService(EventBuildersMixin):
                 await asyncio.to_thread(
                     emit_hitl_interrupted,
                     self.db,
-                    run_id=agent_run.id,
+                    run_id=run_id,
                     thread_id=thread_id,
                     execution_plan_id=execution_plan.id if execution_plan else None,
                     plan_version=plan_version,
@@ -359,14 +361,14 @@ class StreamService(EventBuildersMixin):
                 await asyncio.to_thread(self.db.commit)
 
                 await self._update_agent_run_status(
-                    agent_run.id,
+                    run_id,
                     RunStatus.WAITING_FOR_APPROVAL,
                     current_node="waiting_for_approval",
                 )
                 # 🔥 HITL 等待期挂起执行预算（用户思考时间不消耗 deadline）
                 from services.chat.run_lifecycle import pause_deadline
 
-                await asyncio.to_thread(pause_deadline, self.db, agent_run.id)
+                await asyncio.to_thread(pause_deadline, self.db, run_id)
                 # 审批卡必须走 emit（进持久帧）：断连期间错过它的话，重连时
                 # resume 端点的补放能把卡片带回来
                 await pipeline.emit(
@@ -374,7 +376,7 @@ class StreamService(EventBuildersMixin):
                         thread_id,
                         current_plan,
                         plan_version,
-                        run_id=agent_run.id,
+                        run_id=run_id,
                         execution_plan_id=execution_plan.id if execution_plan else None,
                     )
                 )
@@ -399,7 +401,7 @@ class StreamService(EventBuildersMixin):
                     )
                     if persist_error:
                         logger.error("[StreamService] %s", persist_error)
-                        await self._mark_agent_run_failed(agent_run.id, persist_error)
+                        await self._mark_agent_run_failed(run_id, persist_error)
                         await pipeline.emit(
                             self._build_error_event(ErrorCode.GRAPH_ERROR, persist_error)
                         )
@@ -415,17 +417,17 @@ class StreamService(EventBuildersMixin):
                     task_list=list(collected_tasks.values()),
                     expert_artifacts=expert_artifacts,
                     message_id=actual_message_id,
-                    run_id=agent_run.id,
+                    run_id=run_id,
                     thinking_text="".join(reasoning_parts) or None,
                 )
                 await self._update_agent_run_status(
-                    agent_run.id, RunStatus.COMPLETED, current_node="done"
+                    run_id, RunStatus.COMPLETED, current_node="done"
                 )
                 # 🔥 写入 run_completed 事件到账本
                 await asyncio.to_thread(
                     emit_run_completed,
                     self.db,
-                    run_id=agent_run.id,
+                    run_id=run_id,
                     thread_id=thread_id,
                 )
                 await asyncio.to_thread(self.db.commit)
@@ -446,7 +448,7 @@ class StreamService(EventBuildersMixin):
             # 删除必须放在图执行之后（放在其前会"删后复现"，实测如此）
             from utils.db import cleanup_terminal_run
 
-            await cleanup_terminal_run(thread_id, [agent_run.id])
+            await cleanup_terminal_run(thread_id, [run_id])
 
         # producer 分离任务在调用方同步上下文里起（保住日志上下文复制）；
         # 收尾三连/心跳/断连语义全部由共享管道承担
@@ -455,9 +457,9 @@ class StreamService(EventBuildersMixin):
         from services.chat.run_lifecycle import sse_stream_headers
 
         return StreamingResponse(
-            pipeline.events(on_timeout=lambda: self._heartbeat_line(agent_run.id)),
+            pipeline.events(on_timeout=lambda: self._heartbeat_line(run_id)),
             media_type="text/event-stream",
-            headers=sse_stream_headers(thread_id, agent_run.id),
+            headers=sse_stream_headers(thread_id, run_id),
         )
 
     async def handle_langgraph_sync(

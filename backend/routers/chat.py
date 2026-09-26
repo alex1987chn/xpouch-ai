@@ -737,6 +737,11 @@ async def resume_stream(
                     yield ": keepalive\n\n"
                     continue
                 if item is None:
+                    # producer 收尾哨兵：补上主连接原本会发的传输级完成标记。
+                    # [DONE] 只进主连接的队列、不经 hub 广播给订阅者，续传侧
+                    # 不补的话前端 onclose 会按「截断」报错（与 _paused_replay_gen
+                    # 补 [DONE] 是同一条理由）
+                    yield "data: [DONE]\n\n"
                     return
                 _seq, wire = item
                 yield wire

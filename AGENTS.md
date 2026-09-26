@@ -19,7 +19,7 @@ AI 多智能体工作台（开源自托管）。后端：Python 3.13 / FastAPI /
 ## 验收链（改完必跑，全绿才算完成）
 - 后端：`cd backend && uv run ruff check . && uv run ruff format --check . && uv run python -m pytest tests/ -q`
 - 前端：`cd frontend && pnpm run typecheck && pnpm run lint && pnpm test && pnpm build`
-- 动到执行路径（流式/HITL/迁移）加跑 e2e（真实 LLM）：`cd backend && uv run python scripts/e2e_hitl_check.py`
+- 动到执行路径（流式/HITL/迁移）加跑 e2e（真实 LLM）：`cd backend && uv run python scripts/e2e_hitl_check.py`；动到断连/续传/取消链路加跑 `scripts/e2e_cancel_resume_check.py`（三场景：审批点断连重放 / live 续传不重不漏 / 取消级联收口）
 - 改枚举/事件协议/response_model 后重新生成契约：`cd backend && uv run python -m scripts.gen_enums_ts`（枚举）/ `gen_event_types_ts`（事件协议）/ `gen_openapi_types`（REST）
 
 ## 生成物与提交
