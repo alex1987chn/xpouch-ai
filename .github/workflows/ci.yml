@@ -87,6 +87,44 @@ jobs:
             -c "CREATE DATABASE xpouch_migrations;"
           uv run alembic upgrade head
 
+      - name: Cold-start guard (checkpointer setup on the migrated empty DB)
+        # 2026-09-26 事故回归钉：langgraph 的建表迁移含 CREATE INDEX
+        # CONCURRENTLY，不能在事务块内执行——setup 曾在池连接（事务模式）上
+        # 必败且被 lifespan 吞掉，真·空库部署永远建不出 checkpoint 四表、
+        # 首次复杂对话 UndefinedTable。迁移链步骤覆盖不到应用启动路径，
+        # 此步补上：对迁移后的空库跑 setup_shared_checkpointer 并断言四表存在。
+        env:
+          DATABASE_URL: postgresql+psycopg://xpouch_test:test_pass@localhost:5432/xpouch_migrations
+          DEEPSEEK_API_KEY: test-key
+          MOONSHOT_API_KEY: test-key
+          SILICON_API_KEY: test-key
+          JWT_SECRET_KEY: test-secret-key-for-ci-only
+          ENVIRONMENT: development
+        run: |
+          uv run python - << 'EOF'
+          import asyncio
+
+          import psycopg
+
+          from config import settings
+          from utils.db import setup_shared_checkpointer
+
+          asyncio.run(setup_shared_checkpointer())
+
+          conn = psycopg.connect(settings.get_database_url(sync_driver="plain"))
+          try:
+              rows = conn.execute(
+                  "SELECT tablename FROM pg_tables WHERE tablename LIKE 'checkpoint%' ORDER BY 1"
+              ).fetchall()
+          finally:
+              conn.close()
+          tables = {r[0] for r in rows}
+          expected = {"checkpoints", "checkpoint_blobs", "checkpoint_writes", "checkpoint_migrations"}
+          missing = expected - tables
+          assert not missing, f"checkpoint 表缺失: {missing}（空库冷启动建表失败）"
+          print(f"cold-start guard OK: {sorted(tables)}")
+          EOF
+
       - name: Detect model/schema drift (alembic check)
         # 评审 M1：autogenerate diff 空转检查——模型与迁移库不一致时当场报出
         # （新增列忘写迁移这类事故此前只有上线才暴露）。
