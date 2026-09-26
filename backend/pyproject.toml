@@ -51,6 +51,15 @@ dev = [
     "ruff>=0.9.0",
 ]
 
+# 索引显式钉官方源：lock 的 registry URL 由项目说了算，不受机器级 uv 配置
+# （如 ~/.config/uv/uv.toml 的国内镜像）影响——否则本机跑 uv run 会把
+# uv.lock 的源 URL 重写成镜像，漂移进提交。生产（新加坡）与 CI（美国机房）
+# 直连 pypi.org 全球 CDN 均为最快路径；国内开发机下载慢可走代理
+# （uv 认 https_proxy）。项目级配置优先级高于用户级。
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
