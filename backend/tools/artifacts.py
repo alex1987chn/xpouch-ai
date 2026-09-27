@@ -6,10 +6,10 @@ Commander 规划时从 state.recent_artifacts 拿到产物摘要（有界），
 """
 
 from langchain_core.tools import tool
-from sqlmodel import Session as SQLModelSession
 from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
-from database import engine
+from database import SessionFactory
 from models.domain.artifact import Artifact
 from models.domain.subtask import SubTask
 from utils.logger import logger
@@ -19,7 +19,7 @@ MAX_ARTIFACT_CONTENT_CHARS = 20000
 
 
 async def _load_artifact(artifact_id: str) -> Artifact | None:
-    with SQLModelSession(engine) as session:
+    async with SessionFactory() as session:
         return await session.get(Artifact, artifact_id)
 
 
@@ -61,12 +61,12 @@ async def get_artifact(artifact_id: str) -> str:
 
 
 async def _load_expert_type(sub_task_id: str) -> str | None:
-    with SQLModelSession(engine) as session:
+    async with SessionFactory() as session:
         subtask = await session.get(SubTask, sub_task_id)
         return subtask.expert_type if subtask else None
 
 
-async def get_recent_artifacts_for_thread(session: SQLModelSession, thread_id: str, limit: int = 5):
+async def get_recent_artifacts_for_thread(session: AsyncSession, thread_id: str, limit: int = 5):
     """查询会话最近的历史产物摘要（跨轮连续性注入用）。
 
     返回按创建时间倒序的有界摘要列表：id / type / title / expert_type / 内容头。

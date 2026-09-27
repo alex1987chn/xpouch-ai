@@ -37,6 +37,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel, select
+from sqlmodel.ext.asyncio.session import AsyncSession as _SQLModelAsyncSession
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -192,7 +193,7 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
     # producer 自建私有会话：注入绑测试引擎的工厂（返回 async CM，与生产同形）
     from contextlib import asynccontextmanager as _acm
 
-    _maker = async_sessionmaker(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    _maker = async_sessionmaker(_TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False)
 
     @_acm
     async def _session_cm():
@@ -208,7 +209,7 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
     import database as _db_mod
     from agents.nodes import aggregator as _agg_mod
 
-    _test_factory = async_sessionmaker(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    _test_factory = async_sessionmaker(_TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False)
     monkeypatch.setattr(_db_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr(_agg_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr(svc, "_get_mcp_tools", _fake_mcp_tools)
@@ -247,7 +248,7 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
     assert seqs == list(range(1, len(seqs) + 1)), "帧 seq 应从 1 连续编号（重放不缺口）"
 
     # ④ run 终态与账本
-    with _test_session() as db:
+    async with _test_session() as db:
         run = await db.get(AgentRun, "r1")
         assert run.status == RunStatus.WAITING_FOR_APPROVAL, (
             f"producer 应把 run 停在审批点，实际 {run.status}"

@@ -35,7 +35,7 @@ from crud.run_event import (
     emit_run_cancelled,
 )
 from database import SessionFactory
-from models import AgentRun, ExecutionPlan, RunStatus, Thread, User
+from models import AgentRun, ExecutionPlan, RunStatus, SubTask, Thread, User
 from models.enums import TERMINAL_RUN_STATUSES, TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
 from utils.error_codes import ErrorCode
@@ -339,6 +339,14 @@ class RecoveryService:
                 logger.error(f"[HITL REVISION] 计划不存在: {execution_plan_id}")
                 return
 
+            # async 下 Relationship 懒加载必炸 MissingGreenlet：一律显式查询
+            previous_subtasks = (
+                await session.exec(
+                    select(SubTask)
+                    .where(SubTask.execution_plan_id == plan.id)
+                    .order_by(SubTask.sort_order.asc())
+                )
+            ).all()
             try:
                 previous_tasks = [
                     {
@@ -347,7 +355,7 @@ class RecoveryService:
                         "description": st.description,
                         "depends_on": st.depends_on or [],
                     }
-                    for index, st in enumerate(plan.sub_tasks)
+                    for index, st in enumerate(previous_subtasks)
                 ]
                 revised = await revise_plan_tasks(
                     user_query=plan.user_query,
@@ -357,7 +365,7 @@ class RecoveryService:
                 )
 
                 # 替换子任务（ORM 级联 delete-orphan）
-                for st in list(plan.sub_tasks):
+                for st in previous_subtasks:
                     await session.delete(st)
                 await session.flush()
 

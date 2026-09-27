@@ -78,6 +78,19 @@ class StreamPipeline:
         再起会丢上下文。
         """
         self._producer_task = asyncio.get_running_loop().create_task(self._spawn_producer(body))
+
+        def _log_producer_death(t: asyncio.Task) -> None:
+            # 后台阶段（消费者死亡后）producer 的异常无人 await 可取——不挂
+            # done callback 就是完全静默死亡（2026-09-27 排障实证）。失败必须可见。
+            if not t.cancelled() and t.exception() is not None:
+                logger.error(
+                    "[StreamPipeline] producer 后台任务异常退出 run=%s: %s",
+                    self.run_id,
+                    t.exception(),
+                    exc_info=t.exception(),
+                )
+
+        self._producer_task.add_done_callback(_log_producer_death)
         return self._producer_task
 
     def events(

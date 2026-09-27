@@ -10,6 +10,7 @@ XPouch AI Backend - 入口文件
 """
 
 import asyncio
+import os
 import pathlib
 
 from dotenv import load_dotenv
@@ -107,6 +108,14 @@ async def _init_library_templates_sync():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # asyncio 官方慢回调观测：ASYNCIO_DEBUG=1 时开启 debug 模式，
+    # 超过 slow_callback_duration（默认 100ms）的同步回调即告警——
+    # 全异步后这是「哪里在阻塞事件循环」的唯一诊断开关
+    if os.getenv("ASYNCIO_DEBUG") == "1":
+        loop = asyncio.get_running_loop()
+        loop.set_debug(True)
+        logger.info("[Lifespan] asyncio debug 模式已开启（慢回调 >100ms 将告警）")
+
     # 初始化配置
     logger.info(f"启动环境: {settings.environment}")
     settings.init_langsmith()

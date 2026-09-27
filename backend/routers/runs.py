@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 from crud.run_event import get_run_events_by_run_id, get_run_events_by_thread_id
 from database import get_session
 from dependencies import get_current_user
-from models import AgentRun, ExecutionPlan, RunEvent, Thread, User
+from models import AgentRun, ExecutionPlan, RunEvent, SubTask, Thread, User
 from schemas.run_event import (
     RunPlanResponse,
     RunPlanTask,
@@ -141,7 +141,15 @@ async def get_run_plan(
                 sort_order=st.sort_order,
                 depends_on=st.depends_on or [],
             )
-            for index, st in enumerate(plan.sub_tasks)
+            for index, st in enumerate(
+                (
+                    await db.exec(
+                        select(SubTask)
+                        .where(SubTask.execution_plan_id == plan.id)
+                        .order_by(SubTask.sort_order.asc())
+                    )
+                ).all()
+            )
         ],
     )
 

@@ -91,12 +91,12 @@ def _task_windows(run_id: str) -> list[tuple[str, datetime, datetime]]:
     ——用它做判定会得到「永远没有重叠」的假阴性（本脚本初版就这么错过一次）。
     账本按任务配对起止，是运行期事实的落库形态。
     """
-    from sqlmodel import Session, select
+    from sqlmodel import select
 
-    from database import engine
+    from database import create_offline_sync_engine
     from models import RunEvent
 
-    with Session(engine) as session:
+    with create_offline_sync_engine() as session:
         events = session.exec(
             select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.timestamp)
         ).all()

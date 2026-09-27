@@ -33,6 +33,7 @@ AI 多智能体工作台（开源自托管）。后端：Python 3.13 / FastAPI /
 - 迁移双口径验证：① 空库链——临时库上 `DATABASE_URL=<临时库> uv run alembic upgrade head` 整链跑通；② 开发库——停掉连库进程后升级。之后 `uv run alembic check` 必须零漂移。DDL 用守卫式字面量 SQL：先查 information_schema 判存在/类型再 ALTER，幂等重跑不炸
 - 迁移即种子：补种内置专家的迁移必须对全部内置做 INSERT IF NOT EXISTS——只补一两个会让表非空、main.py 的空表自举跳过，其余专家永远缺失（见 DECISIONS.md）
 - 单列聚合必须 `sqlalchemy.select + row[0]`——sqlmodel 的 select 会把单列结果解包成标量（见 CONTRIBUTING）
+- **全异步会话纪律（2026-09-27，事故案底三起）**：运行时唯一引擎是 async engine（`database.SessionFactory`，`expire_on_commit=False`）；SQLModel 的 `session.exec()` 只收 select，DML（update/delete 原语）必须 `session.execute()`；ORM 实例禁止跨会话/后台任务引用——producer 用 `_producer_session_factory` 缝自建私有会话，心跳等消费者侧回调开独立短会话，测试用同款注入缝；Relationship 懒加载在 async 下必炸 MissingGreenlet，跨关系取数一律显式查询或 selectinload；rollback 会使已加载实例过期，之后摸属性即同步懒加载（CAS 冲突分支要先取裸值）；排障开 `ASYNCIO_DEBUG=1`（官方慢回调告警）。sync engine 仅 Alembic 迁移与离线脚本（`create_offline_sync_engine`）合法
 - canonical 词汇（description/strategy/created_at/expert_type/depends_on/thread 等）以 `docs/DECISIONS.md` 词汇收敛条目为唯一真相源；expert_type 等标识符被历史数据引用，改名需连带数据迁移，勿顺手重命名
 
 ## 边界

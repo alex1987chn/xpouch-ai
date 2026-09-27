@@ -30,7 +30,9 @@ from unittest.mock import patch
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
+from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession as _SQLModelAsyncSession
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, select
 
@@ -166,11 +168,13 @@ class _CancellableLLM:
 
 
 @pytest.fixture
-async def engine():
+async def engine(tmp_path):
+    # 新拓扑下 recovery/producer/心跳是**三个会话**——必须用文件库提供
+    # 连接级事务隔离（StaticPool 单连接共享会让会话间事务互相践踏，
+    # cancel 的提交会被其它会话连接上的隐式回滚吞掉）
     _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
-        "sqlite+aiosqlite://",
+        f"sqlite+aiosqlite:///{tmp_path}/wave-cancel.db",
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
     )
     await _init_tables(engine, tables=TABLES)
     async with _test_session() as session:
@@ -270,7 +274,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     import database as _db_mod
     from agents.nodes import aggregator as _agg_mod
 
-    _test_factory = async_sessionmaker(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    _test_factory = async_sessionmaker(_TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False)
     monkeypatch.setattr(_db_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr(_agg_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr("utils.async_task_queue.async_save_expert_result", _noop_async)
@@ -379,9 +383,23 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     assert "汇编" not in llm.started, "取消后下游任务不得再开跑"
 
     # ④ DB 终态与账本
+    # producer 收尾（租约释放/状态落定）与 cancel 提交存在时序窗：有界轮询到终态
+    async def _db():
+        async with _test_session() as db:
+            yield db
+
+    run = None
+    deadline = asyncio.get_running_loop().time() + 5
+    while asyncio.get_running_loop().time() < deadline:
+        async with _test_session() as db:
+            run = await db.get(AgentRun, "r1")
+            if run.status == RunStatus.CANCELLED:
+                break
+        await asyncio.sleep(0.05)
+    assert run is not None and run.status == RunStatus.CANCELLED, (
+        f"取消必须是终态，实际 {run.status if run else None}"
+    )
     async with _test_session() as db:
-        run = await db.get(AgentRun, "r1")
-        assert run.status == RunStatus.CANCELLED, f"取消必须是终态，实际 {run.status}"
         plan = (await db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == "r1"))).one()
         assert plan.status == TaskStatus.CANCELLED
         event_types = {

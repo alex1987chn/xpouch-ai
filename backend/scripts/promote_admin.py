@@ -22,16 +22,16 @@ from pathlib import Path
 # 添加项目根目录到 Python 路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlmodel import Session, select
+from sqlmodel import select
 
-from database import engine
+from database import create_offline_sync_engine
 from models import User, UserRole
 from utils.logger import logger
 
 
 def promote_user(identifier: str, is_phone: bool = False) -> None:
     """提升用户为管理员"""
-    with Session(engine) as session:
+    with create_offline_sync_engine() as session:
         # 查找用户
         if is_phone:
             user = session.exec(select(User).where(User.phone_number == identifier)).first()
@@ -60,7 +60,7 @@ def promote_user(identifier: str, is_phone: bool = False) -> None:
 
 def demote_user(identifier: str, is_phone: bool = False) -> None:
     """降级管理员为普通用户"""
-    with Session(engine) as session:
+    with create_offline_sync_engine() as session:
         # 查找用户
         if is_phone:
             user = session.exec(select(User).where(User.phone_number == identifier)).first()
@@ -89,7 +89,7 @@ def demote_user(identifier: str, is_phone: bool = False) -> None:
 
 def list_admins() -> None:
     """列出所有管理员"""
-    with Session(engine) as session:
+    with create_offline_sync_engine() as session:
         admins = session.exec(select(User).where(User.role == UserRole.ADMIN)).all()
 
         if not admins:
