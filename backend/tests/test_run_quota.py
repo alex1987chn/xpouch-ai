@@ -79,9 +79,13 @@ class _OneResult:
 
 
 def _usage_session(used: int):
-    """exec 聚合结果为固定值的会话桩"""
+    """exec 聚合结果为固定值的会话桩（exec 为 async，返回结果对象）"""
     session = MagicMock()
-    session.exec.return_value = _OneResult(used)
+
+    async def _exec(_stmt):
+        return _OneResult(used)
+
+    session.exec = _exec
     return session
 
 

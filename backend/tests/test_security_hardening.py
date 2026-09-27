@@ -106,9 +106,13 @@ class _OneResult:
 
 
 def _count_session(count: int):
-    """user 表行数固定的会话桩"""
+    """user 表行数固定的会话桩（exec 为 async）"""
     session = MagicMock()
-    session.exec.return_value = _OneResult(count)
+
+    async def _exec(_stmt):
+        return _OneResult(count)
+
+    session.exec = _exec
     return session
 
 

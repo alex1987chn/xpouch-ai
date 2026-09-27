@@ -188,13 +188,18 @@ def _insert_approval_timeout_note(session: Session, run: AgentRun) -> None:
     )
 
 
-async def supervisor_tick() -> tuple[int, list[tuple[str, list[str]]]]:
+async def supervisor_tick(
+    session: AsyncSession | None = None,
+) -> tuple[int, list[tuple[str, list[str]]]]:
     """一轮维护：续租 + 回收。
 
     抽成模块级函数是为了能被直接测（含「单轮失败不能让循环死掉」这条安全性）。
+    session 可注入（测试夹具）；缺省自开应用会话。
     """
-    async with SessionFactory() as session:
+    if session is not None:
         return await renew_owned_leases(session), await reclaim_expired_leases(session)
+    async with SessionFactory() as own:
+        return await renew_owned_leases(own), await reclaim_expired_leases(own)
 
 
 async def run_run_lease_supervisor() -> None:

@@ -18,7 +18,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, select
 
 from crud.agent_run import ACTIVE_RUN_STATUSES
-from models import AgentRun, RunEvent, RunStatus, Thread
+from models import AgentRun, ExecutionPlan, RunEvent, RunStatus, SubTask, Thread
 from services import run_lease_service as lease_service
 from utils.run_lease import RUN_OWNER_ID, lease_deadline
 from utils.time import utc_now
@@ -44,7 +44,7 @@ def _test_session() -> "AsyncSession":
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
 
 
-TABLES = [Thread.__table__, AgentRun.__table__, RunEvent.__table__]
+TABLES = [Thread.__table__, AgentRun.__table__, RunEvent.__table__, SubTask.__table__, ExecutionPlan.__table__]
 OTHER_OWNER = "other-host:4242:deadbeef"
 
 
@@ -242,14 +242,16 @@ class TestSupervisorSafety:
         alive = await _add_run(db, "run-alive", lease_seconds=1)
         zombie = await _add_run(db, "run-zombie", owner=OTHER_OWNER, lease_seconds=-1)
 
-        monkeypatch.setattr(lease_service, "Session", lambda _engine: Session(db.get_bind()))
-        renewed, reclaimed = await lease_service.supervisor_tick()
+        renewed, reclaimed = await lease_service.supervisor_tick(db)
 
         assert renewed >= 1
         assert reclaimed == [("t1", ["run-zombie"])]
-        db.expire_all()
-        assert (await db.get(AgentRun, alive.id)).status == RunStatus.RUNNING
-        assert (await db.get(AgentRun, zombie.id)).status == RunStatus.TIMED_OUT
+        # async 会话下 expire_all 会把属性访问变成同步懒刷新（MissingGreenlet）；
+        # 官方替代：显式 await refresh
+        await db.refresh(alive)
+        await db.refresh(zombie)
+        assert alive.status == RunStatus.RUNNING
+        assert zombie.status == RunStatus.TIMED_OUT
 
     def test_active_statuses_come_from_crud(self):
         """活跃状态集合只有一个来源（crud.ACTIVE_RUN_STATUSES），别在服务里重列一遍。"""

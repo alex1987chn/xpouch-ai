@@ -124,6 +124,22 @@ def _run(**overrides) -> AgentRun:
 # ---------------------------------------------------------------------------
 
 
+async def _completed(s, r):
+    await mark_run_completed(s, r)
+
+
+async def _failed(s, r):
+    await mark_run_failed(s, r, error_message="boom")
+
+
+async def _timed_out(s, r):
+    await mark_run_timed_out_by_id(s, r.id, error_message="timeout")
+
+
+async def _cancelled(s, r):
+    await mark_run_cancelled_by_id(s, r.id, error_message="stop")
+
+
 class TestLeasePredicate:
     def test_future_lease_is_alive(self):
         assert is_lease_alive(utc_now() + timedelta(seconds=5)) is True
@@ -233,17 +249,6 @@ class TestWritePointsRenewAndRelease:
         assert is_lease_alive(run.lease_expires_at) is True
         assert run.last_heartbeat_at is not None
 
-    async def _completed(s, r):
-        await mark_run_completed(s, r)
-
-    async def _failed(s, r):
-        await mark_run_failed(s, r, error_message="boom")
-
-    async def _timed_out(s, r):
-        await mark_run_timed_out_by_id(s, r.id, error_message="timeout")
-
-    async def _cancelled(s, r):
-        await mark_run_cancelled_by_id(s, r.id, error_message="stop")
 
     async def test_terminal_statuses_release_lease(self):
         for label, action in (

@@ -12,7 +12,6 @@
 夹具与 test_hitl_approval_invariants 同惯例：一次性内存 SQLite。
 """
 
-import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -96,10 +95,6 @@ async def _audit_rows(db: Session) -> list[AuditLog]:
 
 async def _noop_cleanup(*_args, **_kwargs) -> None:
     return None
-
-
-# 同步测试里驱动异步服务方法（asyncio_mode=auto 只作用于 async 测试函数）
-asyncio_run = asyncio.run
 
 
 class TestTerminateAudit:
@@ -197,12 +192,8 @@ class TestListAuditLogs:
         await self._add_second_run(db)
         svc = RecoveryService(db)
         with patch("utils.db.cleanup_terminal_run", _noop_cleanup):
-            asyncio_run(await svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
-            asyncio_run(
-                await svc.resume_chat(
-                    "t1", "r2", "u1", approved=True, action="revise", feedback="改"
-                )
-            )
+            await svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None)
+            await svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
 
         entries, total = await list_audit_logs(db)
         assert total == 2
@@ -214,12 +205,8 @@ class TestListAuditLogs:
         await self._add_second_run(db)
         svc = RecoveryService(db)
         with patch("utils.db.cleanup_terminal_run", _noop_cleanup):
-            asyncio_run(await svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
-            asyncio_run(
-                await svc.resume_chat(
-                    "t1", "r2", "u1", approved=True, action="revise", feedback="改"
-                )
-            )
+            await svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None)
+            await svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
 
         entries, total = await list_audit_logs(db, search="plan.terminate")
         assert total == 1
