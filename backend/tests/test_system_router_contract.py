@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock
+
 """system 路由响应契约（T2 阶段一 · 批次 3）：探活 / 模型列表 / 全局偏好 / 用量汇总。
 
 全键断言锁住响应形态；handler 里的延迟 import（providers_config、llm_factory）
@@ -73,7 +75,7 @@ def test_get_user_settings_contract(sample_user, monkeypatch):
     monkeypatch.setattr(
         system_router,
         "load_model_preferences",
-        lambda _session: {"simple_model": None, "simple_thinking": "auto"},
+        AsyncMock(return_value={"simple_model": None, "simple_thinking": "auto"}),
     )
     monkeypatch.setattr("providers_config.get_provider_config", lambda _name: {"name": "DeepSeek"})
     monkeypatch.setattr("utils.llm_factory.get_default_model", lambda: "deepseek-flash")
@@ -96,10 +98,12 @@ def test_update_user_settings_contract(sample_user, monkeypatch):
     monkeypatch.setattr(
         system_router,
         "save_model_preferences",
-        lambda _session, *, simple_model, simple_thinking: {
-            "simple_model": simple_model,
-            "simple_thinking": simple_thinking,
-        },
+        AsyncMock(
+            side_effect=lambda _session, *, simple_model, simple_thinking: {
+                "simple_model": simple_model,
+                "simple_thinking": simple_thinking,
+            }
+        ),
     )
 
     app = _client(sample_user)

@@ -1,3 +1,4 @@
+from unittest.mock import AsyncMock
 import pytest
 
 from models import AgentRun, RunEvent, RunEventType, Thread
@@ -32,7 +33,7 @@ async def test_get_run_timeline_requires_run_ownership(sample_user, monkeypatch)
         }
     )
 
-    monkeypatch.setattr(runs, "get_run_events_by_run_id", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(runs, "get_run_events_by_run_id", AsyncMock(return_value=[]))
 
     with pytest.raises(AuthorizationError, match="无权访问此运行实例"):
         await runs.get_run_timeline(
@@ -66,7 +67,7 @@ async def test_get_run_timeline_returns_events_for_owner(sample_user, monkeypatc
         )
     ]
 
-    monkeypatch.setattr(runs, "get_run_events_by_run_id", lambda *_args, **_kwargs: events)
+    monkeypatch.setattr(runs, "get_run_events_by_run_id", AsyncMock(return_value=events))
 
     response = await runs.get_run_timeline(
         run_id="run-1",
@@ -93,7 +94,7 @@ async def test_get_thread_timeline_requires_thread_ownership(sample_user, monkey
         }
     )
 
-    monkeypatch.setattr(runs, "get_run_events_by_thread_id", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(runs, "get_run_events_by_thread_id", AsyncMock(return_value=[]))
 
     with pytest.raises(AuthorizationError, match="没有权限访问此会话"):
         await runs.get_thread_timeline(
@@ -109,7 +110,7 @@ async def test_get_thread_timeline_requires_thread_ownership(sample_user, monkey
 async def test_get_run_timeline_raises_not_found(sample_user, monkeypatch):
     db = _FakeSession()
 
-    monkeypatch.setattr(runs, "get_run_events_by_run_id", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(runs, "get_run_events_by_run_id", AsyncMock(return_value=[]))
 
     with pytest.raises(NotFoundError, match="AgentRun"):
         await runs.get_run_timeline(

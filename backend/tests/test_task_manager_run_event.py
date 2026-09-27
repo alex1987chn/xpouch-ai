@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock
+
 from types import SimpleNamespace
 
 from agents.services import task_manager
@@ -37,11 +39,11 @@ async def test_save_expert_execution_result_emits_task_and_artifact_events(monke
         title="搜索结果",
     )
 
-    monkeypatch.setattr(task_manager, "get_subtask", lambda *_args, **_kwargs: subtask)
+    monkeypatch.setattr(task_manager, "get_subtask", AsyncMock(return_value=subtask))
     monkeypatch.setattr(
         task_manager,
         "create_artifacts_batch",
-        lambda *_args, **_kwargs: [created_artifact],
+        AsyncMock(return_value=[created_artifact]),
     )
 
     emitted_task_completed = {}

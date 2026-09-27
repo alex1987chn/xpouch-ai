@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
 from utils.logger import logger
@@ -26,6 +27,12 @@ if TYPE_CHECKING:
 # 持有运行中的后台任务引用：CPython 文档明确警告无引用的任务可能被 GC
 # 中途丢弃，且异常不会进入任何 handler
 _background_tasks: set[asyncio.Task] = set()
+
+
+@asynccontextmanager
+async def _null_ctx(session):
+    """把已存在的会话包装成 async with 形态（注入路径复用同一语义）。"""
+    yield session
 
 
 def spawn_background(coro, *, label: str = "background") -> asyncio.Task:
@@ -130,20 +137,28 @@ async def _save_expert_result_impl(
     return payload
 
 
-async def async_mark_subtask_running(task_id: str) -> bool:
+async def async_mark_subtask_running(task_id: str, *, session=None) -> bool:
     """把子任务标为 running 并落 started_at。
 
     为什么单独一支而不是塞进 `async_save_expert_result`：开始与结束发生在两个时刻，
     中间是整段执行（可能几分钟）。开始时刻必须**在任务真正开始时**写下，否则
     "这个任务跑了多久"永远只能从完成时刻倒推（且跨进程重启就断线）。
 
+    session 可注入（测试夹具；与 supervisor_tick 同一注入缝）；
     失败只告警不抛：它是可观测性补充，不该因为一次 DB 抖动打断任务执行。
     """
     from crud.execution_plan import update_subtask_status
-    from database import SessionFactory
     from models.enums import TaskStatus
 
-    async with SessionFactory() as new_session:
+    @asynccontextmanager
+    async def _own():
+        from database import SessionFactory
+
+        async with SessionFactory() as s:
+            yield s
+
+    ctx = _own() if session is None else _null_ctx(session)
+    async with ctx as new_session:
         try:
             updated = await update_subtask_status(new_session, task_id, TaskStatus.RUNNING)
             if updated is None:

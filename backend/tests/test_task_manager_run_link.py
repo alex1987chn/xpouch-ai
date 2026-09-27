@@ -27,10 +27,10 @@ class _FakeSession:
 async def test_get_or_create_execution_plan_passes_run_id_when_creating(monkeypatch):
     captured = {}
 
-    def _fake_get_execution_plan_by_run(_db, _run_id):
+    async def _fake_get_execution_plan_by_run(_db, _run_id):
         return None
 
-    def _fake_create_execution_plan_with_subtasks(**kwargs):
+    async def _fake_create_execution_plan_with_subtasks(**kwargs):
         captured.update(kwargs)
         return SimpleNamespace(id="plan-1")
 

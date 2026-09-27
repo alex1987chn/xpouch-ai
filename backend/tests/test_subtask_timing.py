@@ -102,13 +102,12 @@ async def test_completion_preserves_started_at_and_records_duration():
 
 async def test_mark_running_end_to_end_and_silent_on_missing(monkeypatch):
     """走真实入口（后台线程用的那个函数）：存在则写成功，已被修订替换掉则安静失败。"""
-    import database
-    from utils.async_task_queue import _sync_mark_subtask_running
+    from utils.async_task_queue import async_mark_subtask_running
 
     db = await _session()
-    monkeypatch.setattr(database, "engine", db.get_bind())
 
-    assert _sync_mark_subtask_running("task_1") is True
+    # 会话注入缝（与 supervisor_tick 同款）：同库同连接，避免内存库双会话并发
+    assert await async_mark_subtask_running("task_1", session=db) is True
     assert (await update_subtask_status(db, "task_1", TaskStatus.RUNNING)).started_at is not None
 
-    assert _sync_mark_subtask_running("not-exists") is False  # 不抛，只回 False
+    assert await async_mark_subtask_running("not-exists", session=db) is False  # 不抛，只回 False
