@@ -6,6 +6,10 @@ from models import ExecutionPlan
 from services.chat.stream_service import StreamService
 
 
+async def _plan_async(plan):
+    return plan
+
+
 class _DummySession:
     pass
 
@@ -19,7 +23,9 @@ async def test_complex_persistence_guard_rejects_non_ai_message(monkeypatch):
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
-    monkeypatch.setattr(service, "_get_latest_execution_plan", lambda _thread_id: execution_plan)
+    monkeypatch.setattr(
+        service, "_get_latest_execution_plan", lambda _thread_id: _plan_async(execution_plan)
+    )
 
     error = await service._get_complex_result_persistence_error(
         thread_id="thread-1",
@@ -39,7 +45,9 @@ async def test_complex_persistence_guard_rejects_missing_task_results(monkeypatc
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
-    monkeypatch.setattr(service, "_get_latest_execution_plan", lambda _thread_id: execution_plan)
+    monkeypatch.setattr(
+        service, "_get_latest_execution_plan", lambda _thread_id: _plan_async(execution_plan)
+    )
 
     error = await service._get_complex_result_persistence_error(
         thread_id="thread-1",
@@ -59,7 +67,9 @@ async def test_complex_persistence_guard_accepts_valid_result(monkeypatch):
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
-    monkeypatch.setattr(service, "_get_latest_execution_plan", lambda _thread_id: execution_plan)
+    monkeypatch.setattr(
+        service, "_get_latest_execution_plan", lambda _thread_id: _plan_async(execution_plan)
+    )
 
     error = await service._get_complex_result_persistence_error(
         thread_id="thread-1",

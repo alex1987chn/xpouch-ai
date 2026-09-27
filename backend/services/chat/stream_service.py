@@ -70,7 +70,8 @@ class StreamService(EventBuildersMixin):
     公开接口不变。
     """
 
-    # producer 私有会话工厂（测试可注入绑测试引擎的同款工厂；默认应用工厂）
+    # producer 私有会话工厂：调用后必须得到 async context manager
+    # （SessionFactory() 本身即 async CM 形态；测试注入同款包装）
     _producer_session_factory: Callable[[], object] = staticmethod(
         lambda: __import__("database").SessionFactory()
     )
@@ -117,9 +118,7 @@ class StreamService(EventBuildersMixin):
         （那是 producer 私有会话，async 下并发共用会炸事务状态）。
         """
         if run_id:
-            from database import SessionFactory
-
-            async with SessionFactory() as ops:
+            async with self._producer_session_factory() as ops:
                 await self._touch_agent_run(ops, run_id)
                 await self._raise_if_run_cancelled(ops, run_id)
         return self._build_heartbeat_event()
@@ -460,13 +459,11 @@ class StreamService(EventBuildersMixin):
         async def _run_graph_with_own_session():
             # producer 私有会话：断连转后台后 run 的落库与请求级 Session 生命周期
             # 解耦——async 下请求收尾 close 与 producer 事务并发会炸
-            # IllegalStateChange/"transaction is closed"（2026-09-27 e2e 场景 A 实抓）
-            producer_session = self._producer_session_factory()
-            self.db = producer_session
-            try:
+            # IllegalStateChange/"transaction is closed"（2026-09-27 e2e 场景 A 实抓）。
+            # 缝契约：工厂调用返回 async CM（SessionFactory() 本身即此形态）
+            async with self._producer_session_factory() as producer_session:
+                self.db = producer_session
                 await _run_graph()
-            finally:
-                await producer_session.close()
 
         pipeline.start(_run_graph_with_own_session)
 
@@ -984,7 +981,13 @@ class StreamService(EventBuildersMixin):
 
         # producer 分离任务在调用方上下文里起（日志上下文复制）；
         # 断连不杀 producer / 心跳 / finally 三连收尾由共享管道承担
-        pipeline.start(_stream_body)
+        async def _stream_body_with_own_session():
+            # 与首跑流同款私有会话缝（见 _run_graph_with_own_session 的注释）
+            async with self._producer_session_factory() as producer_session:
+                self.db = producer_session
+                await _stream_body()
+
+        pipeline.start(_stream_body_with_own_session)
         async for event in pipeline.events(
             on_timeout=lambda: self._heartbeat_line(run_id), on_drained=_on_drained
         ):

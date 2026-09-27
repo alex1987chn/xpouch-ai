@@ -36,10 +36,10 @@ async def _init_tables(engine, tables=None):
         )
 
 
-def _test_session() -> "AsyncSession":
-    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+def _test_session():
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
-    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    return AsyncSession(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
 
 
 # 审计扩范围后 resume_chat 的成功路径会落审计/反馈消息/账本，

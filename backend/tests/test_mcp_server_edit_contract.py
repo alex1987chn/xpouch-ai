@@ -186,6 +186,6 @@ async def test_create_and_delete_invalidate_cache(monkeypatch):
         assert recorder.invalidate_calls == 1
 
     with _client(_server_fixture(), recorder) as client:
-        resp = await client.delete("/api/mcp/servers/srv-1")
+        resp = client.delete("/api/mcp/servers/srv-1")
         assert resp.status_code == 204
         assert recorder.invalidate_calls == 2

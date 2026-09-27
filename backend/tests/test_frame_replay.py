@@ -33,10 +33,10 @@ async def _init_tables(engine, tables=None):
         )
 
 
-def _test_session() -> "AsyncSession":
-    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+def _test_session():
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
-    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    return AsyncSession(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
 
 
 TABLES = [Thread.__table__, AgentRun.__table__, RunStreamFrame.__table__]
@@ -134,11 +134,7 @@ class TestTerminalPrune:
         await db.commit()
         await append_frames(db, "r2", [(1, _wire(1))])
 
-        import database
-
-        monkeypatch.setattr(database, "engine", db.get_bind())
-
-        removed = await _prune_frames_for_runs(["r1"])
+        removed = await _prune_frames_for_runs(["r1"], session=db)
 
         assert removed == 3
         assert await list_frames_after(db, "r1", 0) == []

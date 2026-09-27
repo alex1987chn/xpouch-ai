@@ -27,6 +27,7 @@ events 生成器），producer 在后台继续跑到审批点，`human.interrupt
 
 import asyncio
 import sys
+from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -35,7 +36,7 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import SQLModel, select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -51,6 +52,7 @@ from models import (  # noqa: E402
     RunEventType,
     RunStatus,
     RunStreamFrame,
+    SubTask,
     SystemSetting,
     Thread,
 )
@@ -73,10 +75,16 @@ async def _init_tables(engine, tables=None):
         )
 
 
-def _test_session() -> "AsyncSession":
-    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+def _test_session():
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
-    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    return AsyncSession(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
+@asynccontextmanager
+async def _test_session_cm():
+    """CM 形态会话（RunFrameRecorder 的 session_factory 契约要求 async with）。"""
+    yield _test_session()
 
 
 # handle_langgraph_stream 会碰到的全部表（含只读的 SystemSetting——
@@ -85,6 +93,7 @@ TABLES = [
     Thread.__table__,
     AgentRun.__table__,
     ExecutionPlan.__table__,
+    SubTask.__table__,
     RunEvent.__table__,
     RunStreamFrame.__table__,
     SystemSetting.__table__,
@@ -147,17 +156,13 @@ async def engine(tmp_path):
     await engine.dispose()
 
 
-def _db(engine) -> Session:
-    return _test_session()
-
-
 async def _wait_for_frame(engine, needle: str, timeout: float = 5.0) -> list[RunStreamFrame]:
     """轮询持久帧直到出现指定内容（producer 收尾的最后一步是同步刷帧）。"""
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout
     frames: list[RunStreamFrame] = []
     while loop.time() < deadline:
-        with _db(engine) as db:
+        async with _test_session() as db:
             frames = await list_frames_after(db, "r1", 0)
         if any(needle in frame.wire for frame in frames):
             return frames
@@ -169,7 +174,7 @@ async def _wait_for_frame(engine, needle: str, timeout: float = 5.0) -> list[Run
 async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engine):
     monkeypatch.setattr(settings, "stream_timeout", 0.05)  # 心跳加速：断连不必等 120s
     saver = MemorySaver()
-    recorder = RunFrameRecorder(session_factory=lambda: _test_session(), flush_interval=5)
+    recorder = RunFrameRecorder(session_factory=lambda: _test_session_cm(), flush_interval=5)
 
     async def _fake_router(state, config=None):
         return {"router_decision": "complex", "router_reason": "test"}
@@ -184,13 +189,28 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
         }
 
     svc = StreamService(_test_session())
-    # producer 自建私有会话：注入绑测试引擎的工厂，行为等价、不打真库
+    # producer 自建私有会话：注入绑测试引擎的工厂（返回 async CM，与生产同形）
+    from contextlib import asynccontextmanager as _acm
+
     _maker = async_sessionmaker(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-    svc._producer_session_factory = _maker
+
+    @_acm
+    async def _session_cm():
+        yield _maker(expire_on_commit=False)
+
+    svc._producer_session_factory = _session_cm
 
     async def _fake_mcp_tools() -> list:
         return []
 
+    # 自建会话的落库路径（expert_message/aggregator 的 SessionFactory）全部
+    # 指向本测试引擎——否则会打到真 PG 测试库（schema 漂移 + 外键污染）
+    import database as _db_mod
+    from agents.nodes import aggregator as _agg_mod
+
+    _test_factory = async_sessionmaker(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    monkeypatch.setattr(_db_mod, "SessionFactory", _test_factory)
+    monkeypatch.setattr(_agg_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr(svc, "_get_mcp_tools", _fake_mcp_tools)
 
     # 内存对象只取标识：handle_langgraph_stream 对它们的全部使用就是 id/thread_id
@@ -227,7 +247,7 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
     assert seqs == list(range(1, len(seqs) + 1)), "帧 seq 应从 1 连续编号（重放不缺口）"
 
     # ④ run 终态与账本
-    with _db(engine) as db:
+    with _test_session() as db:
         run = await db.get(AgentRun, "r1")
         assert run.status == RunStatus.WAITING_FOR_APPROVAL, (
             f"producer 应把 run 停在审批点，实际 {run.status}"

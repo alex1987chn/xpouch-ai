@@ -36,10 +36,10 @@ async def _init_tables(engine, tables=None):
         )
 
 
-def _test_session() -> "AsyncSession":
-    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+def _test_session():
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
-    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    return AsyncSession(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
 
 
 TABLES = [Thread.__table__, AgentRun.__table__, RunStreamFrame.__table__]
@@ -230,7 +230,7 @@ class TestTerminalFlush:
             await recorder.record("r1", seq, _wire("a"))
             await recorder.finish_blocking("r1")
             async with _test_session() as db:  # 模拟「库里还看不到」尾帧
-                await db.exec(await delete(RunStreamFrame))
+                await db.execute(delete(RunStreamFrame))
                 await db.commit()
             return await recorder.reserve_seq("r1")
 

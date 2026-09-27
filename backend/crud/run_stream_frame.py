@@ -71,7 +71,7 @@ async def latest_seq(db: Session, run_id: str) -> int | None:
 
 async def prune_run_frames(db: Session, run_id: str) -> int:
     """删除某 run 的全部帧（终态清理，与 checkpoint 清理同一时机调用）。"""
-    result = await db.exec(delete(RunStreamFrame).where(RunStreamFrame.run_id == run_id))
+    result = await db.execute(delete(RunStreamFrame).where(RunStreamFrame.run_id == run_id))
     await db.commit()
     return int(result.rowcount or 0)
 
@@ -82,6 +82,6 @@ async def prune_frames_older_than(db: Session, retention_hours: int = 24) -> int
     与 session_cleanup_service 的既有节奏配合（它已经在做线程/checkpoint 清扫）。
     """
     cutoff: datetime = utc_now() - timedelta(hours=retention_hours)
-    result = await db.exec(delete(RunStreamFrame).where(RunStreamFrame.created_at < cutoff))
+    result = await db.execute(delete(RunStreamFrame).where(RunStreamFrame.created_at < cutoff))
     await db.commit()
     return int(result.rowcount or 0)

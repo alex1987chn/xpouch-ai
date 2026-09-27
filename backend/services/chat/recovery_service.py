@@ -673,21 +673,26 @@ class RecoveryService:
         if not execution_plan:
             raise NotFoundError("ExecutionPlan")
 
+        # 冲突分支要 rollback——rollback 会把已加载的实例过期，此后摸它的属性
+        # 就是同步懒刷新（async 下炸 MissingGreenlet）。先取裸值，rollback 后
+        # 只用裸值查询（2026-09-27 CAS 冲突测试实抓）。
+        plan_id = execution_plan.id
+
         stmt = (
             update(ExecutionPlan)
             .where(
-                ExecutionPlan.id == execution_plan.id,
+                ExecutionPlan.id == plan_id,
                 ExecutionPlan.plan_version == expected_plan_version,
             )
             .values(plan_version=ExecutionPlan.plan_version + 1, updated_at=utc_now())
         )
-        result = await self.db.exec(stmt)
+        result = await self.db.execute(stmt)
 
         if result.rowcount == 0:
             await self.db.rollback()
             latest = (
                 await self.db.exec(
-                    select(ExecutionPlan.plan_version).where(ExecutionPlan.id == execution_plan.id)
+                    select(ExecutionPlan.plan_version).where(ExecutionPlan.id == plan_id)
                 )
             ).first()
             raise AppError(

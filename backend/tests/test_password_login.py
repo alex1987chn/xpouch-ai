@@ -19,9 +19,9 @@ _TEST_ENGINE_HOLDER = [None]
 
 
 def _test_session():
-    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
-    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    return AsyncSession(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
 
 
 # 测试口令（拼接构造，避免扫描误报）

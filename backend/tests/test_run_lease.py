@@ -249,7 +249,6 @@ class TestWritePointsRenewAndRelease:
         assert is_lease_alive(run.lease_expires_at) is True
         assert run.last_heartbeat_at is not None
 
-
     async def test_terminal_statuses_release_lease(self):
         for label, action in (
             ("completed", _completed),

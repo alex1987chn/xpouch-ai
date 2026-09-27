@@ -1,6 +1,5 @@
-from unittest.mock import AsyncMock
-
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from agents.services import task_manager
 

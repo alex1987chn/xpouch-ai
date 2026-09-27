@@ -19,11 +19,6 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-
-async def _async_expert_config(_t):
-    return _EXPERT_CONFIG
-
-
 import pytest  # noqa: E402
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -86,6 +81,10 @@ class _RecordingLLM:
 
 
 _EXPERT_CONFIG = {"name": "Expert", "system_prompt": "你是专家 {input}", "model": "deepseek-flash"}
+
+
+async def _async_expert_config(_t):
+    return _EXPERT_CONFIG
 
 
 def _plan_state(tasks: list[PlanTask]) -> list[dict]:

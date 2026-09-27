@@ -50,6 +50,7 @@ def test_tokens_today_contract(sample_user, monkeypatch):
 
 def test_tokens_today_unlimited_quota_is_null(sample_user, monkeypatch):
     monkeypatch.setattr(stats_router, "get_today_token_usage", _async_usage_0)
+
     async def _load_none(_db):
         return None
 

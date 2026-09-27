@@ -23,13 +23,14 @@ producer 在下一个事件检查点（`_raise_if_run_cancelled`）感知后自�
 
 import asyncio
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, select
 
@@ -46,6 +47,7 @@ from models import (  # noqa: E402
     RunEventType,
     RunStatus,
     RunStreamFrame,
+    SubTask,
     SystemSetting,
     TaskStatus,
     Thread,
@@ -72,16 +74,23 @@ async def _init_tables(engine, tables=None):
         )
 
 
-def _test_session() -> "AsyncSession":
-    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+def _test_session():
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
-    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    return AsyncSession(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+
+
+@asynccontextmanager
+async def _test_session_cm():
+    """CM 形态会话（RunFrameRecorder 的 session_factory 契约要求 async with）。"""
+    yield _test_session()
 
 
 TABLES = [
     Thread.__table__,
     AgentRun.__table__,
     ExecutionPlan.__table__,
+    SubTask.__table__,
     RunEvent.__table__,
     RunStreamFrame.__table__,
     SystemSetting.__table__,
@@ -256,6 +265,14 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
 
     # async_task_queue 的三支后台落库（结果/任务开始/账本）都开新 session 连
     # database.engine（PG）——测试环境必须全部桩掉，否则连接超时重试拖死收尾
+    # 自建会话的落库路径（expert_message/aggregator 的 SessionFactory）全部
+    # 指向本测试引擎——否则会打到真 PG 测试库（schema 漂移 + 外键污染）
+    import database as _db_mod
+    from agents.nodes import aggregator as _agg_mod
+
+    _test_factory = async_sessionmaker(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    monkeypatch.setattr(_db_mod, "SessionFactory", _test_factory)
+    monkeypatch.setattr(_agg_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr("utils.async_task_queue.async_save_expert_result", _noop_async)
     monkeypatch.setattr("utils.async_task_queue.async_mark_subtask_running", _noop_async)
     monkeypatch.setattr("utils.async_task_queue.async_append_run_event", _noop_async)
@@ -265,7 +282,10 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
 
     # 帧记录器必须换成本测试的 SQLite 引擎：全局 recorder 默认绑 database.engine（PG），
     # 测试进程里那是一次必然失败的连接 + 2s 退避重试，会拖死 executor 收尾
-    recorder = RunFrameRecorder(session_factory=lambda: _test_session(), flush_interval=5)
+    recorder = RunFrameRecorder(session_factory=lambda: _test_session_cm(), flush_interval=5)
+
+    async def _async_expert_config_stub(_t):
+        return {"name": "E", "system_prompt": "{input}"}
 
     with (
         # 执行期不经过 router/commander（已在审批点之后），但建图会绑定它们，一并桩掉
@@ -277,7 +297,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
         patch("agents.nodes.generic.get_expert_llm", lambda **_kw: llm),
         patch(
             "agents.nodes.generic.get_expert_config_cached",
-            lambda _t: {"name": "E", "system_prompt": "{input}"},
+            _async_expert_config_stub,
         ),
         patch("agents.nodes.generic._generic_expert_cache", {}),
         patch(
@@ -291,7 +311,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
         patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
         patch("agents.nodes.generic.filter_tools_for_binding", return_value=([], [])),
     ):
-        agen = await svc.execute_langgraph_stream(
+        agen = svc.execute_langgraph_stream(
             thread_id="t1",
             stream_queue=asyncio.Queue(),
             sse_queue=asyncio.Queue(),
@@ -380,5 +400,5 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     assert len(state.values.get("task_list", [])) == 3, "计划数据在取消后应保持完整"
 
     # ⑥ 幂等：对已终态的 run 再取消，返回提示而不抛错
-    second = (await RecoveryService(_test_session())).cancel_run("r1", "u1")
+    second = await RecoveryService(_test_session()).cancel_run("r1", "u1")
     assert second["status"] == str(RunStatus.CANCELLED)

@@ -171,7 +171,8 @@ async def setup_shared_checkpointer() -> None:
         settings.get_database_url(sync_driver="plain"), autocommit=True
     )
     try:
-        (await AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())).setup()
+        saver = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
+        await saver.setup()
     finally:
         await conn.close()
     # 预热共享 saver（建表已由上面的专用连接完成，这里只完成实例化绑定池）
@@ -226,18 +227,31 @@ async def cleanup_terminal_run(thread_id: str, run_ids: list[str] | None = None)
         await _prune_frames_for_runs(run_ids)
 
 
-async def _prune_frames_for_runs(run_ids: list[str]) -> int:
+async def _prune_frames_for_runs(run_ids: list[str], *, session=None) -> int:
     """删除这些 run 的 SSE 传输帧（`run_stream_frame`）。
 
     帧只服务「断线后按 seq 重放」，run 终态后不再需要；`session_cleanup_service`
     里的 TTL 清扫是兜底（异常结束没走到这里的残留）。失败只告警。
+    session 可注入（测试夹具；与 supervisor_tick/队列入口同一注入缝）。
     """
+    from contextlib import asynccontextmanager
+
     from crud.run_stream_frame import prune_run_frames
-    from database import SessionFactory
+
+    @asynccontextmanager
+    async def _own():
+        from database import SessionFactory
+
+        async with SessionFactory() as s:
+            yield s
+
+    @asynccontextmanager
+    async def _given():
+        yield session
 
     removed = 0
     try:
-        async with SessionFactory() as db:
+        async with _own() if session is None else _given() as db:
             for run_id in run_ids:
                 removed += await prune_run_frames(db, run_id)
     except Exception as exc:  # noqa: BLE001

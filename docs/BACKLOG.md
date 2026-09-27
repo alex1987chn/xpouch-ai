@@ -15,7 +15,7 @@
 ## 工程债（待排期）
 
 - [ ] 事件双真相源统一：同一组 pydantic 模型约束 SSE 流与 run_events 账本
-- [ ] **全异步迁移测试长尾收口（进行中，WIP=bbca7cc）**：**应用层已由双 e2e 实机认证**（e2e_hitl + e2e_cancel_resume 三场景全绿、A 场景两轮稳定——producer 私有会话修复断连并发竞态生效）。剩余纯测试侧：105 失败 / 413 过，病灶分类：①链式调用/假类同名导致的 await 残余（pytest 警告驱动修复法已建立：grep "was never awaited" → 链头插入，见 bbca7cc 提交内的脚本模式）；②sqlite 夹具 schema 漂移（test_planning_disconnect 的 TABLES 列表落后于模型）；③假 Session 缺新 awaited 方法；④四个后续加固项不变：懒加载 ~15 处显式化、ASYNCIO_DEBUG=1 接 lifespan、AGENTS.md async 硬约束条目、finish_blocking 取消态收尾加固（async 化削弱了原「同步收尾保证」不变量）。**验收闸门：115→0 失败 + 双 e2e 复跑全绿才可 push**
+- [ ] **全异步迁移：仅余 2 个行为不变量测试待收口（WIP 后续提交）**：516/518 过；双 e2e 已在**冷启动进程**上复跑全绿（冷启动还抓出 AsyncPostgresSaver.setup 误 await 的启动阻断 bug——已修）。余下两个失败（test_planning_disconnect / test_wave_cancel_consistency）是旧会话拓扑的深度集成测试：断连后 producer 私有会话不再共享 self.db，原测试的帧持久化断言（等 finish_blocking 刷库）与新时序错位，需要按新语义改写断言而非修 bug；同批还有 4 个加固项：懒加载 ~15 处显式化、ASYNCIO_DEBUG=1 接 lifespan、AGENTS.md async 硬约束条目、finish_blocking 取消态收尾语义重建（async 化削弱了原「同步收尾保证」）。**闸门不变：518 全绿 + 双 e2e 复跑绿才可 push**
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）

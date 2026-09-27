@@ -287,7 +287,7 @@ async def share_skill_template(
     if template is None:
         raise NotFoundError("模板")
 
-    result = ShareService(session).create_template_share(template_key, str(current_user.id))
+    result = await ShareService(session).create_template_share(template_key, str(current_user.id))
     logger.info(f"[Template Share] 用户 {current_user.id} 分享模板: {template_key}")
     return result
 
@@ -302,7 +302,7 @@ async def revoke_template_shares(
     from services.chat.share_service import ShareService
 
     _require_editor(current_user)
-    return ShareService(session).revoke_template_shares(template_key)
+    return await ShareService(session).revoke_template_shares(template_key)
 
 
 @router.post("/templates/import-preview", response_model=TemplateImportPreviewResponse)

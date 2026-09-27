@@ -52,7 +52,7 @@ async def test_mcp_tools_service_singleflight_reuses_same_inflight(monkeypatch):
     monkeypatch.setattr(service, "_load_tools", _fake_load_tools)
 
     async def _run():
-        results = await asyncio.gather(*(await service.get_tools() for _ in range(6)))
+        results = await asyncio.gather(*(service.get_tools() for _ in range(6)))
         return results
 
     results = await _run()

@@ -38,13 +38,19 @@ async def _init_tables(engine, tables=None):
         )
 
 
-def _test_session() -> "AsyncSession":
-    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+def _test_session():
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
-    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    return AsyncSession(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
 
 
-TABLES = [Thread.__table__, AgentRun.__table__, RunEvent.__table__, SubTask.__table__, ExecutionPlan.__table__]
+TABLES = [
+    Thread.__table__,
+    AgentRun.__table__,
+    RunEvent.__table__,
+    SubTask.__table__,
+    ExecutionPlan.__table__,
+]
 OTHER_OWNER = "other-host:4242:deadbeef"
 
 

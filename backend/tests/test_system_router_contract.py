@@ -1,10 +1,10 @@
-from unittest.mock import AsyncMock
-
 """system 路由响应契约（T2 阶段一 · 批次 3）：探活 / 模型列表 / 全局偏好 / 用量汇总。
 
 全键断言锁住响应形态；handler 里的延迟 import（providers_config、llm_factory）
 按源模块打桩，模块顶层导入的偏好读写打在 system 命名空间上。
 """
+
+from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
