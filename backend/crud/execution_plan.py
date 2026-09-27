@@ -209,14 +209,21 @@ async def create_artifacts_batch(
         artifacts.append(artifact)
         db.add(artifact)
 
+    # 冲突探测进 SAVEPOINT：PK 撞车只回滚保存点。
+    # 此前用全量 rollback 兜冲突——它会把**调用方会话里所有已加载实例全部
+    # 过期**，恢复回放的后续代码访问 subtask.id / execution_plan.id 就地
+    # MissingGreenlet 崩溃（2026-09-27 16:07 HITL RESUME 事故），调用方
+    # 未提交的变更也被株连丢弃。savepoint 只回收本批插入，外层事务原样。
     try:
-        await db.commit()
+        async with db.begin_nested():
+            for artifact in artifacts:
+                db.add(artifact)
+            await db.flush()
     except IntegrityError:
-        # 并发竞态：另一路已写入同 id 产物（首写赢）。必须回滚——commit 失败
-        # 后会话残留失效事务态，调用方随后还有写（如更新助手消息）会以
-        # PendingRollbackError 把局部失败放大成整轮失败。
-        await db.rollback()
+        # 并发竞态：另一路已写入同 id 产物（首写赢），按幂等空手而归。
+        # 调用方会话仍处于可用事务态，其 pending 变更由调用方自行提交。
         return []
+    await db.commit()
     for artifact in artifacts:
         await db.refresh(artifact)
 

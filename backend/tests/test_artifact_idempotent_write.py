@@ -121,6 +121,52 @@ async def test_batch_race_loser_noops_on_pk_conflict(make_session):
 
 
 @pytest.mark.asyncio
+async def test_batch_conflict_does_not_poison_caller_session(make_session):
+    """PK 冲突只回滚保存点，不得把调用方会话的已加载实例过期。
+
+    曾用全量 rollback 兜冲突：HITL 恢复回放随后访问 subtask.id 就地
+    MissingGreenlet 崩溃，恢复流末尾炸掉（2026-09-27 16:07 事故）。
+    """
+    first = await make_session()
+    await create_artifacts_batch(
+        first,
+        "sub-9",
+        [{"type": "text", "title": "结果", "content": "C", "artifact_id": "art-9"}],
+    )
+
+    # 调用方会话：加载实例 + 持有 pending 变更，然后触发同 id 冲突
+    caller = await make_session()
+    loaded = (await caller.exec(select(Artifact).where(Artifact.id == "art-9"))).first()
+    assert loaded is not None
+
+    created_second = await create_artifacts_batch(
+        caller,
+        "sub-9",
+        [{"type": "text", "title": "结果", "content": "C", "artifact_id": "art-9"}],
+    )
+    assert created_second == []
+
+    # 已加载实例属性仍可访问（若被过期，async 会话懒加载会炸 MissingGreenlet）
+    assert loaded.id == "art-9"
+    assert loaded.title == "结果"
+
+    # 调用方 pending 变更仍可正常提交（未被株连丢弃）
+    caller.add(
+        Artifact(
+            id="caller-row",
+            sub_task_id="sub-9",
+            type="text",
+            title="调用方行",
+            content="x",
+        )
+    )
+    await caller.commit()
+    checker = await make_session()
+    rows = (await checker.exec(select(Artifact).where(Artifact.sub_task_id == "sub-9"))).all()
+    assert {r.id for r in rows} == {"art-9", "caller-row"}
+
+
+@pytest.mark.asyncio
 async def test_get_embedding_does_not_await_sync_client_factory(monkeypatch):
     """get_embedding_client_async 是同步工厂（返回三元组）：误 await 会 TypeError
     被 except 吞成空列表，全部记忆向量操作静默全灭（2026-09-27 记忆保存失败事故）。"""
