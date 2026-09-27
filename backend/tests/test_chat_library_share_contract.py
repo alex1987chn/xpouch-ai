@@ -64,7 +64,7 @@ def test_artifact_detail_contract(monkeypatch):
 
 
 def test_artifact_share_and_revoke_contract(monkeypatch):
-    def _fake_create(self, *a, **kw):
+    async def _fake_create(self, *a, **kw):
         return {
             "token": "tok",
             "path": "/s/tok",
@@ -78,7 +78,7 @@ def test_artifact_share_and_revoke_contract(monkeypatch):
     assert created.status_code == 200
     assert set(created.json().keys()) == {"token", "path", "artifact_id", "created_at"}
 
-    def _fake_revoke(self, *a, **kw):
+    async def _fake_revoke(self, *a, **kw):
         return {"revoked": 2}
 
     monkeypatch.setattr(chat_router.ShareService, "revoke_shares", _fake_revoke)
@@ -167,7 +167,7 @@ def test_template_share_and_revoke_contract(monkeypatch):
     app.dependency_overrides[library_router.get_current_user] = lambda: _admin()
     app.dependency_overrides[library_router.get_session] = lambda: _SessionStub()
 
-    def _fake_create(self, *a, **kw):
+    async def _fake_create(self, *a, **kw):
         return {"token": "tok", "path": "/api/public/templates/shared/tok", "template_key": "demo"}
 
     monkeypatch.setattr(ShareService, "create_template_share", _fake_create)
@@ -176,7 +176,7 @@ def test_template_share_and_revoke_contract(monkeypatch):
     assert created.status_code == 200
     assert set(created.json().keys()) == {"token", "path", "template_key"}
 
-    def _fake_revoke(self, *a, **kw):
+    async def _fake_revoke(self, *a, **kw):
         return {"revoked": 3}
 
     monkeypatch.setattr(ShareService, "revoke_template_shares", _fake_revoke)
@@ -209,7 +209,10 @@ def test_mcp_tools_contract(monkeypatch):
     async def _fake_validate(_url):
         return True, None
 
-    monkeypatch.setattr(mcp_router, "get_mcp_server_or_404", lambda _s, _id: _FakeServer())
+    async def _async_fake_server(_s, _id):
+        return _FakeServer()
+
+    monkeypatch.setattr(mcp_router, "get_mcp_server_or_404", _async_fake_server)
     monkeypatch.setattr(mcp_router, "validate_mcp_url", _fake_validate)
     monkeypatch.setattr(mcp_router, "MultiServerMCPClient", _FakeClient)
 

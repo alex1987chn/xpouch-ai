@@ -119,7 +119,7 @@ async def reset_password(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="账号不存在")
 
-    _verify_code_or_raise(user, request.code, session)
+    await _verify_code_or_raise(user, request.code, session)
 
     user.password_hash = hash_password(request.password)
     _clear_verification_code(user)

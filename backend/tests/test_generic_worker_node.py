@@ -193,7 +193,7 @@ async def test_dependency_outputs_are_injected_into_prompt():
     class _CaptureLLM(_FakeLLM):
         async def ainvoke(self, messages, config=None):
             seen["prompt"] = "\n".join(str(m.content) for m in messages)
-            return (await super()).ainvoke(messages, config=config)
+            return await super().ainvoke(messages, config=config)
 
     with (
         _patches(),
@@ -218,7 +218,7 @@ async def test_missing_dependency_is_tolerated():
     class _CaptureLLM(_FakeLLM):
         async def ainvoke(self, messages, config=None):
             seen["prompt"] = "\n".join(str(m.content) for m in messages)
-            return (await super()).ainvoke(messages, config=config)
+            return await super().ainvoke(messages, config=config)
 
     with (
         _patches(),
@@ -263,7 +263,7 @@ async def test_tool_loop_reentry_rebinds_tools_and_keeps_scratch():
         async def ainvoke(self, messages, config=None):
             # 断言工具结果进入了上下文
             assert any(getattr(m, "tool_call_id", None) == "call-1" for m in messages)
-            return (await super()).ainvoke(messages, config=config)
+            return await super().ainvoke(messages, config=config)
 
     sentinel_tool = object()
     with (
@@ -320,7 +320,7 @@ async def test_guard_tripped_forces_toolless_finish():
     class _CaptureLLM(_FinishLLM):
         async def ainvoke(self, messages, config=None):
             seen_prompts.append(list(messages))
-            return (await super()).ainvoke(messages, config=config)
+            return await super().ainvoke(messages, config=config)
 
     with (
         _patches(),
