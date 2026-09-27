@@ -38,6 +38,7 @@ from models import AgentRun, RunStatus, Thread
 from models.enums import TaskStatus
 from services.chat.frame_recorder import get_frame_recorder
 from services.chat.parts.event_builders import EventBuildersMixin
+from services.chat.parts.event_transform import EventTransformMixin
 from services.chat.parts.persistence import PersistenceMixin
 from services.chat.stream_pipeline import StreamPipeline
 from services.mcp_tools_service import mcp_tools_service
@@ -50,7 +51,6 @@ from utils.logger import logger, set_run_id
 # - direct_reply：简单模式的回复（内容经 on_chat_model_stream 逐字送达，
 #   是 simple 模式唯一的流式来源）
 # 其余节点（commander/expert/router）的产出经 sse_event 通道直达前端。
-_DELTA_ALLOWED_NODES = frozenset({"aggregator", "direct_reply"})
 
 
 def _build_isolated_thread_id(thread_id: str, run_id: str | None) -> str:
@@ -62,7 +62,7 @@ def _build_isolated_thread_id(thread_id: str, run_id: str | None) -> str:
     return f"{thread_id}_{run_id}" if run_id else thread_id
 
 
-class StreamService(EventBuildersMixin, PersistenceMixin):
+class StreamService(EventBuildersMixin, PersistenceMixin, EventTransformMixin):
     """流式处理服务。
 
     P3-2 增量拆分：事件构建/运行状态助手（parts/event_builders.py）已迁出（Mixin 组合），
@@ -768,170 +768,5 @@ class StreamService(EventBuildersMixin, PersistenceMixin):
         # message.done 由 aggregator_node 通过 event_queue 发送
         # 这里不再重复发送
 
-    async def _apply_updated_plan(self, graph, config: dict, updated_plan: list[dict]):
-        """把用户在审批页编辑过的计划合并进图状态。
 
-        合并语义（业务规则，不属于脚手架）：
-        - 已完成的任务：整条沿用当前状态（保留 `output_result` / Commander `task_id`）
-        - 未完成/新增任务：采用前端提交的内容，但保留已有输出与 task_id
-        - 依赖清理：指向已删除任务的 `depends_on` 条目剔除；空则置 None
-        - 下一个该跑谁**不在这里算**：由 `agents/plan_waves.py` 按依赖判定（C2 起）
 
-        续跑由调用方的 `Command(resume=...)` 触发，本方法只负责状态合并，
-        不再伪造 `HumanMessage`（那是静态中断时代的权宜手段）。
-        """
-        # 合并状态，不要完全替换
-        current_state = await graph.aget_state(config)
-        current_values = current_state.values
-        current_task_list = current_values.get("task_list", [])
-        current_expert_results = current_values.get("expert_results", [])
-
-        # 创建任务 ID 到当前任务的映射（键用 db id：前端提交的 updated_plan
-        # 里 `id` 就是 db uuid，与审批卡下发的 current_plan 一致）
-        current_task_map = {task.get("id"): task for task in current_task_list}
-
-        # 清理依赖关系并合并状态
-        #
-        # ⚠️ 依赖集合必须用 **commander 语义 id（`task_id`）**，不能用 db id：
-        # `depends_on` 里存的是 "task_1" 这类 commander id，而 `id` 是数据库主键。
-        # 二者不同源（「双身份」）。且前端回传的 updated_plan（TaskInfo 形态）
-        # **没有 task_id 字段**——直接 `task.get("task_id") or task.get("id")` 会
-        # 全部落回 db uuid，语义依赖 ∩ uuid 集合恒为空 → 依赖被清空 → 下游任务
-        # 失去上游产出注入（实测 writer 报「task_1 检索报告缺失」）。所以必须先
-        # 经 current_task_map 把 uuid 映射回语义 id，映射不到（用户新增的任务）
-        # 才用其自身 id。
-        def _semantic_key(task: dict) -> str:
-            existing = current_task_map.get(task.get("id"))
-            return str((existing or {}).get("task_id") or task.get("task_id") or task.get("id"))
-
-        kept_task_ids = {_semantic_key(task) for task in updated_plan}
-        merged_plan = []
-
-        for task in updated_plan:
-            task_id = task.get("id")
-            # 🔥 关键：从当前状态查找对应的任务，保留 task_id (Commander ID)
-            existing_task = current_task_map.get(task_id)
-
-            # 如果任务已完成，保留完整状态（包括 output_result 和 task_id）
-            if existing_task and existing_task.get("status") == "completed":
-                merged_task = dict(existing_task)
-            else:
-                # 新任务或待执行任务，使用前端数据但保留已有输出
-                merged_task = dict(task)
-                if existing_task:
-                    # 🔥🔥🔥 关键修复：保留 task_id (Commander ID) 和 output_result
-                    merged_task["task_id"] = existing_task.get("task_id") or task.get("task_id")
-                    merged_task["output_result"] = existing_task.get("output_result")
-                    merged_task["status"] = existing_task.get(
-                        "status", task.get("status", "pending")
-                    )
-
-            # 🔥 兜底：确保 task_id 字段存在（如果前端没传，从现有状态复制）
-            if not merged_task.get("task_id") and existing_task:
-                merged_task["task_id"] = existing_task.get("task_id")
-
-            # 清理依赖关系
-            if merged_task.get("depends_on"):
-                cleaned_deps = [dep for dep in merged_task["depends_on"] if dep in kept_task_ids]
-                merged_task["depends_on"] = cleaned_deps if cleaned_deps else None
-
-            merged_plan.append(merged_task)
-
-        # 更新 LangGraph 状态（保留已完成任务的结果）
-        # 计划的 approve 合并语义：按 id 保留已完成任务的 output_result / task_id、
-        # 清理指向已删除任务的依赖。
-        #
-        # 不再伪造 HumanMessage 触发续跑：那是在静态中断（interrupt_before）下
-        # 让图「动起来」的权宜手段，会把一条假用户消息写进会话历史。现在由
-        # `Command(resume=...)` 触发续跑，图从断点继续，无需任何伪造输入。
-        #
-        # 不再重算任务游标（C2 已删除 current_task_index）：改完计划后跑哪些任务
-        # 由 `plan_waves` 按依赖重新判定——「下一个该跑谁」只有一处答案。
-        state_update = {
-            "task_list": merged_plan,
-            "expert_results": current_expert_results,  # 保留已有结果，而不是清空
-        }
-        await graph.aupdate_state(config, state_update)
-
-    # ============================================================================
-    # 事件转换和构建
-    # ============================================================================
-
-    def transform_langgraph_event(
-        self,
-        token,
-        message_id: str | None = None,
-        reasoning_collector: list | None = None,
-        aggregate_message_id: str | None = None,
-    ) -> str | None:
-        """将 LangGraph 事件转换为 SSE 格式
-
-        判据说明（langgraph_node + node_type 合并共存，已实测验证）：
-        - metadata["node_type"]：节点内部发 LLM 时自挂的角色标记，会出现在
-          LLM token 事件（on_chat_model_stream）上，是该事件的**主判据**；
-        - metadata["langgraph_node"]：LangGraph 1.2.11 自动注入的节点名，只挂在
-          节点边界事件上（on_chain_start/end/stream），token 事件上作**兜底**判据。
-
-        只有白名单节点允许产生 message.delta / message.thinking；其余节点
-        （commander/expert/router）的产出经 sse_event 通道直达前端。
-        本函数不处理 task/plan/artifact 等事件（那些由 emit_event 直达）。
-
-        目标 id 路由：aggregator 的流式正文挂聚合消息（aggregate_message_id，
-        与 aggregator 落库同源——聚合行必须排在所有专家消息之后）；
-        direct_reply（简单模式）挂请求侧 message_id（占位=正文同一行）。
-        """
-        import json
-
-        # 🔥 修复：token 可能是字符串或其他类型，需要安全检查
-        if not isinstance(token, dict):
-            return None
-
-        event_type = token.get("event", "")
-
-        # 处理消息流（token 增量）
-        if event_type == "on_chat_model_stream":
-            data = token.get("data", {})
-            chunk = data.get("chunk")
-            if not chunk:
-                return None
-
-            metadata = token.get("metadata", {})
-            node_type = metadata.get("node_type", "")
-            langgraph_node = metadata.get("langgraph_node", "")
-
-            # 白名单判据：aggregator = 复杂模式的最终回复流；
-            # direct_reply = 简单模式的回复流（内容经 on_chat_model_stream 逐字送达，
-            # 是 simple 模式唯一的流式来源，不可拦截）
-            effective_node = node_type or langgraph_node
-            if effective_node not in _DELTA_ALLOWED_NODES:
-                return None
-
-            # 目标 id 路由（见 docstring）：聚合正文挂聚合消息 id（未传时退回
-            # 请求侧 id——正常链路恒有，测试桩/直调场景不至发出无主事件）
-            target_id = message_id
-            if effective_node == "aggregator" and aggregate_message_id:
-                target_id = aggregate_message_id
-
-            # 思考过程流式块（DeepSeek reasoning_content；思考 chunk 通常没有正文内容，
-            # 必须在 content 判空之前处理，否则会被整体丢弃）
-            reasoning = getattr(chunk, "additional_kwargs", {}).get("reasoning_content", "")
-            if reasoning:
-                if reasoning_collector is not None:
-                    reasoning_collector.append(reasoning)
-                event_data = {"content": reasoning}
-                if target_id:
-                    event_data["message_id"] = target_id
-                return f"event: message.thinking\ndata: {json.dumps(event_data)}\n\n"
-
-            content = getattr(chunk, "content", None)
-            if content:
-                # 只发送纯净数据，包含 message_id 用于前端消息关联
-                event_data = {"content": content}
-                if target_id:
-                    event_data["message_id"] = target_id
-                return f"event: message.delta\ndata: {json.dumps(event_data)}\n\n"
-
-        # 协议 v2：task.started / task.completed / task.failed / artifact 均由节点
-        # 经 custom stream（emit_event）直达，此处不再手造（v1 双发源头已移除）。
-
-        return None

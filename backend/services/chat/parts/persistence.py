@@ -328,3 +328,92 @@ class PersistenceMixin:
                 )
 
         await _write()
+
+    async def _apply_updated_plan(self, graph, config: dict, updated_plan: list[dict]):
+        """把用户在审批页编辑过的计划合并进图状态。
+
+        合并语义（业务规则，不属于脚手架）：
+        - 已完成的任务：整条沿用当前状态（保留 `output_result` / Commander `task_id`）
+        - 未完成/新增任务：采用前端提交的内容，但保留已有输出与 task_id
+        - 依赖清理：指向已删除任务的 `depends_on` 条目剔除；空则置 None
+        - 下一个该跑谁**不在这里算**：由 `agents/plan_waves.py` 按依赖判定（C2 起）
+
+        续跑由调用方的 `Command(resume=...)` 触发，本方法只负责状态合并，
+        不再伪造 `HumanMessage`（那是静态中断时代的权宜手段）。
+        """
+        # 合并状态，不要完全替换
+        current_state = await graph.aget_state(config)
+        current_values = current_state.values
+        current_task_list = current_values.get("task_list", [])
+        current_expert_results = current_values.get("expert_results", [])
+
+        # 创建任务 ID 到当前任务的映射（键用 db id：前端提交的 updated_plan
+        # 里 `id` 就是 db uuid，与审批卡下发的 current_plan 一致）
+        current_task_map = {task.get("id"): task for task in current_task_list}
+
+        # 清理依赖关系并合并状态
+        #
+        # ⚠️ 依赖集合必须用 **commander 语义 id（`task_id`）**，不能用 db id：
+        # `depends_on` 里存的是 "task_1" 这类 commander id，而 `id` 是数据库主键。
+        # 二者不同源（「双身份」）。且前端回传的 updated_plan（TaskInfo 形态）
+        # **没有 task_id 字段**——直接 `task.get("task_id") or task.get("id")` 会
+        # 全部落回 db uuid，语义依赖 ∩ uuid 集合恒为空 → 依赖被清空 → 下游任务
+        # 失去上游产出注入（实测 writer 报「task_1 检索报告缺失」）。所以必须先
+        # 经 current_task_map 把 uuid 映射回语义 id，映射不到（用户新增的任务）
+        # 才用其自身 id。
+        def _semantic_key(task: dict) -> str:
+            existing = current_task_map.get(task.get("id"))
+            return str((existing or {}).get("task_id") or task.get("task_id") or task.get("id"))
+
+        kept_task_ids = {_semantic_key(task) for task in updated_plan}
+        merged_plan = []
+
+        for task in updated_plan:
+            task_id = task.get("id")
+            # 🔥 关键：从当前状态查找对应的任务，保留 task_id (Commander ID)
+            existing_task = current_task_map.get(task_id)
+
+            # 如果任务已完成，保留完整状态（包括 output_result 和 task_id）
+            if existing_task and existing_task.get("status") == "completed":
+                merged_task = dict(existing_task)
+            else:
+                # 新任务或待执行任务，使用前端数据但保留已有输出
+                merged_task = dict(task)
+                if existing_task:
+                    # 🔥🔥🔥 关键修复：保留 task_id (Commander ID) 和 output_result
+                    merged_task["task_id"] = existing_task.get("task_id") or task.get("task_id")
+                    merged_task["output_result"] = existing_task.get("output_result")
+                    merged_task["status"] = existing_task.get(
+                        "status", task.get("status", "pending")
+                    )
+
+            # 🔥 兜底：确保 task_id 字段存在（如果前端没传，从现有状态复制）
+            if not merged_task.get("task_id") and existing_task:
+                merged_task["task_id"] = existing_task.get("task_id")
+
+            # 清理依赖关系
+            if merged_task.get("depends_on"):
+                cleaned_deps = [dep for dep in merged_task["depends_on"] if dep in kept_task_ids]
+                merged_task["depends_on"] = cleaned_deps if cleaned_deps else None
+
+            merged_plan.append(merged_task)
+
+        # 更新 LangGraph 状态（保留已完成任务的结果）
+        # 计划的 approve 合并语义：按 id 保留已完成任务的 output_result / task_id、
+        # 清理指向已删除任务的依赖。
+        #
+        # 不再伪造 HumanMessage 触发续跑：那是在静态中断（interrupt_before）下
+        # 让图「动起来」的权宜手段，会把一条假用户消息写进会话历史。现在由
+        # `Command(resume=...)` 触发续跑，图从断点继续，无需任何伪造输入。
+        #
+        # 不再重算任务游标（C2 已删除 current_task_index）：改完计划后跑哪些任务
+        # 由 `plan_waves` 按依赖重新判定——「下一个该跑谁」只有一处答案。
+        state_update = {
+            "task_list": merged_plan,
+            "expert_results": current_expert_results,  # 保留已有结果，而不是清空
+        }
+        await graph.aupdate_state(config, state_update)
+
+    # ============================================================================
+    # 事件转换和构建
+    # ============================================================================
