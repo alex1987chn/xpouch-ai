@@ -17,7 +17,7 @@ from collections import defaultdict, deque
 from secrets import token_urlsafe
 from typing import Any
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from crud.execution_plan import get_artifact
 from models import Artifact, ExecutionPlan, ShareToken, SkillTemplate, SubTask
@@ -99,8 +99,15 @@ class ShareService:
         """撤销该 artifact 的全部分享（令牌不可枚举，逐 artifact 全撤销最简单可靠）"""
         await self._get_owned_artifact(artifact_id, user_id)
 
+        shares = (
+            await self.db.exec(
+                select(ShareToken).where(
+                    ShareToken.artifact_id == artifact_id, ShareToken.revoked_at.is_(None)
+                )
+            )
+        ).all()
         revoked = 0
-        for share in self.db.query(ShareToken).filter_by(artifact_id=artifact_id, revoked_at=None):
+        for share in shares:
             share.revoked_at = utc_now()
             self.db.add(share)
             revoked += 1
@@ -133,41 +140,55 @@ class ShareService:
 
     async def revoke_template_shares(self, template_key: str) -> dict[str, Any]:
         """撤销该模板的全部分享链接"""
+        shares = (
+            await self.db.exec(
+                select(ShareToken).where(
+                    ShareToken.template_key == template_key, ShareToken.revoked_at.is_(None)
+                )
+            )
+        ).all()
         revoked = 0
-        for share in self.db.query(ShareToken).filter_by(
-            template_key=template_key, revoked_at=None
-        ):
+        for share in shares:
             share.revoked_at = utc_now()
             self.db.add(share)
             revoked += 1
         await self.db.commit()
         return {"revoked": revoked}
 
-    def resolve_template(self, token: str) -> SkillTemplate | None:
+    async def resolve_template(self, token: str) -> SkillTemplate | None:
         """token -> 未撤销分享对应的激活模板；无效/已撤销返回 None（防探测）"""
         share = (
-            self.db.query(ShareToken)
-            .filter_by(token_hash=hash_secret(token), revoked_at=None)
-            .first()
-        )
+            await self.db.exec(
+                select(ShareToken).where(
+                    ShareToken.token_hash == hash_secret(token),
+                    ShareToken.revoked_at.is_(None),
+                )
+            )
+        ).first()
         if not share or not share.template_key:
             return None
         return (
-            self.db.query(SkillTemplate)
-            .filter_by(template_key=share.template_key, is_active=True)
-            .first()
-        )
+            await self.db.exec(
+                select(SkillTemplate).where(
+                    SkillTemplate.template_key == share.template_key,
+                    SkillTemplate.is_active == True,  # noqa: E712
+                )
+            )
+        ).first()
 
-    def resolve(self, token: str) -> Artifact | None:
+    async def resolve(self, token: str) -> Artifact | None:
         """token -> 未撤销的 artifact；无效/已撤销返回 None（不区分原因，防探测）"""
         share = (
-            self.db.query(ShareToken)
-            .filter_by(token_hash=hash_secret(token), revoked_at=None)
-            .first()
-        )
+            await self.db.exec(
+                select(ShareToken).where(
+                    ShareToken.token_hash == hash_secret(token),
+                    ShareToken.revoked_at.is_(None),
+                )
+            )
+        ).first()
         if not share:
             return None
-        return get_artifact(self.db, share.artifact_id)
+        return await get_artifact(self.db, share.artifact_id)
 
     # ------------------------------------------------------------------
     # 内部

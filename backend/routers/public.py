@@ -239,7 +239,7 @@ async def get_shared_template(token: str, session: Session = Depends(get_session
     from routers.library import build_template_export
     from services.chat.share_service import ShareService
 
-    template = ShareService(session).resolve_template(token)
+    template = await ShareService(session).resolve_template(token)
     if template is None:
         raise NotFoundError("分享链接")
 

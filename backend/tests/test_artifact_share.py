@@ -7,7 +7,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, select
 
 from models import Artifact, ExecutionPlan, ShareToken, SubTask, Thread
 from services.chat.share_service import ShareService
@@ -89,7 +89,7 @@ async def test_create_share_returns_token_once(db, owned_artifact):
     assert result["token"]
     assert result["path"] == f"/s/{result['token']}"
     # 库里只存哈希，明文不落库
-    row = db.query(ShareToken).filter_by(artifact_id="a1").first()
+    row = (await db.exec(select(ShareToken).where(ShareToken.artifact_id == "a1"))).first()
     assert row is not None
     assert row.token_hash != result["token"]
     assert len(row.token_hash) == 64
@@ -99,16 +99,16 @@ async def test_resolve_returns_artifact_and_revoked_returns_none(db, owned_artif
     service = ShareService(db)
     token = (await service.create_share("a1", "u1"))["token"]
 
-    artifact = service.resolve(token)
+    artifact = await service.resolve(token)
     assert artifact is not None
     assert artifact.id == "a1"
 
     await service.revoke_shares("a1", "u1")
-    assert service.resolve(token) is None
+    assert await service.resolve(token) is None
 
 
-def test_resolve_unknown_token_is_none(db):
-    assert ShareService(db).resolve("no-such-token") is None
+async def test_resolve_unknown_token_is_none(db):
+    assert await ShareService(db).resolve("no-such-token") is None
 
 
 async def test_create_share_requires_owner(db, owned_artifact):

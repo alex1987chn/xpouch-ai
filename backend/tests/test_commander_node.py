@@ -10,6 +10,10 @@ from unittest.mock import patch
 
 import pytest  # noqa: E402
 from langchain_core.messages import HumanMessage  # noqa: E402
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import StaticPool
+
+from models import Thread
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -131,6 +135,30 @@ def _base_state(extra=None):
     return state
 
 
+_CMDER_ENGINE = [None]
+
+
+def _cmder_engine():
+    """模块级一次性内存引擎（StaticPool 单连接；DDL 见 _ensure_cmder_tables）。"""
+    if _CMDER_ENGINE[0] is None:
+        _CMDER_ENGINE[0] = create_async_engine(
+            "sqlite+aiosqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+    return _CMDER_ENGINE[0]
+
+
+async def _ensure_cmder_tables():
+    """DDL 必须在异步上下文建（官方 run_sync 模式）；各测试首行调用，幂等。"""
+    from sqlmodel import SQLModel
+
+    async with _cmder_engine().begin() as conn:
+        await conn.run_sync(
+            lambda c: SQLModel.metadata.create_all(c, tables=[Thread.__table__], checkfirst=True)
+        )
+
+
 def _stub_db_stack(stack):
     """stub 掉 commander 的 DB 持久化路径（延迟导入源模块）。
 
@@ -139,34 +167,15 @@ def _stub_db_stack(stack):
     """
     from types import SimpleNamespace
 
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-    from sqlalchemy.pool import StaticPool
-    from sqlmodel import SQLModel
+    from sqlalchemy.ext.asyncio import async_sessionmaker
     from sqlmodel.ext.asyncio.session import AsyncSession as _SQLModelAsyncSession
 
     import agents.nodes.commander as commander_mod
-    from models import Thread
 
     # 行为测试不依赖真实数据库：把 commander 的 SessionFactory 指向一次性
     # 内存 SQLite（StaticPool 共享单连接——内存库否则每个连接都是独立空库），
     # 规划收尾的 thread 回写按"线程不存在"静默跳过（与本地空线程行为一致）。
-    sqlite_engine = create_async_engine(
-        "sqlite+aiosqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-
-    async def _init_tables():
-        async with sqlite_engine.begin() as conn:
-            await conn.run_sync(
-                lambda c: SQLModel.metadata.create_all(c, tables=[Thread.__table__])
-            )
-
-    _init_tables_loop = __import__("asyncio").new_event_loop()
-    try:
-        _init_tables_loop.run_until_complete(_init_tables())
-    finally:
-        _init_tables_loop.close()
+    sqlite_engine = _cmder_engine()
     stack.enter_context(
         patch.object(
             commander_mod,
@@ -244,6 +253,7 @@ def _patches(llm):
 
 @pytest.mark.asyncio
 async def test_generates_plan_without_artifacts_section():
+    await _ensure_cmder_tables()
     captured_prompts: list = []
 
     with _patches(
@@ -275,6 +285,7 @@ async def test_generates_plan_without_artifacts_section():
 
 @pytest.mark.asyncio
 async def test_injects_recent_artifacts_into_prompt():
+    await _ensure_cmder_tables()
     captured_prompts: list = []
 
     capture = _FakeLLM(
@@ -308,6 +319,7 @@ async def test_injects_recent_artifacts_into_prompt():
 @pytest.mark.asyncio
 async def test_dependency_indexes_converted_to_ids():
     """LLM 返回数字索引依赖 → 转换为任务 ID。"""
+    await _ensure_cmder_tables()
     llm = _FakeLLM(
         _plan_json(
             [
@@ -336,6 +348,7 @@ async def test_dependency_indexes_converted_to_ids():
 @pytest.mark.asyncio
 async def test_missing_task_ids_auto_generated():
     """LLM 未生成 id → 自动补齐 task_{idx}。"""
+    await _ensure_cmder_tables()
     llm = _FakeLLM(
         _plan_json(
             [
@@ -354,6 +367,7 @@ async def test_missing_task_ids_auto_generated():
 @pytest.mark.asyncio
 async def test_plan_failure_raises_instead_of_empty_plan():
     """规划失败必须显式上抛（评审 H2）：不得吞成空计划伪装成功。
+    await _ensure_cmder_tables()
 
     此前 except 把失败吞成 task_list=[] + strategy="Error: …"，plan_approval
     放行空计划、aggregator 回「未生成任何执行结果。」——run 正常完结、无失败标记。
