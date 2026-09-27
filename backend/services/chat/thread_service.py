@@ -153,7 +153,7 @@ class ChatThreadService:
         count_statement = (
             sa_select(func.count()).select_from(Thread).where(Thread.user_id == user_id)
         )
-        total = await self.db.exec(count_statement).one()[0]
+        total = (await self.db.exec(count_statement)).one()[0]
 
         # 2. 查询当前页线程（不预加载消息）
         statement = (
@@ -163,7 +163,7 @@ class ChatThreadService:
             .offset(offset)
             .limit(limit)
         )
-        threads = await self.db.exec(statement).all()
+        threads = (await self.db.exec(statement)).all()
 
         if not threads:
             return {
@@ -189,7 +189,7 @@ class ChatThreadService:
             .where(Message.thread_id.in_(thread_ids))
             .group_by(Message.thread_id)
         )
-        count_rows = await self.db.exec(count_stmt).all()
+        count_rows = (await self.db.exec(count_stmt)).all()
 
         # 3.2 使用子查询获取每个线程的最大时间戳，再关联获取消息内容
         subquery = (
@@ -207,7 +207,7 @@ class ChatThreadService:
             (Message.thread_id == subquery.c.thread_id)
             & (Message.created_at == subquery.c.max_created_at),
         )
-        last_msg_rows = await self.db.exec(last_msg_stmt).all()
+        last_msg_rows = (await self.db.exec(last_msg_stmt)).all()
 
         # 3.3 组装统计信息
         stats_by_thread: dict[str, dict] = {}
@@ -227,7 +227,7 @@ class ChatThreadService:
             .where(AgentRun.thread_id.in_(thread_ids))
             .order_by(AgentRun.thread_id, AgentRun.created_at.desc())
         )
-        all_runs = await self.db.exec(run_stmt).all()
+        all_runs = (await self.db.exec(run_stmt)).all()
 
         # 每个 thread 只保留最新的 run
         latest_run_by_thread: dict[str, AgentRun] = {}
@@ -283,7 +283,7 @@ class ChatThreadService:
         statement = (
             select(Message).where(Message.thread_id == thread_id).order_by(Message.created_at.asc())
         )
-        messages = await self.db.exec(statement).all()
+        messages = (await self.db.exec(statement)).all()
 
         # 3. 返回完整消息
         return [
@@ -317,7 +317,7 @@ class ChatThreadService:
         statement = (
             select(Thread).where(Thread.id == thread_id).options(selectinload(Thread.messages))
         )
-        thread = await self.db.exec(statement).first()
+        thread = (await self.db.exec(statement)).first()
         if not thread:
             raise NotFoundError(resource="会话")
         if thread.user_id != user_id:
@@ -344,7 +344,7 @@ class ChatThreadService:
             .options(selectinload(SubTask.artifacts))
             .order_by(SubTask.sort_order)
         )
-        sub_tasks = await self.db.exec(statement).all()
+        sub_tasks = (await self.db.exec(statement)).all()
 
         base_response = self._build_simple_thread_response(thread)
         base_response["execution_plan"] = {
@@ -387,10 +387,12 @@ class ChatThreadService:
 
     async def _get_latest_run(self, thread_id: str) -> AgentRun | None:
         """获取线程最近一次运行实例。"""
-        return await self.db.exec(
-            select(AgentRun)
-            .where(AgentRun.thread_id == thread_id)
-            .order_by(AgentRun.created_at.desc())
+        return (
+            await self.db.exec(
+                select(AgentRun)
+                .where(AgentRun.thread_id == thread_id)
+                .order_by(AgentRun.created_at.desc())
+            )
         ).first()
 
     @staticmethod
@@ -460,11 +462,11 @@ class ChatThreadService:
         """
         thread = await get_thread_or_raise(self.db, thread_id, user_id)
 
-        execution_plans = await self.db.exec(
-            select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id)
+        execution_plans = (
+            await self.db.exec(select(ExecutionPlan).where(ExecutionPlan.thread_id == thread_id))
         ).all()
-        agent_runs = await self.db.exec(
-            select(AgentRun).where(AgentRun.thread_id == thread_id)
+        agent_runs = (
+            await self.db.exec(select(AgentRun).where(AgentRun.thread_id == thread_id))
         ).all()
 
         # Thread.execution_plan_id 与 ExecutionPlan.thread_id 形成双向引用。
@@ -599,7 +601,7 @@ class ChatThreadService:
         statement = (
             select(Message).where(Message.thread_id == thread_id).order_by(Message.created_at)
         )
-        db_messages = await self.db.exec(statement).all()
+        db_messages = (await self.db.exec(statement)).all()
 
         langchain_messages = []
         for msg in db_messages:

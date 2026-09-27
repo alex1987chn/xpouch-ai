@@ -11,29 +11,28 @@
 terminate 不拦（对已取消的 run 再取消是幂等的）。
 """
 
-import asyncio
-
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel
+from sqlmodel import Session, SQLModel
 
 from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread, User
 from services.chat.recovery_service import RecoveryService
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -41,7 +40,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 # 审计扩范围后 resume_chat 的成功路径会落审计/反馈消息/账本，
@@ -86,39 +84,37 @@ def _service(db: Session) -> RecoveryService:
 class TestTerminalRunGuard:
     @pytest.mark.parametrize("status", TERMINAL)
     async def test_approve_on_terminal_run_is_rejected(self, db, status):
-        _seed(db, status)
+        await _seed(db, status)
 
         with pytest.raises(AppError) as exc:
-            asyncio.run(
-                _service(db).resume_chat(thread_id="t1", run_id="r1", user_id="u1", approved=True)
-            )
+            _service(db).resume_chat(thread_id="t1", run_id="r1", user_id="u1", approved=True)
 
         assert exc.value.code == ErrorCode.RESUME_INVALID_STATE
         assert exc.value.status_code == 409
         db.expire_all()
-        assert await db.get(AgentRun, "r1").status == status, "终态不得被批准流程改写（曾翻回 resuming）"
+        assert (await db.get(AgentRun, "r1")).status == status, (
+            "终态不得被批准流程改写（曾翻回 resuming）"
+        )
 
     @pytest.mark.parametrize("status", TERMINAL)
-    def test_revise_on_terminal_run_is_rejected(self, db, status):
-        _seed(db, status)
+    async def test_revise_on_terminal_run_is_rejected(self, db, status):
+        await _seed(db, status)
 
         with pytest.raises(AppError) as exc:
-            asyncio.run(
-                _service(db).resume_chat(
-                    thread_id="t1",
-                    run_id="r1",
-                    user_id="u1",
-                    approved=False,
-                    action="revise",
-                    feedback="改成两个任务",
-                )
+            _service(db).resume_chat(
+                thread_id="t1",
+                run_id="r1",
+                user_id="u1",
+                approved=False,
+                action="revise",
+                feedback="改成两个任务",
             )
 
         assert exc.value.code == ErrorCode.RESUME_INVALID_STATE
 
-    def test_paused_run_is_not_blocked(self, db, monkeypatch):
+    async def test_paused_run_is_not_blocked(self, db, monkeypatch):
         """守卫只拦终态：等审批中的 run 必须照常走到审批流程。"""
-        _seed(db, "waiting_for_approval")
+        await _seed(db, "waiting_for_approval")
         sentinel = object()
         reached: dict[str, bool] = {}
 
@@ -128,17 +124,15 @@ class TestTerminalRunGuard:
 
         monkeypatch.setattr(RecoveryService, "_handle_approval", _fake_approval)
 
-        result = asyncio.run(
-            _service(db).resume_chat(
-                thread_id="t1", run_id="r1", user_id="u1", approved=True, plan_version=1
-            )
+        result = _service(db).resume_chat(
+            thread_id="t1", run_id="r1", user_id="u1", approved=True, plan_version=1
         )
 
         assert result is sentinel and reached.get("approval") is True
 
-    def test_terminate_on_terminal_run_is_still_allowed(self, db, monkeypatch):
+    async def test_terminate_on_terminal_run_is_still_allowed(self, db, monkeypatch):
         """terminate 有意不拦：重复终止是幂等的（旧卡片上点第二次不该报「已结束」）。"""
-        _seed(db, "cancelled")
+        await _seed(db, "cancelled")
         sentinel = object()
         reached: dict[str, bool] = {}
 
@@ -148,10 +142,8 @@ class TestTerminalRunGuard:
 
         monkeypatch.setattr(RecoveryService, "_handle_rejection", _fake_rejection)
 
-        result = asyncio.run(
-            _service(db).resume_chat(
-                thread_id="t1", run_id="r1", user_id="u1", approved=False, action="terminate"
-            )
+        result = _service(db).resume_chat(
+            thread_id="t1", run_id="r1", user_id="u1", approved=False, action="terminate"
         )
 
         assert result is sentinel and reached.get("rejection") is True

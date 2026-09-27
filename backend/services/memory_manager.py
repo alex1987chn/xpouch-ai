@@ -49,10 +49,12 @@ class MemoryManager:
         # 3. 存入数据库
         try:
             async with SessionFactory() as session:
-                dup = await session.exec(
-                    select(UserMemory).where(
-                        UserMemory.user_id == user_id,
-                        UserMemory.content == content,
+                dup = (
+                    await session.exec(
+                        select(UserMemory).where(
+                            UserMemory.user_id == user_id,
+                            UserMemory.content == content,
+                        )
                     )
                 ).first()
                 if dup:
@@ -78,11 +80,13 @@ class MemoryManager:
         """列出当前用户的记忆（按时间正序），供"查看我的记忆"类请求出具清单。"""
         try:
             async with SessionFactory() as session:
-                rows = await session.exec(
-                    select(UserMemory)
-                    .where(UserMemory.user_id == user_id)
-                    .order_by(UserMemory.created_at)
-                    .limit(limit)
+                rows = (
+                    await session.exec(
+                        select(UserMemory)
+                        .where(UserMemory.user_id == user_id)
+                        .order_by(UserMemory.created_at)
+                        .limit(limit)
+                    )
                 ).all()
                 return [r.content for r in rows]
         except Exception as e:
@@ -103,10 +107,12 @@ class MemoryManager:
         pattern = f"%{keyword}%"
         try:
             async with SessionFactory() as session:
-                rows = await session.exec(
-                    select(UserMemory)
-                    .where(UserMemory.user_id == user_id, UserMemory.content.ilike(pattern))
-                    .order_by(UserMemory.created_at)
+                rows = (
+                    await session.exec(
+                        select(UserMemory)
+                        .where(UserMemory.user_id == user_id, UserMemory.content.ilike(pattern))
+                        .order_by(UserMemory.created_at)
+                    )
                 ).all()
                 contents = [r.content for r in rows]
                 if not dry_run:
@@ -140,7 +146,7 @@ class MemoryManager:
                     .limit(limit)
                 )
 
-                results = await session.exec(statement).all()
+                results = (await session.exec(statement)).all()
             logger.info(f"[Memory] query done, {len(results)} rows")
 
             if not results:

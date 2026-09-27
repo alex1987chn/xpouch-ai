@@ -19,7 +19,7 @@ class _FakeSession:
         self.refreshed.append(obj)
 
 
-def test_save_expert_execution_result_emits_task_and_artifact_events(monkeypatch):
+async def test_save_expert_execution_result_emits_task_and_artifact_events(monkeypatch):
     session = _FakeSession()
     subtask = SimpleNamespace(
         id="subtask-1",
@@ -58,7 +58,7 @@ def test_save_expert_execution_result_emits_task_and_artifact_events(monkeypatch
         lambda *_args, **kwargs: emitted_artifacts.append(kwargs),
     )
 
-    saved = task_manager.save_expert_execution_result(
+    saved = await task_manager.save_expert_execution_result(
         session,
         task_id="subtask-1",
         expert_type="search",

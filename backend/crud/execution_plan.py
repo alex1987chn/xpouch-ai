@@ -47,21 +47,23 @@ async def create_execution_plan(
 async def get_execution_plan(db: Session, execution_plan_id: str) -> ExecutionPlan | None:
     """获取执行计划详情。"""
     statement = select(ExecutionPlan).where(ExecutionPlan.id == execution_plan_id)
-    return await db.exec(statement).first()
+    return (await db.exec(statement)).first()
 
 
 async def get_execution_plan_by_run(db: Session, run_id: str) -> ExecutionPlan | None:
     """按 run_id 获取 ExecutionPlan（一 run 一计划，故至多一份）。"""
-    return await db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)).first()
+    return (await db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id))).first()
 
 
 async def get_latest_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
     """取线程**最新**的执行计划（显式 created_at 倒序；一个会话可有多份计划，
     一 run 一计划，先生成网页再写小游戏各留一份、互不覆盖）。"""
-    return await db.exec(
-        select(ExecutionPlan)
-        .where(ExecutionPlan.thread_id == thread_id)
-        .order_by(ExecutionPlan.created_at.desc())
+    return (
+        await db.exec(
+            select(ExecutionPlan)
+            .where(ExecutionPlan.thread_id == thread_id)
+            .order_by(ExecutionPlan.created_at.desc())
+        )
     ).first()
 
 
@@ -92,7 +94,7 @@ async def update_execution_plan_status(
 async def get_subtask(db: Session, subtask_id: str) -> SubTask | None:
     """获取子任务详情。"""
     statement = select(SubTask).where(SubTask.id == subtask_id)
-    return await db.exec(statement).first()
+    return (await db.exec(statement)).first()
 
 
 async def get_subtasks_by_execution_plan(db: Session, execution_plan_id: str) -> list[SubTask]:
@@ -102,7 +104,7 @@ async def get_subtasks_by_execution_plan(db: Session, execution_plan_id: str) ->
         .where(SubTask.execution_plan_id == execution_plan_id)
         .order_by(SubTask.sort_order)
     )
-    return list(await db.exec(statement).all())
+    return list((await db.exec(statement)).all())
 
 
 async def update_subtask_status(
@@ -157,8 +159,8 @@ async def create_artifacts_batch(
     两条路径到达（专家完成时的实时保存 + 流结束时的批量收集），此前会
     重复插入（每个任务出现两行相同产物）。
     """
-    existing = await db.exec(
-        select(Artifact.sub_task_id).where(Artifact.sub_task_id == sub_task_id)
+    existing = (
+        await db.exec(select(Artifact.sub_task_id).where(Artifact.sub_task_id == sub_task_id))
     ).first()
     if existing is not None:
         return []
@@ -192,7 +194,7 @@ async def create_artifacts_batch(
 async def get_artifact(db: Session, artifact_id: str) -> Artifact | None:
     """获取产物详情。"""
     statement = select(Artifact).where(Artifact.id == artifact_id)
-    return await db.exec(statement).first()
+    return (await db.exec(statement)).first()
 
 
 async def get_artifacts_by_subtask(db: Session, sub_task_id: str) -> list[Artifact]:
@@ -200,12 +202,12 @@ async def get_artifacts_by_subtask(db: Session, sub_task_id: str) -> list[Artifa
     statement = (
         select(Artifact).where(Artifact.sub_task_id == sub_task_id).order_by(Artifact.sort_order)
     )
-    return list(await db.exec(statement).all())
+    return list((await db.exec(statement)).all())
 
 
 async def update_artifact_content(db: Session, artifact_id: str, content: str) -> Artifact | None:
     """更新产物内容。"""
-    artifact = get_artifact(db, artifact_id)
+    artifact = await get_artifact(db, artifact_id)
     if not artifact:
         return None
 
@@ -220,7 +222,7 @@ async def get_thread_titles_map(db: Session, thread_ids: list[str]) -> dict[str,
     """批量取会话标题（产物卡片展示来源会话用），缺失的会话不出现在结果里。"""
     if not thread_ids:
         return {}
-    rows = await db.exec(select(Thread.id, Thread.title).where(Thread.id.in_(thread_ids))).all()
+    rows = (await db.exec(select(Thread.id, Thread.title).where(Thread.id.in_(thread_ids)))).all()
     return {row[0]: row[1] for row in rows}
 
 
@@ -250,20 +252,24 @@ async def list_artifacts_for_user(
         pattern = f"%{search}%"
         base_filters.append(or_(Artifact.title.ilike(pattern), Artifact.content.ilike(pattern)))
 
-    total = await db.exec(
-        select(func.count())
-        .select_from(Artifact)
-        .join(Thread, Artifact.thread_id == Thread.id)
-        .where(*base_filters)
+    total = (
+        await db.exec(
+            select(func.count())
+            .select_from(Artifact)
+            .join(Thread, Artifact.thread_id == Thread.id)
+            .where(*base_filters)
+        )
     ).one()
 
-    items = await db.exec(
-        select(Artifact)
-        .join(Thread, Artifact.thread_id == Thread.id)
-        .where(*base_filters)
-        .order_by(Artifact.created_at.desc(), Artifact.id.desc())
-        .offset(offset)
-        .limit(limit)
+    items = (
+        await db.exec(
+            select(Artifact)
+            .join(Thread, Artifact.thread_id == Thread.id)
+            .where(*base_filters)
+            .order_by(Artifact.created_at.desc(), Artifact.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
     ).all()
 
     return {

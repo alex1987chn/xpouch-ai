@@ -40,13 +40,13 @@ def _run(mode):
     }
 
 
-def test_run_summary_accepts_none_mode():
+async def test_run_summary_accepts_none_mode():
     """决策前终止的 run（mode=NULL）在详情/统计响应中不再炸。"""
     resp = RunSummaryResponse.model_validate(_run(None))
     assert resp.mode is None
 
 
-def test_run_summary_tolerates_legacy_router_value():
+async def test_run_summary_tolerates_legacy_router_value():
     """未跑迁移的库仍有 mode='router' 存量——接口不拒收（数据由迁移清洗）。"""
     resp = RunSummaryResponse.model_validate(_run("router"))
     assert resp.mode == "router"

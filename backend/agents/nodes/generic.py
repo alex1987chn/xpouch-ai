@@ -233,7 +233,7 @@ async def expert_worker_node(
             logger.info(f"[GenericWorker] 本地缓存命中: {expert_type}")
         else:
             # 2️⃣ 检查全局缓存
-            expert_config = get_expert_config_cached(expert_type)
+            expert_config = await get_expert_config_cached(expert_type)
             if expert_config:
                 logger.info(f"[GenericWorker] 全局缓存命中: {expert_type}")
                 # 同步到本地缓存
@@ -334,7 +334,7 @@ async def expert_worker_node(
                 from utils.async_task_queue import async_append_run_event, spawn_background
 
                 spawn_background(
-                    await async_append_run_event(
+                    async_append_run_event(
                         run_id=run_id,
                         event_type="task_started",
                         thread_id=thread_id,
@@ -362,7 +362,7 @@ async def expert_worker_node(
                 from utils.async_task_queue import async_mark_subtask_running, spawn_background
 
                 spawn_background(
-                    await async_mark_subtask_running(str(task_id)),
+                    async_mark_subtask_running(str(task_id)),
                     label=f"subtask_running:{expert_type}:{task_id}",
                 )
             except (RuntimeError, ValueError) as mark_err:
@@ -639,7 +639,7 @@ async def expert_worker_node(
                     from utils.async_task_queue import spawn_background
 
                     spawn_background(
-                        await add_run_token_usage(
+                        add_run_token_usage(
                             run_id,
                             task_usage["prompt"],
                             task_usage["completion"],
@@ -838,7 +838,7 @@ async def expert_worker_node(
                 )
                 # 使用后台线程异步保存，不阻塞 LLM 响应返回（持引用防 GC + 失败可见）
                 spawn_background(
-                    await async_save_expert_result(
+                    async_save_expert_result(
                         task_id=task_id,
                         expert_type=expert_type,
                         output_result=response.content,
@@ -918,7 +918,7 @@ async def expert_worker_node(
                 from utils.async_task_queue import async_append_run_event, spawn_background
 
                 spawn_background(
-                    await async_append_run_event(
+                    async_append_run_event(
                         run_id=run_id,
                         event_type="task_failed",
                         thread_id=thread_id,

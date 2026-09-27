@@ -139,7 +139,7 @@ async def test_delete_thread_removes_execution_plans_and_runs_in_safe_order():
     assert session.deleted == [execution_plan, agent_run, thread]
 
 
-def test_build_simple_thread_response_includes_latest_run_summary():
+async def test_build_simple_thread_response_includes_latest_run_summary():
     thread = Thread(
         id="thread-1",
         title="history",
@@ -162,7 +162,7 @@ def test_build_simple_thread_response_includes_latest_run_summary():
     session = _FakeThreadSession(thread, agent_runs=[agent_run])
     service = ChatThreadService(session)
 
-    response = service._build_simple_thread_response(thread)
+    response = await service._build_simple_thread_response(thread)
 
     assert response["latest_run"]["id"] == "run-1"
     assert response["latest_run"]["status"] == "waiting_for_approval"

@@ -106,12 +106,14 @@ async def get_run_events_by_run_id(
         事件列表，按时间戳升序排列
     """
     return list(
-        await db.exec(
-            select(RunEvent)
-            .where(RunEvent.run_id == run_id)
-            .order_by(RunEvent.created_at.asc())
-            .limit(limit)
-            .offset(offset)
+        (
+            await db.exec(
+                select(RunEvent)
+                .where(RunEvent.run_id == run_id)
+                .order_by(RunEvent.created_at.asc())
+                .limit(limit)
+                .offset(offset)
+            )
         ).all()
     )
 
@@ -138,12 +140,14 @@ async def get_run_events_by_thread_id(
         事件列表，按时间戳升序排列
     """
     return list(
-        await db.exec(
-            select(RunEvent)
-            .where(RunEvent.thread_id == thread_id)
-            .order_by(RunEvent.created_at.asc())
-            .limit(limit)
-            .offset(offset)
+        (
+            await db.exec(
+                select(RunEvent)
+                .where(RunEvent.thread_id == thread_id)
+                .order_by(RunEvent.created_at.asc())
+                .limit(limit)
+                .offset(offset)
+            )
         ).all()
     )
 
@@ -492,12 +496,14 @@ async def fail_stale_revision_jobs(
     # 只扫**仍处于活跃状态**的 run 的修订态事件（join 收窄，语义不变）：
     # 此前全量拉三类事件，账本随时间线性变慢（评审低危项）。已终态的 run
     # 不存在「补写修订失败」的意义。
-    events = await db.exec(
-        select(RunEvent)
-        .join(AgentRun, RunEvent.run_id == AgentRun.id)
-        .where(RunEvent.event_type.in_(state_types))
-        .where(AgentRun.status.in_([RunStatus.RUNNING, RunStatus.RESUMING]))
-        .order_by(RunEvent.created_at.asc(), RunEvent.id.asc())
+    events = (
+        await db.exec(
+            select(RunEvent)
+            .join(AgentRun, RunEvent.run_id == AgentRun.id)
+            .where(RunEvent.event_type.in_(state_types))
+            .where(AgentRun.status.in_([RunStatus.RUNNING, RunStatus.RESUMING]))
+            .order_by(RunEvent.created_at.asc(), RunEvent.id.asc())
+        )
     ).all()
 
     # 按 run 取最新一条修订态事件（升序遍历，后写覆盖）

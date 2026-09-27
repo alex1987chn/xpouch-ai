@@ -15,26 +15,27 @@
 """
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel, select
+from sqlmodel import Session, SQLModel, select
 
 from agents.services import task_manager
 from crud.execution_plan import get_latest_execution_plan_by_thread
 from models import Artifact, ExecutionPlan, SubTask, Thread
 from schemas.task import SubTaskCreate
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -42,7 +43,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [
@@ -112,8 +112,8 @@ async def _seed_plan(
     await db.commit()
 
 
-def _call(db: Session, *, run_id, thread_id: str = "t1"):
-    return task_manager.get_or_create_execution_plan(
+async def _call(db: Session, *, run_id, thread_id: str = "t1"):
+    return await task_manager.get_or_create_execution_plan(
         db=db,
         thread_id=thread_id,
         run_id=run_id,
@@ -125,89 +125,89 @@ def _call(db: Session, *, run_id, thread_id: str = "t1"):
 
 
 async def _all_subtasks(db: Session, plan_id: str) -> list[SubTask]:
-    return list(await db.exec(select(SubTask).where(SubTask.execution_plan_id == plan_id)).all())
+    return list((await db.exec(select(SubTask).where(SubTask.execution_plan_id == plan_id))).all())
 
 
 async def _all_artifacts(db: Session) -> list[Artifact]:
-    return list(await db.exec(select(Artifact)).all())
+    return list((await db.exec(select(Artifact))).all())
 
 
 class TestSameRunReuse:
     """同一 run 内节点重执行 → 幂等，不得动子任务与产物。"""
 
-    def test_reuses_plan_without_deleting_subtasks(self, db):
-        _seed_plan(db)
+    async def test_reuses_plan_without_deleting_subtasks(self, db):
+        await _seed_plan(db)
 
-        plan, is_reused = _call(db, run_id="r1")
+        plan, is_reused = await _call(db, run_id="r1")
 
         assert is_reused is True
         assert plan.id == "p1"
-        assert [s.id for s in _all_subtasks(db, "p1")] == ["s-old"]
+        assert [s.id for s in await _all_subtasks(db, "p1")] == ["s-old"]
 
-    def test_preserves_completed_subtask_state(self, db):
-        _seed_plan(db)
+    async def test_preserves_completed_subtask_state(self, db):
+        await _seed_plan(db)
 
-        _call(db, run_id="r1")
+        await _call(db, run_id="r1")
 
-        subtask = _all_subtasks(db, "p1")[0]
+        subtask = await _all_subtasks(db, "p1")[0]
         assert subtask.status == "completed"
         assert subtask.output_result == "珍贵的历史产出，不可丢失"
 
-    def test_preserves_artifacts(self, db):
-        _seed_plan(db)
+    async def test_preserves_artifacts(self, db):
+        await _seed_plan(db)
 
-        _call(db, run_id="r1")
+        await _call(db, run_id="r1")
 
-        assert [a.id for a in _all_artifacts(db)] == ["a-old"]
+        assert [a.id for a in await _all_artifacts(db)] == ["a-old"]
 
-    def test_repeated_calls_are_stable(self, db):
-        _seed_plan(db)
+    async def test_repeated_calls_are_stable(self, db):
+        await _seed_plan(db)
 
-        first, _ = _call(db, run_id="r1")
-        second, _ = _call(db, run_id="r1")
+        first, _ = await _call(db, run_id="r1")
+        second, _ = await _call(db, run_id="r1")
 
         assert first.id == second.id == "p1"
-        assert len(_all_subtasks(db, "p1")) == 1
+        assert len(await _all_subtasks(db, "p1")) == 1
 
 
 class TestNewRunCreatesNewPlan:
     """同会话中的新一次复杂任务 → 新建计划，旧计划/子任务/产物全部保留。"""
 
-    def test_creates_a_separate_plan(self, db):
-        _seed_plan(db)
+    async def test_creates_a_separate_plan(self, db):
+        await _seed_plan(db)
 
-        plan, is_reused = _call(db, run_id="r2")
+        plan, is_reused = await _call(db, run_id="r2")
 
         assert is_reused is False
         assert plan.id != "p1", "新 run 应新建计划，而不是改写旧计划"
         assert plan.run_id == "r2"
-        assert len(_all_subtasks(db, plan.id)) == 2
+        assert len(await _all_subtasks(db, plan.id)) == 2
 
     async def test_old_plan_and_subtasks_survive(self, db):
-        _seed_plan(db)
+        await _seed_plan(db)
 
-        _call(db, run_id="r2")
+        await _call(db, run_id="r2")
 
         old = await db.get(ExecutionPlan, "p1")
         assert old is not None, "旧计划不得被删除"
         assert old.run_id == "r1", "旧计划仍归其原始 run"
-        assert [s.id for s in _all_subtasks(db, "p1")] == ["s-old"]
-        assert _all_subtasks(db, "p1")[0].output_result == "珍贵的历史产出，不可丢失"
+        assert [s.id for s in await _all_subtasks(db, "p1")] == ["s-old"]
+        assert await _all_subtasks(db, "p1")[0].output_result == "珍贵的历史产出，不可丢失"
 
-    def test_old_artifacts_survive(self, db):
+    async def test_old_artifacts_survive(self, db):
         """核心回归：新任务不能抹掉上一任务的产物。"""
-        _seed_plan(db)
+        await _seed_plan(db)
 
-        _call(db, run_id="r2")
+        await _call(db, run_id="r2")
 
-        assert [a.id for a in _all_artifacts(db)] == ["a-old"]
+        assert [a.id for a in await _all_artifacts(db)] == ["a-old"]
 
     async def test_two_sequential_tasks_keep_both_artifacts(self, db):
         """用户场景：同会话「先生成网页、再写小游戏」——两个产物都要在。"""
-        _seed_plan(db, plan_id="p1", run_id="r1", subtask_id="s-web", artifact_id="a-web")
+        await _seed_plan(db, plan_id="p1", run_id="r1", subtask_id="s-web", artifact_id="a-web")
 
         # 第二次复杂任务
-        plan2, _ = _call(db, run_id="r2")
+        plan2, _ = await _call(db, run_id="r2")
         db.add(
             SubTask(
                 id="s-game",
@@ -230,13 +230,13 @@ class TestNewRunCreatesNewPlan:
         )
         await db.commit()
 
-        assert sorted(a.id for a in _all_artifacts(db)) == ["a-game", "a-web"]
+        assert sorted(a.id for a in await _all_artifacts(db)) == ["a-game", "a-web"]
         assert await db.get(Artifact, "a-web") is not None, "网页产物必须留存"
 
     async def test_latest_plan_lookup_prefers_newest(self, db):
         """按 thread 取计划 → 最新那份（显式 created_at 排序，非无序 .first()）。"""
-        _seed_plan(db)
-        plan2, _ = _call(db, run_id="r2")
+        await _seed_plan(db)
+        plan2, _ = await _call(db, run_id="r2")
 
         latest = await get_latest_execution_plan_by_thread(db, "t1")
 
@@ -247,12 +247,12 @@ class TestMissingRunId:
     """run_id 缺失时无法做同源判定 → 一律新建，绝不删除既有内容。"""
 
     async def test_creates_new_plan_without_deleting(self, db):
-        _seed_plan(db)
+        await _seed_plan(db)
 
-        plan, is_reused = _call(db, run_id=None)
+        plan, is_reused = await _call(db, run_id=None)
 
         assert is_reused is False
         assert plan.id != "p1"
         assert await db.get(ExecutionPlan, "p1") is not None
-        assert [s.id for s in _all_subtasks(db, "p1")] == ["s-old"]
-        assert [a.id for a in _all_artifacts(db)] == ["a-old"]
+        assert [s.id for s in await _all_subtasks(db, "p1")] == ["s-old"]
+        assert [a.id for a in await _all_artifacts(db)] == ["a-old"]

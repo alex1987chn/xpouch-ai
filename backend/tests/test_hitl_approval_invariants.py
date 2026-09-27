@@ -19,9 +19,9 @@
 """
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel
+from sqlmodel import Session, SQLModel
 
 from crud.run_event import fail_stale_revision_jobs
 from models import AgentRun, ExecutionPlan, RunEvent, Thread
@@ -32,17 +32,18 @@ from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, NotFoundError, ValidationError
 from utils.time import utc_now
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -50,7 +51,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [
@@ -103,28 +103,28 @@ class TestPlanVersionCas:
         return svc
 
     async def test_bumps_version_when_expected_matches(self, db):
-        plan = _make_plan(db, version=1)
-        self._service(db)._bump_plan_version_with_cas("r1", 1)
+        plan = await _make_plan(db, version=1)
+        (await self._service(db))._bump_plan_version_with_cas("r1", 1)
         await db.refresh(plan)
         assert plan.plan_version == 2
 
     async def test_stale_version_raises_conflict_and_leaves_version_untouched(self, db):
-        plan = _make_plan(db, version=2)
+        plan = await _make_plan(db, version=2)
         with pytest.raises(AppError) as exc:
-            self._service(db)._bump_plan_version_with_cas("r1", 1)
+            (await self._service(db))._bump_plan_version_with_cas("r1", 1)
         assert exc.value.code == ErrorCode.PLAN_VERSION_CONFLICT
         assert exc.value.status_code == 409
         await db.refresh(plan)
         assert plan.plan_version == 2, "冲突时不得改写版本号"
 
-    def test_missing_plan_version_is_rejected(self, db):
-        _make_plan(db)
+    async def test_missing_plan_version_is_rejected(self, db):
+        await _make_plan(db)
         with pytest.raises(ValidationError):
-            self._service(db)._bump_plan_version_with_cas("r1", None)
+            (await self._service(db))._bump_plan_version_with_cas("r1", None)
 
-    def test_missing_plan_is_not_found(self, db):
+    async def test_missing_plan_is_not_found(self, db):
         with pytest.raises(NotFoundError):
-            self._service(db)._bump_plan_version_with_cas("no-such-run", 1)
+            (await self._service(db))._bump_plan_version_with_cas("no-such-run", 1)
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +244,9 @@ class TestStaleRevisionFallback:
     2026-09-13 修复，这些用例锁住修复。
     """
 
-    async def _emit(self, db: Session, run_id: str, event_type: RunEventType, *, ago_seconds: int = 0):
+    async def _emit(
+        self, db: Session, run_id: str, event_type: RunEventType, *, ago_seconds: int = 0
+    ):
         from datetime import timedelta
 
         # 评审后语义收窄：fail_stale_revision_jobs 只扫**活跃 run**（join AgentRun），
@@ -277,8 +279,10 @@ class TestStaleRevisionFallback:
     async def _event_types(self, db: Session, run_id: str) -> list[str]:
         from sqlmodel import select
 
-        rows = await db.exec(
-            select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.created_at)
+        rows = (
+            await db.exec(
+                select(RunEvent).where(RunEvent.run_id == run_id).order_by(RunEvent.created_at)
+            )
         ).all()
         return [str(r.event_type) for r in rows]
 

@@ -76,7 +76,7 @@ async def list_skill_templates(
     )
     if not include_inactive:
         statement = statement.where(SkillTemplate.is_active)
-    return list(await session.exec(statement).all())
+    return list((await session.exec(statement)).all())
 
 
 @router.post("/templates", response_model=SkillTemplateResponse)
@@ -87,8 +87,10 @@ async def create_skill_template(
 ):
     _require_editor(current_user)
     _validate_mode(payload.recommended_mode)
-    exists = await session.exec(
-        select(SkillTemplate).where(SkillTemplate.template_key == payload.template_key)
+    exists = (
+        await session.exec(
+            select(SkillTemplate).where(SkillTemplate.template_key == payload.template_key)
+        )
     ).first()
     if exists is not None:
         raise ValidationError("template_key 已存在")
@@ -252,8 +254,8 @@ async def export_skill_template(
     Returns:
         TemplateExportSchema 结构的 JSON
     """
-    template = await session.exec(
-        select(SkillTemplate).where(SkillTemplate.template_key == template_key)
+    template = (
+        await session.exec(select(SkillTemplate).where(SkillTemplate.template_key == template_key))
     ).first()
 
     if template is None:
@@ -274,10 +276,12 @@ async def share_skill_template(
     from services.chat.share_service import ShareService
 
     _require_editor(current_user)
-    template = await session.exec(
-        select(SkillTemplate).where(
-            SkillTemplate.template_key == template_key,
-            SkillTemplate.is_active == True,  # noqa: E712
+    template = (
+        await session.exec(
+            select(SkillTemplate).where(
+                SkillTemplate.template_key == template_key,
+                SkillTemplate.is_active == True,  # noqa: E712
+            )
         )
     ).first()
     if template is None:
@@ -326,8 +330,12 @@ async def preview_import_template(
             return TemplateImportPreviewResponse(valid=False, error=error)
 
         # 检查冲突
-        existing = await session.exec(
-            select(SkillTemplate).where(SkillTemplate.template_key == template_data.template_key)
+        existing = (
+            await session.exec(
+                select(SkillTemplate).where(
+                    SkillTemplate.template_key == template_data.template_key
+                )
+            )
         ).first()
 
         conflict_info = TemplateConflictInfo(
@@ -394,8 +402,10 @@ async def import_skill_template(
         target_key = original_key
 
         # 检查冲突
-        existing = await session.exec(
-            select(SkillTemplate).where(SkillTemplate.template_key == original_key)
+        existing = (
+            await session.exec(
+                select(SkillTemplate).where(SkillTemplate.template_key == original_key)
+            )
         ).first()
 
         # 根据策略处理
@@ -413,8 +423,10 @@ async def import_skill_template(
                 target_key = request.target_key or _generate_suggested_key(original_key)
 
                 # 确保新 key 也不冲突
-                while await session.exec(
-                    select(SkillTemplate).where(SkillTemplate.template_key == target_key)
+                while (
+                    await session.exec(
+                        select(SkillTemplate).where(SkillTemplate.template_key == target_key)
+                    )
                 ).first():
                     target_key = _generate_suggested_key(target_key)
 

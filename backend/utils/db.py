@@ -189,7 +189,7 @@ async def delete_checkpoints_for_thread(thread_id: str, run_ids: list[str] | Non
     target_ids = [thread_id] + [f"{thread_id}_{run_id}" for run_id in (run_ids or [])]
     deleted = 0
     remaining_after = -1
-    async with await get_db_connection() as conn:
+    async with get_db_connection() as conn:
         saver = AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())
         for target in target_ids:
             try:

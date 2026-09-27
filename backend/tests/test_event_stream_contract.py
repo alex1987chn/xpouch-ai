@@ -44,7 +44,7 @@ def test_stream_pipeline_consumes_custom_stream():
     assert "sse_payload_to_wire(" in code, "消费端应使用统一 payload 转换"
 
 
-def test_emit_event_roundtrip_through_custom_stream():
+async def test_emit_event_roundtrip_through_custom_stream():
     """emit_event → adispatch_custom_event → on_custom_event 全链路（真实 StateGraph）。"""
     import asyncio
 
@@ -72,14 +72,14 @@ def test_emit_event_roundtrip_through_custom_stream():
 
     async def _run():
         wires = []
-        async for token in await compiled.astream_events({"x": ""}, version="v2"):
+        async for token in compiled.astream_events({"x": ""}, version="v2"):
             if token.get("event") == "on_custom_event" and token.get("name") == "sse_event":
                 wire = sse_payload_to_wire(token)
                 if wire:
                     wires.append(wire)
         return wires
 
-    wires = asyncio.run(_run())
+    wires = await _run()
     assert len(wires) == 1
     assert wires[0].startswith("id: ")
     assert "event: router.start" in wires[0]
@@ -88,12 +88,11 @@ def test_emit_event_roundtrip_through_custom_stream():
 
 async def test_emit_event_safe_outside_graph_context():
     """无图执行上下文时 no-op 不抛异常（单元测试/直调场景）。"""
-    import asyncio
 
     from agents.event_stream import emit_event
     from utils.event_generator import event_router_start
 
-    asyncio.run(await emit_event(event_router_start(query="no-op")))  # 不应抛异常
+    await emit_event(event_router_start(query="no-op"))  # 不应抛异常
 
 
 def test_replace_task_item_returns_new_list_and_merges_fields():

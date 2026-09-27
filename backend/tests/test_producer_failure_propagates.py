@@ -45,7 +45,7 @@ def _service() -> StreamService:
     return svc
 
 
-def _run(monkeypatch, svc: StreamService) -> None:
+async def _run(monkeypatch, svc: StreamService) -> None:
     async def _fake_mcp_tools() -> list:
         return []
 
@@ -56,7 +56,7 @@ def _run(monkeypatch, svc: StreamService) -> None:
     monkeypatch.setattr("utils.db.get_shared_checkpointer", lambda: object())
 
     async def _drain() -> None:
-        async for _ in await svc.execute_langgraph_stream(
+        async for _ in svc.execute_langgraph_stream(
             thread_id="t-1",
             stream_queue=asyncio.Queue(),
             sse_queue=asyncio.Queue(),
@@ -65,16 +65,16 @@ def _run(monkeypatch, svc: StreamService) -> None:
         ):
             pass
 
-    asyncio.run(_drain())
+    await _drain()
 
 
 class TestProducerFailurePropagates:
-    def test_exception_reaches_caller(self, monkeypatch):
+    async def test_exception_reaches_caller(self, monkeypatch):
         """核心回归：producer 内部异常必须冒泡，而不是只记一条 error 日志。"""
         with pytest.raises(RuntimeError, match="producer 内部故障"):
-            _run(monkeypatch, _service())
+            await _run(monkeypatch, _service())
 
-    def test_app_error_also_propagates(self, monkeypatch):
+    async def test_app_error_also_propagates(self, monkeypatch):
         """AppError 同样上抛（此前显式 re-raise，改为统一不捕获后仍须成立）。"""
 
         class _AppErrGraph:
@@ -107,7 +107,7 @@ class TestProducerFailurePropagates:
         from utils.exceptions import AppError
 
         async def _drain() -> None:
-            async for _ in await svc.execute_langgraph_stream(
+            async for _ in svc.execute_langgraph_stream(
                 thread_id="t-1",
                 stream_queue=asyncio.Queue(),
                 sse_queue=asyncio.Queue(),
@@ -117,4 +117,4 @@ class TestProducerFailurePropagates:
                 pass
 
         with pytest.raises(AppError):
-            asyncio.run(_drain())
+            await _drain()

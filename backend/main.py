@@ -77,7 +77,7 @@ async def _init_experts_sync():
     from expert_config import EXPERT_DEFAULTS
 
     async with SessionFactory() as session:
-        existing_experts = await session.exec(select(SystemExpert)).all()
+        existing_experts = (await session.exec(select(SystemExpert))).all()
 
         if not existing_experts:
             logger.info("[Lifespan] No experts found, initializing default experts...")
@@ -96,7 +96,7 @@ async def _init_library_templates_sync():
 
     async with SessionFactory() as session:
         existing_keys = {
-            template.template_key for template in await session.exec(select(SkillTemplate)).all()
+            template.template_key for template in (await session.exec(select(SkillTemplate))).all()
         }
         for template_config in TEMPLATE_DEFAULTS:
             if template_config["template_key"] in existing_keys:

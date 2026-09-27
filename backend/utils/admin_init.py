@@ -40,10 +40,10 @@ async def init_admin_from_env(
     identifier = ""
 
     if admin_email:
-        user = await session.exec(select(User).where(User.email == admin_email)).first()
+        user = (await session.exec(select(User).where(User.email == admin_email))).first()
         identifier = f"邮箱 {admin_email}"
     elif admin_phone:
-        user = await session.exec(select(User).where(User.phone_number == admin_phone)).first()
+        user = (await session.exec(select(User).where(User.phone_number == admin_phone))).first()
         identifier = f"手机号 {admin_phone}"
 
     if not user:

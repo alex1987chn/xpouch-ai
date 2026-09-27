@@ -1,4 +1,3 @@
-import asyncio
 from unittest.mock import AsyncMock, patch
 
 from langchain_core.messages import AIMessage, ToolMessage
@@ -21,7 +20,7 @@ def _mock_empty_overrides():
     )
 
 
-def test_dynamic_tool_node_blocks_high_risk_tool_without_invoking_executor(monkeypatch):
+async def test_dynamic_tool_node_blocks_high_risk_tool_without_invoking_executor(monkeypatch):
     class _FailingToolNode:
         def __init__(self, _tools):
             raise AssertionError("ToolNode should not be constructed when policy blocks the call")
@@ -46,7 +45,7 @@ def test_dynamic_tool_node_blocks_high_risk_tool_without_invoking_executor(monke
     config = {"configurable": {"mcp_tools": [_DummyTool("filesystem_write", "写入本地文件")]}}
 
     with _mock_empty_overrides():
-        result = asyncio.run(tool_runtime.dynamic_tool_node(state, config))
+        result = await tool_runtime.dynamic_tool_node(state, config)
 
     assert len(result["messages"]) == 1
     message = result["messages"][0]
@@ -54,7 +53,7 @@ def test_dynamic_tool_node_blocks_high_risk_tool_without_invoking_executor(monke
     assert "额外审批" in message.content
 
 
-def test_dynamic_tool_node_blocks_builtin_tool_for_memorize_expert(monkeypatch):
+async def test_dynamic_tool_node_blocks_builtin_tool_for_memorize_expert(monkeypatch):
     class _FailingToolNode:
         def __init__(self, _tools):
             raise AssertionError("ToolNode should not be constructed when policy blocks the call")
@@ -78,7 +77,7 @@ def test_dynamic_tool_node_blocks_builtin_tool_for_memorize_expert(monkeypatch):
     }
 
     with _mock_empty_overrides():
-        result = asyncio.run(tool_runtime.dynamic_tool_node(state, None))
+        result = await tool_runtime.dynamic_tool_node(state, None)
 
     assert len(result["messages"]) == 1
     message = result["messages"][0]

@@ -192,7 +192,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
         return {"router_decision": "complex"}
 
 
-def _load_router_system_prompt() -> str:
+async def _load_router_system_prompt() -> str:
     """
     v3.5: 三层兜底加载 Router System Prompt
 
@@ -202,7 +202,7 @@ def _load_router_system_prompt() -> str:
     """
     # L1/L2: 尝试从数据库/缓存加载
     try:
-        config = get_expert_config_cached("router")
+        config = await get_expert_config_cached("router")
         if config and config.get("system_prompt"):
             logger.info("[Router] 从数据库/缓存加载 System Prompt")
             return config["system_prompt"]

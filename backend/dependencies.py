@@ -47,7 +47,7 @@ async def get_current_user(
             payload = verify_token(token, token_type="access")
             user_id = payload["sub"]
 
-            user = session.get(User, user_id)
+            user = await session.get(User, user_id)
             if user:
                 return user
         except JWTAuthError:
@@ -62,7 +62,7 @@ async def get_current_user(
             payload = verify_token(token, token_type="access")
             user_id = payload["sub"]
 
-            user = session.get(User, user_id)
+            user = await session.get(User, user_id)
             if user:
                 return user
         except JWTAuthError:
@@ -75,7 +75,7 @@ async def get_current_user(
     if settings.is_development:
         user_id = request.headers.get("X-User-ID")
         if user_id:
-            user = session.get(User, user_id)
+            user = await session.get(User, user_id)
             if user:
                 return user
 
@@ -89,8 +89,8 @@ async def get_current_user(
                 role="user",
             )
             session.add(new_user)
-            session.commit()
-            session.refresh(new_user)
+            await session.commit()
+            await session.refresh(new_user)
             logger.info(f"[Auth] 开发环境自动创建用户: {user_id}")
             return new_user
 

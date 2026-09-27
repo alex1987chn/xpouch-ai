@@ -58,7 +58,9 @@ async def get_run_stats(
     trends = await get_daily_trends(db, user_id=user_id, days=days)
 
     # 获取运行列表（分页）
-    runs, total_count = await get_run_list(db, user_id=user_id, limit=limit, offset=offset, search=search)
+    runs, total_count = await get_run_list(
+        db, user_id=user_id, limit=limit, offset=offset, search=search
+    )
 
     # 今日 token 用量与配额（按请求者口径；配额为全局设置）
     from services.run_quota import load_daily_token_quota

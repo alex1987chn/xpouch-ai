@@ -288,8 +288,8 @@ class RecoveryService:
         if agent_run.status != RunStatus.WAITING_FOR_APPROVAL:
             raise ValidationError("当前运行不在等待审批状态，无法修订")
 
-        execution_plan = await self.db.exec(
-            select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
+        execution_plan = (
+            await self.db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id))
         ).first()
         if not execution_plan:
             raise NotFoundError("ExecutionPlan")
@@ -439,8 +439,8 @@ class RecoveryService:
         if cancelled is not None:
             await self.db.commit()
 
-        execution_plan = await self.db.exec(
-            select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
+        execution_plan = (
+            await self.db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id))
         ).first()
         if execution_plan:
             from models.enums import TaskStatus
@@ -538,7 +538,7 @@ class RecoveryService:
                 set_run_id(run_id)
                 try:
                     # 调用 StreamService 执行 LangGraph 流式处理
-                    async for event in await self.stream_service.execute_langgraph_stream(
+                    async for event in self.stream_service.execute_langgraph_stream(
                         thread_id=thread_id,
                         stream_queue=stream_queue,
                         sse_queue=sse_queue,
@@ -582,7 +582,7 @@ class RecoveryService:
             raise
 
         return StreamingResponse(
-            await event_generator(),
+            event_generator(),
             media_type="text/event-stream",
             headers=sse_stream_headers(thread_id, run_id),
         )
@@ -685,8 +685,10 @@ class RecoveryService:
 
         if result.rowcount == 0:
             await self.db.rollback()
-            latest = await self.db.exec(
-                select(ExecutionPlan.plan_version).where(ExecutionPlan.id == execution_plan.id)
+            latest = (
+                await self.db.exec(
+                    select(ExecutionPlan.plan_version).where(ExecutionPlan.id == execution_plan.id)
+                )
             ).first()
             raise AppError(
                 message="计划已被更新，请刷新后重试",
@@ -729,9 +731,11 @@ class RecoveryService:
                 # 查询对应的 SubTask
                 from models import SubTask
 
-                subtask = await self.db.exec(
-                    select(SubTask).where(
-                        SubTask.execution_plan_id == execution_plan.id, SubTask.id == task_id
+                subtask = (
+                    await self.db.exec(
+                        select(SubTask).where(
+                            SubTask.execution_plan_id == execution_plan.id, SubTask.id == task_id
+                        )
                     )
                 ).first()
 
@@ -816,8 +820,8 @@ class RecoveryService:
 
     async def _get_execution_plan_by_run(self, run_id: str) -> ExecutionPlan | None:
         """按 run_id 获取对应的 ExecutionPlan。"""
-        return await self.db.exec(
-            select(ExecutionPlan).where(ExecutionPlan.run_id == run_id)
+        return (
+            await self.db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id))
         ).first()
 
     def _build_error_event(self, code: str | ErrorCode, message: str) -> str:

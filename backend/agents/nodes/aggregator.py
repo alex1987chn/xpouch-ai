@@ -61,7 +61,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     aggregator_input = _build_aggregator_input(expert_results, strategy)
 
     # v3.5: 三层兜底加载 System Prompt (L1: DB -> L2: Cache -> L3: Constants)
-    system_prompt = _load_aggregator_system_prompt(aggregator_input)
+    system_prompt = await _load_aggregator_system_prompt(aggregator_input)
     logger.info(f"[AGG] System Prompt 长度: {len(system_prompt)} 字符")
 
     # v3.1: 获取 Aggregator LLM（带兜底逻辑）
@@ -185,7 +185,7 @@ async def aggregator_node(state: AgentState, config: RunnableConfig = None) -> d
     }
 
 
-def _load_aggregator_system_prompt(input_data: str) -> str:
+async def _load_aggregator_system_prompt(input_data: str) -> str:
     """
     v3.5: 三层兜底加载 Aggregator System Prompt
     v3.6: 添加本地内存缓存层 (L0)
@@ -211,7 +211,7 @@ def _load_aggregator_system_prompt(input_data: str) -> str:
     else:
         # L1/L2: 尝试从数据库/全局缓存加载
         try:
-            config = get_expert_config_cached("aggregator")
+            config = await get_expert_config_cached("aggregator")
             if config and config.get("system_prompt"):
                 system_prompt = config["system_prompt"]
                 # 同步到本地缓存

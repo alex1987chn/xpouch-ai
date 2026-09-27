@@ -35,7 +35,7 @@ import pytest
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel, select
+from sqlmodel import Session, SQLModel, select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -58,17 +58,18 @@ from services.chat.frame_recorder import RunFrameRecorder  # noqa: E402
 from services.chat.stream_service import StreamService  # noqa: E402
 from utils.time import utc_now  # noqa: E402
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -76,7 +77,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 # handle_langgraph_stream 会碰到的全部表（含只读的 SystemSetting——
@@ -144,7 +144,7 @@ async def engine(tmp_path):
         )
         await session.commit()
     yield engine
-    engine.dispose()
+    await engine.dispose()
 
 
 def _db(engine) -> Session:
@@ -184,6 +184,9 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
         }
 
     svc = StreamService(_test_session())
+    # producer 自建私有会话：注入绑测试引擎的工厂，行为等价、不打真库
+    _maker = async_sessionmaker(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
+    svc._producer_session_factory = _maker
 
     async def _fake_mcp_tools() -> list:
         return []
@@ -231,7 +234,8 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
         )
         assert run.deadline_at is None, "HITL 等待期应挂起执行预算"
         event_types = {
-            row.event_type for row in await db.exec(select(RunEvent).where(RunEvent.run_id == "r1")).all()
+            row.event_type
+            for row in (await db.exec(select(RunEvent).where(RunEvent.run_id == "r1"))).all()
         }
         assert RunEventType.HITL_INTERRUPTED in event_types, "缺 hitl_interrupted 账本事件"
         assert RunEventType.ROUTER_DECIDED in event_types, "断连前已发生的事件不得丢账本"

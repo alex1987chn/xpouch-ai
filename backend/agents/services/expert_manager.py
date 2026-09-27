@@ -40,8 +40,8 @@ async def get_expert_config(expert_type: str, session: Session) -> dict | None:
             "temperature": float
         }
     """
-    expert = await session.exec(
-        select(SystemExpert).where(SystemExpert.expert_type == expert_type)
+    expert = (
+        await session.exec(select(SystemExpert).where(SystemExpert.expert_type == expert_type))
     ).first()
 
     if not expert:
@@ -122,7 +122,7 @@ async def load_all_experts(session: Session) -> dict[str, dict]:
     Returns:
         Dict: 所有专家配置 {expert_type: config}
     """
-    experts = await session.exec(select(SystemExpert)).all()
+    experts = (await session.exec(select(SystemExpert))).all()
     return {expert.expert_type: _build_config(expert) for expert in experts}
 
 
@@ -238,8 +238,8 @@ async def get_all_expert_list(db_session: Session | None = None) -> list[tuple]:
         return fallback_experts
 
     try:
-        experts = await db_session.exec(
-            select(SystemExpert).order_by(SystemExpert.expert_type)
+        experts = (
+            await db_session.exec(select(SystemExpert).order_by(SystemExpert.expert_type))
         ).all()
 
         result = [(e.expert_type, e.name, e.description or "暂无描述") for e in experts]

@@ -174,7 +174,7 @@ def build_tool_call_wrapper(
             from utils.async_task_queue import async_append_run_event, spawn_background
 
             spawn_background(
-                await async_append_run_event(
+                async_append_run_event(
                     run_id=run_id,
                     event_type="tool_result",
                     thread_id=thread_id,
@@ -225,7 +225,7 @@ def build_tool_call_wrapper(
                         duration_ms=duration_ms,
                     )
                     await emit_event(event_tool_result(**result_data.model_dump()), config=config)
-                    _ledger(result_data)
+                    await _ledger(result_data)
                 return result
             except Exception as err:
                 is_last = attempt >= MAX_ATTEMPTS
@@ -263,7 +263,7 @@ def build_tool_call_wrapper(
                         error=user_msg,
                     )
                     await emit_event(event_tool_result(**result_data.model_dump()), config=config)
-                    _ledger(result_data)
+                    await _ledger(result_data)
                 return ToolMessage(
                     content=user_msg,
                     tool_call_id=call_id,

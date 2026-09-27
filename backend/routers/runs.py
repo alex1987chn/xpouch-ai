@@ -68,7 +68,9 @@ async def get_run_details(
         RunSummaryResponse: 运行实例摘要
     """
     logger.info(f"[Runs API] 获取运行详情: run_id={run_id}, user_id={current_user.id}")
-    run = _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
+    run = await _get_run_or_raise(
+        db, run_id, current_user.id, is_admin=(current_user.role == "admin")
+    )
     return RunSummaryResponse.model_validate(run)
 
 
@@ -84,12 +86,14 @@ async def get_run_plan(
     事件账本推导（最新修订事件 = started 即修订中 / failed 即失败）。
     """
     # 归属校验（admin 可跨用户查看）；run 本体不再使用
-    _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
+    await _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
 
-    plan = await db.exec(
-        select(ExecutionPlan)
-        .where(ExecutionPlan.run_id == run_id)
-        .order_by(ExecutionPlan.id.desc())
+    plan = (
+        await db.exec(
+            select(ExecutionPlan)
+            .where(ExecutionPlan.run_id == run_id)
+            .order_by(ExecutionPlan.id.desc())
+        )
     ).first()
     if not plan:
         raise NotFoundError("ExecutionPlan")
@@ -97,19 +101,21 @@ async def get_run_plan(
     # 事件账本推导修订状态（倒序取第一条相关事件）
     from models.enums import RunEventType
 
-    revision_events = await db.exec(
-        select(RunEvent)
-        .where(
-            RunEvent.run_id == run_id,
-            RunEvent.event_type.in_(
-                [
-                    RunEventType.HITL_REVISION_STARTED,
-                    RunEventType.HITL_REVISION_FAILED,
-                    RunEventType.PLAN_UPDATED,
-                ]
-            ),
+    revision_events = (
+        await db.exec(
+            select(RunEvent)
+            .where(
+                RunEvent.run_id == run_id,
+                RunEvent.event_type.in_(
+                    [
+                        RunEventType.HITL_REVISION_STARTED,
+                        RunEventType.HITL_REVISION_FAILED,
+                        RunEventType.PLAN_UPDATED,
+                    ]
+                ),
+            )
+            .order_by(RunEvent.id.desc())
         )
-        .order_by(RunEvent.id.desc())
     ).all()
     revising = False
     revision_error: str | None = None
@@ -168,7 +174,7 @@ async def get_run_status(
         AgentRun.completed_at,
         AgentRun.user_id,
     ).where(AgentRun.id == run_id)
-    result = await db.exec(statement).first()
+    result = (await db.exec(statement)).first()
 
     if result is None:
         raise NotFoundError("AgentRun")
@@ -211,7 +217,7 @@ async def get_run_timeline(
         RunTimelineResponse: 包含事件列表的响应
     """
     logger.info(f"[Runs API] 获取运行时间线: run_id={run_id}, user_id={current_user.id}")
-    _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
+    await _get_run_or_raise(db, run_id, current_user.id, is_admin=(current_user.role == "admin"))
 
     events = await get_run_events_by_run_id(db, run_id, limit=limit, offset=offset)
 
@@ -247,7 +253,7 @@ async def get_thread_timeline(
         ThreadTimelineResponse: 包含事件列表的响应
     """
     logger.info(f"[Runs API] 获取线程时间线: thread_id={thread_id}, user_id={current_user.id}")
-    _get_thread_or_raise(db, thread_id, current_user.id)
+    await _get_thread_or_raise(db, thread_id, current_user.id)
 
     events = await get_run_events_by_thread_id(db, thread_id, limit=limit, offset=offset)
 

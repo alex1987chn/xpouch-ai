@@ -81,7 +81,7 @@ async def _invoke(executor: ToolNode, state: dict) -> dict:
     graph.set_entry_point("tools")
     graph.add_edge("tools", END)
     app = graph.compile()
-    return asyncio.run(await app.ainvoke(state))
+    return await app.ainvoke(state)
 
 
 def _tool_messages(result: dict) -> list:
@@ -98,7 +98,7 @@ def _result_texts(result: dict) -> list[str]:
 class TestPerToolCallIsolation:
     """核心回归：失败的那一个调用重试，已成功的调用不得重跑。"""
 
-    def test_successful_call_is_not_re_executed_when_sibling_retries(self, counters):
+    async def test_successful_call_is_not_re_executed_when_sibling_retries(self, counters):
         attempts = {"n": 0}
 
         @tool
@@ -111,21 +111,21 @@ class TestPerToolCallIsolation:
 
         executor = _make_executor(counters, [flaky_tool])
         # 同批两个调用：ok_tool（会成功） + flaky_tool（先失败后成功）
-        result = _invoke(executor, _state(("ok_tool", "c1"), ("flaky_tool", "c2")))
+        result = await _invoke(executor, _state(("ok_tool", "c1"), ("flaky_tool", "c2")))
 
         assert counters["ok"] == 1, "已成功的调用不得因同批失败而重跑"
         assert attempts["n"] == 2, "失败的那个调用应重试一次"
         assert "ok-result" in _result_texts(result)
         assert "flaky-recovered" in _result_texts(result)
 
-    def test_failing_call_does_not_abort_sibling(self, counters):
+    async def test_failing_call_does_not_abort_sibling(self, counters):
         @tool
         async def broken_tool() -> str:
             """不可重试的错误。"""
             raise ValueError("nope")
 
         executor = _make_executor(counters, [broken_tool])
-        result = _invoke(executor, _state(("ok_tool", "c1"), ("broken_tool", "c2")))
+        result = await _invoke(executor, _state(("ok_tool", "c1"), ("broken_tool", "c2")))
 
         assert counters["ok"] == 1, "兄弟工具应照常执行"
         assert "ok-result" in _result_texts(result)
@@ -134,28 +134,28 @@ class TestPerToolCallIsolation:
 class TestErrorMessages:
     """错误消息由 ToolNode 生成：tool_call_id 正确、status=error。"""
 
-    def test_error_message_keeps_real_tool_call_id(self, counters):
+    async def test_error_message_keeps_real_tool_call_id(self, counters):
         @tool
         async def broken_tool() -> str:
             """不可重试的错误。"""
             raise ValueError("nope")
 
         executor = _make_executor(counters, [broken_tool])
-        result = _invoke(executor, _state(("broken_tool", "call-xyz")))
+        result = await _invoke(executor, _state(("broken_tool", "call-xyz")))
 
         err_msg = next(m for m in _tool_messages(result) if m.tool_call_id == "call-xyz")
         assert err_msg.status == "error"
         assert "nope" in err_msg.content, "应带上分类后的用户可读文案"
         assert all(m.tool_call_id != "unknown" for m in _tool_messages(result))
 
-    def test_error_message_is_user_facing_chinese(self, counters):
+    async def test_error_message_is_user_facing_chinese(self, counters):
         @tool
         async def broken_tool() -> str:
             """不可重试的错误。"""
             raise ValueError("internal detail")
 
         executor = _make_executor(counters, [broken_tool])
-        result = _invoke(executor, _state(("broken_tool", "c1")))
+        result = await _invoke(executor, _state(("broken_tool", "c1")))
 
         content = _tool_messages(result)[0].content
         assert "工具执行时出错" in content
@@ -164,7 +164,7 @@ class TestErrorMessages:
 class TestTimeoutGranularity:
     """超时按单个工具选取：内置与 MCP 各自独立，互不拖宽。"""
 
-    def test_timeout_value_is_chosen_per_tool(self, monkeypatch):
+    async def test_timeout_value_is_chosen_per_tool(self, monkeypatch):
         """同一个慢工具：算作内置工具时超时，算作 MCP 工具时通过。
 
         这是「超时不再被同批 MCP 工具拖宽、也不再一刀切」的直接证据。
@@ -184,7 +184,7 @@ class TestTimeoutGranularity:
             handle_tool_errors=False,
             awrap_tool_call=build_tool_call_wrapper({"slow_tool"}),
         )
-        builtin_result = _invoke(builtin_executor, _state(("slow_tool", "c1")))
+        builtin_result = await _invoke(builtin_executor, _state(("slow_tool", "c1")))
         assert _tool_messages(builtin_result)[0].status == "error"
         assert "超时" in _tool_messages(builtin_result)[0].content
 
@@ -194,10 +194,10 @@ class TestTimeoutGranularity:
             handle_tool_errors=False,
             awrap_tool_call=build_tool_call_wrapper(set()),
         )
-        mcp_result = _invoke(mcp_executor, _state(("slow_tool", "c1")))
+        mcp_result = await _invoke(mcp_executor, _state(("slow_tool", "c1")))
         assert _tool_messages(mcp_result)[0].content == "done"
 
-    def test_timeout_is_not_retried(self, monkeypatch, counters):
+    async def test_timeout_is_not_retried(self, monkeypatch, counters):
         """超时不做重试（重试只会把最坏耗时翻倍）——保持快速失败。"""
         monkeypatch.setattr("agents.tool_runtime.BASE_TOOL_TIMEOUT", 1)
         calls = {"n": 0}
@@ -210,7 +210,7 @@ class TestTimeoutGranularity:
             return "never"
 
         executor = _make_executor(counters, [slow_tool])
-        _invoke(executor, _state(("slow_tool", "c1")))
+        await _invoke(executor, _state(("slow_tool", "c1")))
 
         assert calls["n"] == 1, "超时不应触发重试"
 

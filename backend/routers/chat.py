@@ -335,7 +335,7 @@ async def chat_endpoint(
     # 1.5 附件文档解析（任一失败即 400，不产生半截消息）
     parsed_documents = _parse_documents(request.documents)
 
-    ensure_no_active_run_for_thread(
+    await ensure_no_active_run_for_thread(
         session,
         thread_id=thread_id,
         user_id=current_user.id,
@@ -618,8 +618,12 @@ async def resume_stream(
 
     await get_thread_or_raise(session, thread_id, current_user.id)
 
-    run = await session.exec(
-        select(AgentRun).where(AgentRun.thread_id == thread_id).order_by(AgentRun.started_at.desc())
+    run = (
+        await session.exec(
+            select(AgentRun)
+            .where(AgentRun.thread_id == thread_id)
+            .order_by(AgentRun.started_at.desc())
+        )
     ).first()
     if not run or run.status in _RUN_TERMINAL_STATUSES:
         raise HTTPException(status_code=410, detail="执行已结束，请刷新会话查看结果")
@@ -649,7 +653,7 @@ async def resume_stream(
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(
-            await _paused_replay_gen(),
+            _paused_replay_gen(),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
@@ -690,7 +694,7 @@ async def resume_stream(
             get_stream_hub().unsubscribe(run.id, queue)
 
     return StreamingResponse(
-        await _resume_gen(),
+        _resume_gen(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

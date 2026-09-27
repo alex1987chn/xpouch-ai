@@ -188,7 +188,9 @@ async def test_missing_message_degrades_to_none(monkeypatch, fresh):
         is None
     )
     assert (
-        await fail_expert_message(_SessionStub(messages), thread_id="th-1", task_id="ghost", error="x")
+        await fail_expert_message(
+            _SessionStub(messages), thread_id="th-1", task_id="ghost", error="x"
+        )
         is None
     )
 
@@ -213,7 +215,9 @@ async def test_run_thinking_insert_shape_and_idempotency(monkeypatch):
 
     monkeypatch.setattr(_SessionStub, "add", _add_with_id)
 
-    first = await insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-1")
+    first = await insert_run_thinking_message(
+        _SessionStub(messages), thread_id="th-1", run_id="run-1"
+    )
     assert first == 500
     msg = messages[0]
     assert msg.role == "assistant"
@@ -221,12 +225,16 @@ async def test_run_thinking_insert_shape_and_idempotency(monkeypatch):
     assert msg.extra_data == {"message_kind": "run_thinking", "run_id": "run-1"}
 
     # 幂等：驳回修订重跑 commander 时同 run 不得插第二行
-    second = await insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-1")
+    second = await insert_run_thinking_message(
+        _SessionStub(messages), thread_id="th-1", run_id="run-1"
+    )
     assert second == 500
     assert len(messages) == 1
 
     # 不同 run 各有一行（多轮对话）
-    third = await insert_run_thinking_message(_SessionStub(messages), thread_id="th-1", run_id="run-2")
+    third = await insert_run_thinking_message(
+        _SessionStub(messages), thread_id="th-1", run_id="run-2"
+    )
     assert third == 501
     assert len(messages) == 2
 

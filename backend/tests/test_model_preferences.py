@@ -125,7 +125,9 @@ async def test_load_model_preferences_defaults_when_unset():
 
 async def test_save_then_load_roundtrip():
     session = _StubSession()
-    saved = await save_model_preferences(session, simple_model="kimi-k2.6", simple_thinking="enabled")
+    saved = await save_model_preferences(
+        session, simple_model="kimi-k2.6", simple_thinking="enabled"
+    )
     assert saved == {"simple_model": "kimi-k2.6", "simple_thinking": "enabled"}
     assert await load_model_preferences(session) == {
         "simple_model": "kimi-k2.6",

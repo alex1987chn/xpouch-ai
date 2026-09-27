@@ -37,8 +37,10 @@ async def insert_run_thinking_message(
     时思考卡自然位于专家卡与聚合正文之前。幂等（同 run 已有思考行即返回
     其 id）：驳回修订会重跑 commander，不得产生第二行。
     """
-    rows = await db.exec(
-        select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+    rows = (
+        await db.exec(
+            select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+        )
     ).all()
     for m in rows:
         extra = m.extra_data or {}
@@ -181,8 +183,10 @@ async def insert_expert_message(
 async def _find_expert_message(db: Session, thread_id: str, task_id: str) -> Message | None:
     """按 task_id 定位该线程的专家消息（extra_data 是 JSON 列，thread 内
     助手消息量级是个位数，内存过滤比 JSONB 表达式更可移植且够快）。"""
-    rows = await db.exec(
-        select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+    rows = (
+        await db.exec(
+            select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+        )
     ).all()
     for m in rows:
         extra = m.extra_data or {}
@@ -199,9 +203,11 @@ async def _tool_snapshot_from_ledger(
     stats: dict[str, int] = {"count": 0, "total_ms": 0, "failed": 0}
     calls: list[dict[str, Any]] = []
     if run_id:
-        rows = await db.exec(
-            select(RunEvent.event_data).where(
-                RunEvent.run_id == run_id, RunEvent.event_type == RunEventType.TOOL_RESULT
+        rows = (
+            await db.exec(
+                select(RunEvent.event_data).where(
+                    RunEvent.run_id == run_id, RunEvent.event_type == RunEventType.TOOL_RESULT
+                )
             )
         ).all()
         for data in rows:
@@ -281,8 +287,10 @@ async def fail_running_expert_messages_for_run(
     """run 异常终态的收尾（close_orphaned_task_state 调用）：把该轮仍挂
     running 的专家执行消息置 failed——否则消息流的专家卡永远转圈，
     刷新后也恢复不出结果。返回收尾行数。"""
-    rows = await db.exec(
-        select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+    rows = (
+        await db.exec(
+            select(Message).where(Message.thread_id == thread_id, Message.role == "assistant")
+        )
     ).all()
     closed = 0
     for m in rows:

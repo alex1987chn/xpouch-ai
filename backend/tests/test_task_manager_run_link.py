@@ -24,7 +24,7 @@ class _FakeSession:
         self.refreshed.append(obj)
 
 
-def test_get_or_create_execution_plan_passes_run_id_when_creating(monkeypatch):
+async def test_get_or_create_execution_plan_passes_run_id_when_creating(monkeypatch):
     captured = {}
 
     def _fake_get_execution_plan_by_run(_db, _run_id):
@@ -42,7 +42,7 @@ def test_get_or_create_execution_plan_passes_run_id_when_creating(monkeypatch):
     )
 
     db = _FakeSession()
-    plan, is_reused = task_manager.get_or_create_execution_plan(
+    plan, is_reused = await task_manager.get_or_create_execution_plan(
         db=db,
         thread_id="thread-1",
         run_id="run-1",

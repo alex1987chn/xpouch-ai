@@ -119,4 +119,4 @@ async def test_asyncio_queue_wait():
         item = await asyncio.wait_for(queue.get(), timeout=1)
         assert item[0] == 2
 
-    asyncio.run(await _flow())
+    await _flow()

@@ -7,7 +7,6 @@
    （这是「决定 3 非 B3 阻塞项」的依据，也是本节点代码顺序约束的来源）
 """
 
-import asyncio
 import operator
 from typing import Annotated, TypedDict
 
@@ -56,7 +55,7 @@ async def _run_until_pause(app, thread: str) -> dict:
         await app.ainvoke({"trace": []}, config=cfg)
         return await app.aget_state(cfg)
 
-    return asyncio.run(await _go())
+    return await _go()
 
 
 async def _resume(app, thread: str, decision: dict) -> dict:
@@ -64,42 +63,42 @@ async def _resume(app, thread: str, decision: dict) -> dict:
         cfg = {"configurable": {"thread_id": thread}}
         return await app.ainvoke(Command(resume=decision), config=cfg)
 
-    return asyncio.run(await _go())
+    return await _go()
 
 
 class TestEmptyPlanSkipsApproval:
-    def test_no_tasks_passes_through_without_interrupt(self, make_graph):
+    async def test_no_tasks_passes_through_without_interrupt(self, make_graph):
         app = make_graph(tasks=[])
 
-        state = _run_until_pause(app, "t-empty")
+        state = await _run_until_pause(app, "t-empty")
 
         assert not [i for t in (state.tasks or ()) for i in (t.interrupts or ())]
         assert state.values["trace"] == ["plan_before", "after"]
 
 
 class TestPausesAndResumes:
-    def test_pauses_at_approval(self, make_graph):
+    async def test_pauses_at_approval(self, make_graph):
         app = make_graph(tasks=[{"id": "task_1", "expert_type": "researcher"}])
 
-        state = _run_until_pause(app, "t-pause")
+        state = await _run_until_pause(app, "t-pause")
 
         interrupts = [i for t in (state.tasks or ()) for i in (t.interrupts or ())]
         assert interrupts, "有计划时必须停在审批节点"
         assert interrupts[0].value.get("type") == "plan_approval"
         assert "after" not in state.values["trace"], "未裁决前不得进入下游节点"
 
-    def test_resume_with_approve_continues(self, make_graph):
+    async def test_resume_with_approve_continues(self, make_graph):
         app = make_graph(tasks=[{"id": "task_1", "expert_type": "researcher"}])
-        _run_until_pause(app, "t-approve")
+        await _run_until_pause(app, "t-approve")
 
-        final = _resume(app, "t-approve", {"action": "approve"})
+        final = await _resume(app, "t-approve", {"action": "approve"})
 
         assert final["trace"] == ["plan_before", "after"], (
             "上游 plan_before 不得重跑（恢复只重跑含中断的节点）"
         )
         assert final["approval_action"] == "approve"
 
-    def test_resume_without_dict_decision_defaults_to_approve(self, make_graph):
+    async def test_resume_without_dict_decision_defaults_to_approve(self, make_graph):
         """裁决值不是 dict（如字符串）时按 approve 兜底。
 
         注：resume 值**不可为 None**——langgraph 1.2.11 在以 None 恢复时会在
@@ -107,8 +106,8 @@ class TestPausesAndResumes:
         因此服务层一律传 `{"action": ...}` 字典。
         """
         app = make_graph(tasks=[{"id": "task_1", "expert_type": "researcher"}])
-        _run_until_pause(app, "t-nodict")
+        await _run_until_pause(app, "t-nodict")
 
-        final = _resume(app, "t-nodict", "approve")
+        final = await _resume(app, "t-nodict", "approve")
 
         assert final["approval_action"] == "approve"

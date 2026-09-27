@@ -175,7 +175,7 @@ class ShareService:
 
     async def _get_owned_artifact(self, artifact_id: str, user_id: str) -> Artifact:
         """加载 artifact 并校验所有权（artifact→subtask→executionplan→thread 链）"""
-        artifact = get_artifact(self.db, artifact_id)
+        artifact = await get_artifact(self.db, artifact_id)
         if not artifact:
             raise NotFoundError(f"Artifact not found: {artifact_id}")
 

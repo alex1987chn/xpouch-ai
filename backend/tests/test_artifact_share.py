@@ -5,25 +5,26 @@
 """
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel
+from sqlmodel import SQLModel
 
 from models import Artifact, ExecutionPlan, ShareToken, SubTask, Thread
 from services.chat.share_service import ShareService
 from utils.exceptions import AuthorizationError, NotFoundError
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -31,7 +32,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [

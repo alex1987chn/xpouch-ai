@@ -16,9 +16,9 @@ import asyncio
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel, select
+from sqlmodel import Session, SQLModel, select
 
 from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread, User
 from models.enums import RunStatus
@@ -26,17 +26,18 @@ from services.chat.recovery_service import RecoveryService
 from utils.exceptions import ValidationError
 from utils.time import utc_now
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -44,7 +45,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [
@@ -87,11 +87,11 @@ async def db():
         )
         await session.commit()
         yield session
-    engine.dispose()
+    await engine.dispose()
 
 
 async def _audit_rows(db: Session) -> list[AuditLog]:
-    return list(await db.exec(select(AuditLog)).all())
+    return list((await db.exec(select(AuditLog))).all())
 
 
 async def _noop_cleanup(*_args, **_kwargs) -> None:
@@ -109,7 +109,7 @@ class TestTerminateAudit:
             result = await svc.resume_chat("t1", "r1", "u1", approved=False, feedback="不要了")
 
         assert result["status"] == "cancelled"
-        rows = _audit_rows(db)
+        rows = await _audit_rows(db)
         assert len(rows) == 1, f"应恰好一条终止审计，实际 {len(rows)}"
         row = rows[0]
         assert row.action == "plan.terminate"
@@ -130,7 +130,7 @@ class TestReviseAudit:
         )
 
         assert result["status"] == "revising"
-        rows = _audit_rows(db)
+        rows = await _audit_rows(db)
         assert len(rows) == 1
         row = rows[0]
         assert row.action == "plan.revise"
@@ -142,7 +142,7 @@ class TestReviseAudit:
         with pytest.raises(ValidationError):
             await svc.resume_chat("t1", "r1", "u1", approved=True, action="revise", feedback="  ")
 
-        assert _audit_rows(db) == [], "失败路径不得产生审计记录"
+        assert await _audit_rows(db) == [], "失败路径不得产生审计记录"
 
 
 class TestApproveAudit:
@@ -160,7 +160,7 @@ class TestApproveAudit:
 
         # 批准路径返回 SSE 流响应（生成器未启动即返回，测试只验审计）
         assert response is not None
-        rows = _audit_rows(db)
+        rows = await _audit_rows(db)
         assert len(rows) == 1
         row = rows[0]
         assert row.action == "plan.approve"
@@ -199,7 +199,9 @@ class TestListAuditLogs:
         with patch("utils.db.cleanup_terminal_run", _noop_cleanup):
             asyncio_run(await svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
             asyncio_run(
-                await svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
+                await svc.resume_chat(
+                    "t1", "r2", "u1", approved=True, action="revise", feedback="改"
+                )
             )
 
         entries, total = await list_audit_logs(db)
@@ -214,7 +216,9 @@ class TestListAuditLogs:
         with patch("utils.db.cleanup_terminal_run", _noop_cleanup):
             asyncio_run(await svc.resume_chat("t1", "r1", "u1", approved=False, feedback=None))
             asyncio_run(
-                await svc.resume_chat("t1", "r2", "u1", approved=True, action="revise", feedback="改")
+                await svc.resume_chat(
+                    "t1", "r2", "u1", approved=True, action="revise", feedback="改"
+                )
             )
 
         entries, total = await list_audit_logs(db, search="plan.terminate")

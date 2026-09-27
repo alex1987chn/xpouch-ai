@@ -45,22 +45,26 @@ async def list_frames_after(
     db: Session, run_id: str, after_seq: int, limit: int = 2000
 ) -> list[RunStreamFrame]:
     """按 seq 升序取 after_seq 之后的帧（续传重放用）。"""
-    rows = await db.exec(
-        select(RunStreamFrame)
-        .where(RunStreamFrame.run_id == run_id, RunStreamFrame.seq > after_seq)
-        .order_by(RunStreamFrame.seq.asc())
-        .limit(limit)
+    rows = (
+        await db.exec(
+            select(RunStreamFrame)
+            .where(RunStreamFrame.run_id == run_id, RunStreamFrame.seq > after_seq)
+            .order_by(RunStreamFrame.seq.asc())
+            .limit(limit)
+        )
     ).all()
     return list(rows)
 
 
 async def latest_seq(db: Session, run_id: str) -> int | None:
     """该 run 已落库的最大 seq（无则 None）——供续传时判断「库比内存新/旧」。"""
-    row = await db.exec(
-        select(RunStreamFrame.seq)
-        .where(RunStreamFrame.run_id == run_id)
-        .order_by(RunStreamFrame.seq.desc())
-        .limit(1)
+    row = (
+        await db.exec(
+            select(RunStreamFrame.seq)
+            .where(RunStreamFrame.run_id == run_id)
+            .order_by(RunStreamFrame.seq.desc())
+            .limit(1)
+        )
     ).first()
     return int(row) if row is not None else None
 

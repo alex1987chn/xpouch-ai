@@ -18,7 +18,7 @@ SSE 流式输出核心服务
 
 import asyncio
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from typing import Any
 
 from fastapi.responses import StreamingResponse
@@ -70,6 +70,11 @@ class StreamService(EventBuildersMixin):
     公开接口不变。
     """
 
+    # producer 私有会话工厂（测试可注入绑测试引擎的同款工厂；默认应用工厂）
+    _producer_session_factory: Callable[[], object] = staticmethod(
+        lambda: __import__("database").SessionFactory()
+    )
+
     def __init__(self, db_session: Session):
         self.db = db_session
         # 延迟初始化 thread_service，避免循环依赖问题
@@ -104,14 +109,19 @@ class StreamService(EventBuildersMixin):
         """手动使 MCP 工具缓存失效"""
         await mcp_tools_service.invalidate_cache()
 
-    def _heartbeat_line(self, run_id: str | None) -> str:
+    async def _heartbeat_line(self, run_id: str | None) -> str:
         """静默超时线：心跳保活 + 顺带的取消/超预算检查（两条流共用管道的 on_timeout 回调）。
 
         run_id 为 None（无持久化的裸流）时跳过检查只给心跳线。
+        消费者侧回调与 producer 并发——**独立短会话**，绝不共用 self.db
+        （那是 producer 私有会话，async 下并发共用会炸事务状态）。
         """
         if run_id:
-            self._touch_agent_run(run_id)
-            self._raise_if_run_cancelled(run_id)
+            from database import SessionFactory
+
+            async with SessionFactory() as ops:
+                await self._touch_agent_run(ops, run_id)
+                await self._raise_if_run_cancelled(ops, run_id)
         return self._build_heartbeat_event()
 
     async def handle_langgraph_stream(
@@ -227,8 +237,8 @@ class StreamService(EventBuildersMixin):
                     if not isinstance(token, dict):
                         continue
 
-                    self._raise_if_run_cancelled(run_id)
-                    self._sync_run_progress_from_token(token, run_id)
+                    await self._raise_if_run_cancelled(self.db, run_id)
+                    await self._sync_run_progress_from_token(self.db, token, run_id)
 
                     event_type = token.get("event", "")
                     name = token.get("name", "")
@@ -264,7 +274,7 @@ class StreamService(EventBuildersMixin):
                         # 更新线程模式和运行实例模式
                         await self._update_thread_mode(thread_id, router_decision, run_id=run_id)
                         # 🔥 写入 router_decided 事件到账本
-                        await emit_router_decided(
+                        emit_router_decided(
                             self.db,
                             run_id=run_id,
                             thread_id=thread_id,
@@ -280,7 +290,7 @@ class StreamService(EventBuildersMixin):
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
                 await self._mark_agent_run_failed(run_id, str(e))
                 # 🔥 写入 run_failed 事件到账本
-                await emit_run_failed(
+                emit_run_failed(
                     self.db,
                     run_id=run_id,
                     thread_id=thread_id,
@@ -294,7 +304,7 @@ class StreamService(EventBuildersMixin):
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
                 await self._mark_agent_run_failed(run_id, str(e))
                 # 🔥 写入 run_failed 事件到账本
-                await emit_run_failed(
+                emit_run_failed(
                     self.db,
                     run_id=run_id,
                     thread_id=thread_id,
@@ -343,11 +353,11 @@ class StreamService(EventBuildersMixin):
                 ]
 
                 # 发送 human.interrupt 事件（包含计划版本号，供乐观锁校验）
-                plan_version = self._get_plan_version(thread_id)
+                plan_version = await self._get_plan_version(thread_id)
                 execution_plan = await self._get_latest_execution_plan(thread_id)
 
                 # 🔥 写入 hitl_interrupted 事件到账本
-                await emit_hitl_interrupted(
+                emit_hitl_interrupted(
                     self.db,
                     run_id=run_id,
                     thread_id=thread_id,
@@ -420,7 +430,7 @@ class StreamService(EventBuildersMixin):
                     run_id, RunStatus.COMPLETED, current_node="done"
                 )
                 # 🔥 写入 run_completed 事件到账本
-                await emit_run_completed(
+                emit_run_completed(
                     self.db,
                     run_id=run_id,
                     thread_id=thread_id,
@@ -447,7 +457,18 @@ class StreamService(EventBuildersMixin):
 
         # producer 分离任务在调用方同步上下文里起（保住日志上下文复制）；
         # 收尾三连/心跳/断连语义全部由共享管道承担
-        pipeline.start(_run_graph)
+        async def _run_graph_with_own_session():
+            # producer 私有会话：断连转后台后 run 的落库与请求级 Session 生命周期
+            # 解耦——async 下请求收尾 close 与 producer 事务并发会炸
+            # IllegalStateChange/"transaction is closed"（2026-09-27 e2e 场景 A 实抓）
+            producer_session = self._producer_session_factory()
+            self.db = producer_session
+            try:
+                await _run_graph()
+            finally:
+                await producer_session.close()
+
+        pipeline.start(_run_graph_with_own_session)
 
         from services.chat.run_lifecycle import sse_stream_headers
 
@@ -634,7 +655,9 @@ class StreamService(EventBuildersMixin):
                         logger.info(
                             f"[StreamService] 找到 artifacts: {len(expert_artifacts[task_id])} 个"
                         )
-                        await create_artifacts_batch(self.db, db_subtask.id, expert_artifacts[task_id])
+                        await create_artifacts_batch(
+                            self.db, db_subtask.id, expert_artifacts[task_id]
+                        )
                         logger.info("[StreamService] ✅ artifacts 保存成功")
                     except Exception as e:
                         # rollback 必需：create_artifacts_batch 内部会 commit，失败后
@@ -834,7 +857,7 @@ class StreamService(EventBuildersMixin):
         if updated_plan:
             await self._apply_updated_plan(graph, config, updated_plan)
             if run_id:
-                execution_plan = self._get_execution_plan_by_run(run_id)
+                execution_plan = await self._get_execution_plan_by_run(run_id)
                 if execution_plan:
                     emit_plan_updated(
                         self.db,
@@ -878,7 +901,7 @@ class StreamService(EventBuildersMixin):
             """
             nonlocal aggregator_executed
             if run_id:
-                self._raise_if_run_cancelled(run_id)
+                await self._raise_if_run_cancelled(self.db, run_id)
 
             # 执行一轮 LangGraph
             async for token in graph.astream_events(resume_input, config, version="v2"):
@@ -887,9 +910,9 @@ class StreamService(EventBuildersMixin):
                     continue
 
                 if run_id:
-                    self._raise_if_run_cancelled(run_id)
+                    await self._raise_if_run_cancelled(self.db, run_id)
                 if run_id:
-                    self._sync_run_progress_from_token(token, run_id)
+                    await self._sync_run_progress_from_token(self.db, token, run_id)
 
                 event_type = token.get("event", "")
                 metadata = token.get("metadata", {})
@@ -1186,10 +1209,12 @@ class StreamService(EventBuildersMixin):
 
     async def _get_plan_version(self, thread_id: str) -> int:
         """获取当前线程的计划版本号（乐观锁）"""
-        execution_plan = await self.db.exec(
-            select(ExecutionPlan)
-            .where(ExecutionPlan.thread_id == thread_id)
-            .order_by(ExecutionPlan.created_at.desc())
+        execution_plan = (
+            await self.db.exec(
+                select(ExecutionPlan)
+                .where(ExecutionPlan.thread_id == thread_id)
+                .order_by(ExecutionPlan.created_at.desc())
+            )
         ).first()
         return int(execution_plan.plan_version) if execution_plan else 1
 
@@ -1203,10 +1228,12 @@ class StreamService(EventBuildersMixin):
         """
 
         async def _write() -> None:
-            execution_plan = await self.db.exec(
-                select(ExecutionPlan)
-                .where(ExecutionPlan.thread_id == thread_id)
-                .order_by(ExecutionPlan.created_at.desc())
+            execution_plan = (
+                await self.db.exec(
+                    select(ExecutionPlan)
+                    .where(ExecutionPlan.thread_id == thread_id)
+                    .order_by(ExecutionPlan.created_at.desc())
+                )
             ).first()
 
             if execution_plan:

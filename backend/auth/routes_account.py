@@ -48,7 +48,7 @@ async def refresh_access_token_endpoint(
         user_id = payload["sub"]
 
         # 获取用户
-        user = session.get(User, user_id)
+        user = await session.get(User, user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
@@ -72,8 +72,8 @@ async def refresh_access_token_endpoint(
         user.token_expires_at = utc_now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
         session.add(user)
-        session.commit()
-        session.refresh(user)
+        await session.commit()
+        await session.refresh(user)
 
         # P0 修复: 设置新的 Cookie（refresh token 不变）
         set_auth_cookies(response, new_access_token, refresh_token)
@@ -113,7 +113,7 @@ async def logout(
     current_user.refresh_token = None
     current_user.token_expires_at = None
     session.add(current_user)
-    session.commit()
+    await session.commit()
 
     logger.info(f"[Auth] 用户 {current_user.id} 已登出")
 

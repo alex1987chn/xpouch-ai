@@ -80,7 +80,7 @@ async def get_or_create_execution_plan(
             - is_reused: 是否复用了已存在的执行计划
 
     Example:
-        >>> execution_plan, reused = get_or_create_execution_plan(
+        >>> execution_plan, reused = await get_or_create_execution_plan(
         ...     db, thread_id="abc123", user_query="查询天气",
         ...     strategy="分步执行", estimated_steps=3,
         ...     subtasks_data=[subtask1, subtask2]
@@ -121,7 +121,7 @@ async def complete_execution_plan(db: Session, execution_plan_id: str, final_res
         final_response: 最终聚合结果
 
     Example:
-        >>> complete_execution_plan(db, "plan_abc", "所有任务已完成，结果是...")
+        >>> await complete_execution_plan(db, "plan_abc", "所有任务已完成，结果是...")
     """
     await update_execution_plan_status(
         db, execution_plan_id, TaskStatus.COMPLETED, final_response=final_response

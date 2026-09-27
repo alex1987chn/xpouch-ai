@@ -65,7 +65,7 @@ class StreamPipeline:
         if self.run_id:
             seq = await self._frames.reserve_seq(self.run_id)
             event_str = self._hub.publish(self.run_id, event_str, seq)
-            self._frames.record(self.run_id, seq, event_str)
+            await self._frames.record(self.run_id, seq, event_str)
         await self._queue.put({"type": "sse", "event": event_str})
 
     async def emit_transport(self, event_str: str) -> None:
@@ -107,8 +107,12 @@ class StreamPipeline:
                 try:
                     item = await asyncio.wait_for(self._queue.get(), timeout=self._stream_timeout)
                 except TimeoutError:
-                    # 专家任务期间可能长时间没有事件：心跳保活（回调里顺带检查取消）
-                    yield on_timeout()
+                    # 专家任务期间可能长时间没有事件：心跳保活（回调里顺带检查取消）。
+                    # 回调可为 async（全异步后心跳要开独立会话查库），统一在此展开
+                    timeout_line = on_timeout()
+                    if not isinstance(timeout_line, str):
+                        timeout_line = await timeout_line
+                    yield timeout_line
                     continue
                 if item.get("type") == "done":
                     break
@@ -136,6 +140,6 @@ class StreamPipeline:
             # finish_blocking 是同步写：取消态下任何 await 都可能被跳过，
             # 那会连 done 哨兵都发不出去，消费者就悬挂了（见 frame_recorder）
             if self.run_id:
-                self._frames.finish_blocking(self.run_id)
+                await self._frames.finish_blocking(self.run_id)
                 self._hub.close(self.run_id)
             await self._queue.put({"type": "done"})

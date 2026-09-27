@@ -105,7 +105,7 @@ class ArtifactService:
             NotFoundError: Artifact 不存在
             AuthorizationError: 无权访问此产物
         """
-        artifact = get_artifact(self.db, artifact_id)
+        artifact = await get_artifact(self.db, artifact_id)
         if not artifact:
             raise NotFoundError(f"Artifact not found: {artifact_id}")
 
@@ -194,7 +194,7 @@ class ArtifactService:
             AppError: 更新失败
         """
         # 1. 查找 Artifact
-        artifact = get_artifact(self.db, artifact_id)
+        artifact = await get_artifact(self.db, artifact_id)
         if not artifact:
             raise NotFoundError(f"Artifact not found: {artifact_id}")
 

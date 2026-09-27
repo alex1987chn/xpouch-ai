@@ -4,7 +4,7 @@
 
     seq = await frames.reserve_seq(run_id)            # ① 分配 run 级序号
     id_wire = hub.publish(run_id, wire, seq)          # ② 实时广播（注入 id: 行）
-    frames.record(run_id, seq, id_wire)               # ③ 入缓冲，约 200ms 批量落库
+    await frames.record(run_id, seq, id_wire)               # ③ 入缓冲，约 200ms 批量落库
 
 两条通道的分工与失效边界：
 - 实时通道（`services.chat.stream_hub`）：进程内，快，但进程重启即丢。
@@ -37,7 +37,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from crud.run_stream_frame import append_frames, latest_seq
 from utils.logger import logger
@@ -54,17 +54,17 @@ MAX_PENDING_FRAMES = 5000
 # 同时保留待写缓冲的 run 数上限（与 stream_hub 的 LRU 上限同量级）
 MAX_TRACKED_RUNS = 100
 
-SessionFactory = Callable[[], Session]
+SessionFactory = Callable[[], "AsyncSession"]
 
 
-def _default_session_factory() -> Session:
-    """默认用应用引擎开一个短生命周期 session。
+def _default_session_factory() -> AsyncSession:
+    """默认用应用引擎开一个短生命周期 AsyncSession。
 
     延迟导入 `database`：本模块在单元测试里被导入时不应该顺带创建引擎。
     """
-    from database import engine
+    from database import SessionFactory as _Factory  # noqa: N813
 
-    return Session(engine)
+    return _Factory()
 
 
 class _RunFrames:
@@ -125,7 +125,7 @@ class RunFrameRecorder:
         buf.pending.append((seq, wire))
         if buf.flush_task is None:
             buf.flush_task = asyncio.get_running_loop().create_task(
-                await self._flush_later(run_id, self._next_delay(buf))
+                self._flush_later(run_id, self._next_delay(buf))
             )
 
     async def flush(self, run_id: str) -> int:
@@ -213,7 +213,7 @@ class RunFrameRecorder:
     async def _write_batch(self, run_id: str, batch: list[tuple[int, str]]) -> bool:
         """写一批帧；返回是否**整批**落库成功。任何异常都吞掉（只告警）。"""
         try:
-            with self._session_factory() as db:
+            async with self._session_factory() as db:
                 written = await append_frames(db, run_id, batch)
             return written == len(batch)
         except Exception as exc:  # noqa: BLE001
@@ -228,7 +228,7 @@ class RunFrameRecorder:
 
     async def _read_latest_seq(self, run_id: str) -> int:
         try:
-            with self._session_factory() as db:
+            async with self._session_factory() as db:
                 return await latest_seq(db, run_id) or 0
         except Exception as exc:  # noqa: BLE001
             # 读不到就按 0 起号：宁可冒「号段重叠 → 整批回滚并告警」的风险，

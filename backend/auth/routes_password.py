@@ -59,9 +59,9 @@ async def login_with_password(
         )
 
     if "@" in identifier:
-        user = session.exec(select(User).where(User.email == identifier)).first()
+        user = (await session.exec(select(User).where(User.email == identifier))).first()
     else:
-        user = session.exec(select(User).where(User.phone_number == identifier)).first()
+        user = (await session.exec(select(User).where(User.phone_number == identifier))).first()
 
     if not user or not user.password_hash:
         raise HTTPException(
@@ -87,8 +87,8 @@ async def login_with_password(
     user.refresh_token = hash_secret(refresh_token)
     user.token_expires_at = utc_now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
 
     set_auth_cookies(response, access_token, refresh_token)
     logger.info(f"[Auth] 用户 {user.id} 密码登录成功")
@@ -113,7 +113,9 @@ async def reset_password(
     - 复用验证码失败锁定（与登录同一套防爆破语义）
     - 重置成功不自动登录，引导用户用新密码重新登录
     """
-    user = session.exec(select(User).where(User.phone_number == request.phone_number)).first()
+    user = (
+        await session.exec(select(User).where(User.phone_number == request.phone_number))
+    ).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="账号不存在")
 
@@ -122,7 +124,7 @@ async def reset_password(
     user.password_hash = hash_password(request.password)
     _clear_verification_code(user)
     session.add(user)
-    session.commit()
+    await session.commit()
     logger.info("[Auth] 用户 %s 通过验证码重置密码成功", mask_phone_number(request.phone_number))
 
     return {"message": "密码已重置，请使用新密码登录"}
@@ -140,7 +142,7 @@ async def set_password(
     - 首次设置：无需旧密码
     - 已有密码：必须提供 old_password 校验
     """
-    user = session.get(User, current_user.id)
+    user = await session.get(User, current_user.id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
 
@@ -155,8 +157,8 @@ async def set_password(
 
     user.password_hash = hash_password(request.password)
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
     logger.info(f"[Auth] 用户 {user.id} 设置密码成功")
 
     return UserResponse(

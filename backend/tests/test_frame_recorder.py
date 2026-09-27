@@ -13,25 +13,26 @@ import asyncio
 from datetime import datetime
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel, delete
+from sqlmodel import SQLModel, delete
 
 from crud.run_stream_frame import append_frames, list_frames_after
 from models import AgentRun, RunStreamFrame, Thread
 from services.chat.frame_recorder import RunFrameRecorder
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -39,7 +40,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [Thread.__table__, AgentRun.__table__, RunStreamFrame.__table__]
@@ -58,7 +58,7 @@ async def engine():
         session.add(AgentRun(id="r1", thread_id="t1", user_id="u1"))
         await session.commit()
     yield engine
-    engine.dispose()
+    await engine.dispose()
 
 
 @pytest.fixture
@@ -82,7 +82,7 @@ class TestSeqSpace:
             assert await recorder.reserve_seq("r1") == 1
             assert await recorder.reserve_seq("r1") == 2
 
-        asyncio.run(await _flow())
+        await _flow()
 
     async def test_resumes_after_persisted_frames(self, engine, recorder):
         """核心不变量：库里已有 seq 1..7 时，新记录器必须从 8 起号。"""
@@ -92,7 +92,7 @@ class TestSeqSpace:
         async def _flow():
             return await recorder.reserve_seq("r1")
 
-        assert asyncio.run(await _flow()) == 8
+        assert await _flow() == 8
 
     async def test_two_recorders_never_collide(self, engine):
         """等价于「重启后接着续」：两个记录器前后接力，落库 seq 不重复。"""
@@ -101,19 +101,19 @@ class TestSeqSpace:
             rec = RunFrameRecorder(session_factory=lambda: _test_session(), flush_interval=5)
             for tag in ("a", "b"):
                 seq = await rec.reserve_seq("r1")
-                rec.record("r1", seq, _wire(tag))
-            rec.finish_blocking("r1")
+                await rec.record("r1", seq, _wire(tag))
+            await rec.finish_blocking("r1")
 
         async def _second():
             rec = RunFrameRecorder(session_factory=lambda: _test_session(), flush_interval=5)
             seq = await rec.reserve_seq("r1")
-            rec.record("r1", seq, _wire("c"))
-            rec.finish_blocking("r1")
+            await rec.record("r1", seq, _wire("c"))
+            await rec.finish_blocking("r1")
 
-        asyncio.run(await _first())
-        asyncio.run(await _second())
+        await _first()
+        await _second()
 
-        rows = _frames(engine)
+        rows = await _frames(engine)
         assert [r.seq for r in rows] == [1, 2, 3], "重启后必须续号，不得从 1 重来"
 
     async def test_unreadable_history_falls_back_to_one(self):
@@ -127,7 +127,7 @@ class TestSeqSpace:
         async def _flow():
             return await rec.reserve_seq("r1")
 
-        assert asyncio.run(await _flow()) == 1
+        assert await _flow() == 1
 
 
 class TestBatchedPersistence:
@@ -135,12 +135,12 @@ class TestBatchedPersistence:
         async def _flow():
             for tag in ("a", "b", "c"):
                 seq = await recorder.reserve_seq("r1")
-                recorder.record("r1", seq, _wire(tag))
+                await recorder.record("r1", seq, _wire(tag))
             return await recorder.flush("r1")
 
-        assert asyncio.run(await _flow()) == 3
+        assert await _flow() == 3
 
-        rows = _frames(engine)
+        rows = await _frames(engine)
         assert [r.seq for r in rows] == [1, 2, 3]
         assert [r.wire.split("data: ")[1][0] for r in rows] == ["a", "b", "c"]
 
@@ -148,8 +148,8 @@ class TestBatchedPersistence:
         async def _flow():
             return await recorder.flush("r1")
 
-        assert asyncio.run(await _flow()) == 0
-        assert _frames(engine) == []
+        assert await _flow() == 0
+        assert await _frames(engine) == []
 
     async def test_timer_flushes_without_explicit_call(self, engine):
         rec = RunFrameRecorder(session_factory=lambda: _test_session(), flush_interval=0.05)
@@ -157,25 +157,25 @@ class TestBatchedPersistence:
         async def _flow():
             for tag in ("a", "b"):
                 seq = await rec.reserve_seq("r1")
-                rec.record("r1", seq, _wire(tag))
+                await rec.record("r1", seq, _wire(tag))
             await asyncio.sleep(0.25)  # 只等定时器，不显式 flush
 
-        asyncio.run(await _flow())
-        assert [r.seq for r in _frames(engine)] == [1, 2]
+        await _flow()
+        assert [r.seq for r in await _frames(engine)] == [1, 2]
 
     async def test_frames_land_in_seq_order_across_flushes(self, engine, recorder):
         async def _flow():
             for tag in ("a", "b"):
                 seq = await recorder.reserve_seq("r1")
-                recorder.record("r1", seq, _wire(tag))
+                await recorder.record("r1", seq, _wire(tag))
             await recorder.flush("r1")
             for tag in ("c", "d"):
                 seq = await recorder.reserve_seq("r1")
-                recorder.record("r1", seq, _wire(tag))
+                await recorder.record("r1", seq, _wire(tag))
             await recorder.flush("r1")
 
-        asyncio.run(await _flow())
-        assert [r.seq for r in _frames(engine)] == [1, 2, 3, 4]
+        await _flow()
+        assert [r.seq for r in await _frames(engine)] == [1, 2, 3, 4]
 
 
 class TestTerminalFlush:
@@ -185,38 +185,38 @@ class TestTerminalFlush:
         async def _flow():
             for tag in ("a", "b"):
                 seq = await recorder.reserve_seq("r1")
-                recorder.record("r1", seq, _wire(tag))
-            return recorder.finish_blocking("r1")
+                await recorder.record("r1", seq, _wire(tag))
+            return await recorder.finish_blocking("r1")
 
-        assert asyncio.run(await _flow()) == 2
-        assert [r.seq for r in _frames(engine)] == [1, 2]
+        assert await _flow() == 2
+        assert [r.seq for r in await _frames(engine)] == [1, 2]
 
     async def test_finish_blocking_twice_is_idempotent(self, engine, recorder):
         async def _flow():
             seq = await recorder.reserve_seq("r1")
-            recorder.record("r1", seq, _wire("a"))
-            first = recorder.finish_blocking("r1")
-            second = recorder.finish_blocking("r1")
+            await recorder.record("r1", seq, _wire("a"))
+            first = await recorder.finish_blocking("r1")
+            second = await recorder.finish_blocking("r1")
             return first, second
 
-        first, second = asyncio.run(await _flow())
+        first, second = await _flow()
         assert (first, second) == (1, 0)
-        assert [r.seq for r in _frames(engine)] == [1]
+        assert [r.seq for r in await _frames(engine)] == [1]
 
     async def test_record_after_finish_continues_seq(self, engine, recorder):
         """终态后再来帧（异常路径）也不得重号——从库里续号即可。"""
 
         async def _flow():
             seq = await recorder.reserve_seq("r1")
-            recorder.record("r1", seq, _wire("a"))
-            recorder.finish_blocking("r1")
+            await recorder.record("r1", seq, _wire("a"))
+            await recorder.finish_blocking("r1")
             seq2 = await recorder.reserve_seq("r1")
-            recorder.record("r1", seq2, _wire("b"))
-            recorder.finish_blocking("r1")
+            await recorder.record("r1", seq2, _wire("b"))
+            await recorder.finish_blocking("r1")
             return seq, seq2
 
-        assert asyncio.run(await _flow()) == (1, 2)
-        assert [r.seq for r in _frames(engine)] == [1, 2]
+        assert await _flow() == (1, 2)
+        assert [r.seq for r in await _frames(engine)] == [1, 2]
 
     async def test_seq_kept_in_memory_when_db_lags(self, engine, recorder):
         """库里的行还没落（在途提交）时也不得重号：号段以内存高水位为准。
@@ -227,14 +227,14 @@ class TestTerminalFlush:
 
         async def _flow():
             seq = await recorder.reserve_seq("r1")
-            recorder.record("r1", seq, _wire("a"))
-            recorder.finish_blocking("r1")
+            await recorder.record("r1", seq, _wire("a"))
+            await recorder.finish_blocking("r1")
             async with _test_session() as db:  # 模拟「库里还看不到」尾帧
-                await db.exec(delete(RunStreamFrame))
+                await db.exec(await delete(RunStreamFrame))
                 await db.commit()
             return await recorder.reserve_seq("r1")
 
-        assert asyncio.run(await _flow()) == 2
+        assert await _flow() == 2
 
 
 class TestFailureIsolation:
@@ -255,10 +255,10 @@ class TestFailureIsolation:
 
         async def _flow():
             seq = await rec.reserve_seq("r1")
-            rec.record("r1", seq, _wire("a"))
+            await rec.record("r1", seq, _wire("a"))
             return await rec.flush("r1")  # 不得抛
 
-        assert asyncio.run(await _flow()) == 0
+        assert await _flow() == 0
 
     async def test_failed_batch_is_kept_for_retry(self):
         """一次 DB 抖动不该在重放里留下空洞：失败批次必须留在缓冲里。"""
@@ -266,11 +266,11 @@ class TestFailureIsolation:
 
         async def _flow():
             seq = await rec.reserve_seq("r1")
-            rec.record("r1", seq, _wire("a"))
+            await rec.record("r1", seq, _wire("a"))
             await rec.flush("r1")
             return rec._runs["r1"].pending
 
-        assert [seq for seq, _w in asyncio.run(await _flow())] == [1]
+        assert [seq for seq, _w in await _flow()] == [1]
 
     async def test_retry_succeeds_after_failure(self, engine):
         """先失败后恢复：同一批帧最终要落库，且不重号。"""
@@ -285,26 +285,26 @@ class TestFailureIsolation:
 
         async def _flow():
             seq = await rec.reserve_seq("r1")  # 续号查询也失败 → 从 1 起号
-            rec.record("r1", seq, _wire("a"))
+            await rec.record("r1", seq, _wire("a"))
             first = await rec.flush("r1")
             state["fail"] = False
             second = await rec.flush("r1")
             return first, second, seq
 
-        first, second, seq = asyncio.run(await _flow())
+        first, second, seq = await _flow()
         assert (first, second) == (0, 1)
         assert seq == 1
-        assert [r.seq for r in _frames(engine)] == [1]
+        assert [r.seq for r in await _frames(engine)] == [1]
 
     async def test_finish_blocking_swallows_write_failure(self):
         rec = self._broken_recorder()
 
         async def _flow():
             seq = await rec.reserve_seq("r1")
-            rec.record("r1", seq, _wire("a"))
-            return rec.finish_blocking("r1")  # 不得抛
+            await rec.record("r1", seq, _wire("a"))
+            return await rec.finish_blocking("r1")  # 不得抛
 
-        assert asyncio.run(await _flow()) == 0
+        assert await _flow() == 0
 
 
 class TestRetentionWindow:
@@ -314,11 +314,11 @@ class TestRetentionWindow:
 
         async def _flow():
             seq = await rec.reserve_seq("r1")
-            rec.record("r1", seq, _wire("a"))
-            rec.finish_blocking("r1")
+            await rec.record("r1", seq, _wire("a"))
+            await rec.finish_blocking("r1")
 
-        asyncio.run(await _flow())
-        row = _frames(engine)[0]
+        await _flow()
+        row = await _frames(engine)[0]
         assert isinstance(row.created_at, datetime)
         assert row.created_at.tzinfo is not None
 
@@ -332,12 +332,12 @@ class TestBufferEviction:
         async def _flow():
             # r1 留着未落库的帧，r2/r3 是空的 → 只能淘汰 r2
             seq = await rec.reserve_seq("r1")
-            rec.record("r1", seq, _wire("a"))
+            await rec.record("r1", seq, _wire("a"))
             await rec.reserve_seq("r2")
             await rec.reserve_seq("r3")
 
-        asyncio.run(await _flow())
+        await _flow()
         tracked = set(rec._runs)
         assert "r1" in tracked, "有待写帧的 run 不得被淘汰（那会丢帧）"
         assert "r2" not in tracked
-        assert rec.finish_blocking("r1") == 1
+        assert await rec.finish_blocking("r1") == 1

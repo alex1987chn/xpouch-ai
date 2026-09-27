@@ -16,29 +16,29 @@
 用假会话反而要照抄 ORM 接口。
 """
 
-import asyncio
 from types import SimpleNamespace
 
 import pytest
 from langchain_core.messages import AIMessage
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel
+from sqlmodel import Session, SQLModel
 
 from models import ExecutionPlan, SubTask, Thread
 from services.chat.stream_service import StreamService
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -46,7 +46,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [Thread.__table__, ExecutionPlan.__table__, SubTask.__table__]
@@ -108,32 +107,31 @@ async def _run(db: Session, *, decision: str, summary: str | None) -> _ServiceUn
         await db.commit()
 
     svc = _service(db)
-    asyncio.run(
-        await svc._save_langgraph_result(
-            thread_id="t1",
-            thread=await db.get(Thread, "t1"),
-            user_message="问题",
-            last_message=AIMessage(content="state 里的最后一条消息"),
-            router_decision=decision,
-            task_list=[],
-            expert_artifacts={},
-            message_id="m1",
-            run_id="r1",
-        )
+    await svc._save_langgraph_result(
+        thread_id="t1",
+        thread=await db.get(Thread, "t1"),
+        user_message="问题",
+        last_message=AIMessage(content="state 里的最后一条消息"),
+        router_decision=decision,
+        task_list=[],
+        expert_artifacts={},
+        message_id="m1",
+        run_id="r1",
     )
+
     return svc
 
 
 class TestComplexModeHasSingleWriter:
-    def test_complex_does_not_save_assistant_message(self, db):
+    async def test_complex_does_not_save_assistant_message(self, db):
         """核心回归：复杂模式不得由 stream_service 再写一条助手消息。"""
-        svc = _run(db, decision="complex", summary="聚合综述")
+        svc = await _run(db, decision="complex", summary="聚合综述")
 
         assert svc.thread_service.saved_messages == [], "聚合综述由 aggregator 写入，此处不得重复"
 
-    def test_simple_mode_still_saves_assistant_message(self, db):
+    async def test_simple_mode_still_saves_assistant_message(self, db):
         """简单模式没有 aggregator 参与，仍由这里保存（唯一写入者）。"""
-        svc = _run(db, decision="simple", summary=None)
+        svc = await _run(db, decision="simple", summary=None)
 
         assert len(svc.thread_service.saved_messages) == 1
         assert svc.thread_service.saved_messages[0]["message_id"] == "m1"
@@ -142,14 +140,14 @@ class TestComplexModeHasSingleWriter:
 class TestPlanFinalResponseNotClobbered:
     async def test_existing_summary_is_preserved(self, db):
         """计划正文已是 aggregator 写的综述 → 不得被 state 末条消息覆盖。"""
-        _run(db, decision="complex", summary="聚合综述")
+        await _run(db, decision="complex", summary="聚合综述")
 
         db.expire_all()
-        assert await db.get(ExecutionPlan, "p1").final_response == "聚合综述"
+        assert (await db.get(ExecutionPlan, "p1")).final_response == "聚合综述"
 
     async def test_empty_summary_falls_back_to_last_message(self, db):
         """正文为空时兜底写入（例如 aggregator 落库失败），不留空。"""
-        _run(db, decision="complex", summary=None)
+        await _run(db, decision="complex", summary=None)
 
         db.expire_all()
-        assert await db.get(ExecutionPlan, "p1").final_response == "state 里的最后一条消息"
+        assert (await db.get(ExecutionPlan, "p1")).final_response == "state 里的最后一条消息"

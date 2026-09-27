@@ -66,10 +66,12 @@ async def renew_owned_leases(session: Session) -> int:
     在它上面再建「最后活动时间」这类判据：它现在的含义是「最后一次被续租」，每 20s
     就会变。真正的「最后活动」看 `last_heartbeat_at`，生死看 `lease_expires_at`。
     """
-    owned = await session.exec(
-        select(AgentRun)
-        .where(AgentRun.owner == RUN_OWNER_ID)
-        .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))
+    owned = (
+        await session.exec(
+            select(AgentRun)
+            .where(AgentRun.owner == RUN_OWNER_ID)
+            .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))
+        )
     ).all()
 
     deadline = lease_deadline()
@@ -102,11 +104,13 @@ async def reclaim_expired_leases(session: Session, now=None) -> list[tuple[str, 
     实测：一小时内误杀 5 条待审批 run，用户看到的是审批卡消失、任务再也批不了）。
     """
     now = now or utc_now()
-    rows = await session.exec(
-        select(AgentRun)
-        .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))
-        .order_by(AgentRun.created_at)
-        .limit(MAX_ACTIVE_RUNS_SCANNED)
+    rows = (
+        await session.exec(
+            select(AgentRun)
+            .where(AgentRun.status.in_(ACTIVE_RUN_STATUSES))
+            .order_by(AgentRun.created_at)
+            .limit(MAX_ACTIVE_RUNS_SCANNED)
+        )
     ).all()
 
     reclaimed: list[tuple[str, list[str]]] = []

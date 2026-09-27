@@ -69,7 +69,7 @@ async def _build_effective_tool_infos(session: Session) -> list[ToolInfo]:
             blocked_experts=tuple(record.blocked_experts or ()),
             policy_note=record.policy_note,
         )
-        for record in await session.exec(select(ToolPolicy)).all()
+        for record in (await session.exec(select(ToolPolicy))).all()
     }
     tools: list[ToolInfo] = []
 
@@ -95,7 +95,7 @@ async def _build_effective_tool_infos(session: Session) -> list[ToolInfo]:
         )
 
     try:
-        mcp_servers = await session.exec(select(MCPServer).where(MCPServer.is_active)).all()
+        mcp_servers = (await session.exec(select(MCPServer).where(MCPServer.is_active))).all()
         for server in mcp_servers:
             effective = resolve_tool_metadata(
                 server.name,
@@ -154,7 +154,7 @@ async def list_tool_policies(
     tools = await _build_effective_tool_infos(session)
     records = {
         (record.tool_name, record.source): record
-        for record in await session.exec(select(ToolPolicy)).all()
+        for record in (await session.exec(select(ToolPolicy))).all()
     }
     policies = [
         ToolPolicyResponse(
@@ -194,7 +194,9 @@ async def upsert_tool_policy(
     if source not in {"builtin", "mcp"}:
         raise ValidationError("source 仅支持 builtin 或 mcp")
 
-    known_tools = {(tool.name, tool.category) for tool in await _build_effective_tool_infos(session)}
+    known_tools = {
+        (tool.name, tool.category) for tool in await _build_effective_tool_infos(session)
+    }
     if (tool_name, source) not in known_tools:
         raise NotFoundError("工具策略")
 
@@ -204,10 +206,12 @@ async def upsert_tool_policy(
         except ValueError as exc:
             raise ValidationError("risk_tier 非法") from exc
 
-    policy = await session.exec(
-        select(ToolPolicy)
-        .where(ToolPolicy.tool_name == tool_name)
-        .where(ToolPolicy.source == source)
+    policy = (
+        await session.exec(
+            select(ToolPolicy)
+            .where(ToolPolicy.tool_name == tool_name)
+            .where(ToolPolicy.source == source)
+        )
     ).first()
     if policy is None:
         policy = ToolPolicy(tool_name=tool_name, source=source)

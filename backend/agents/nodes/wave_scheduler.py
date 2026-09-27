@@ -169,7 +169,7 @@ async def _announce_unreachable(
         from utils.async_task_queue import async_append_run_event, spawn_background
 
         spawn_background(
-            await async_append_run_event(
+            async_append_run_event(
                 run_id=run_id,
                 event_type="task_failed",
                 thread_id=thread_id,

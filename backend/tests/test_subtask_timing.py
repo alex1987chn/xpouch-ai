@@ -13,33 +13,33 @@
 
 from __future__ import annotations
 
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel
+from sqlmodel import Session, SQLModel
 
 from crud.execution_plan import update_subtask_status
 from models import ExecutionPlan, SubTask, Thread
 from models.enums import TaskStatus
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
-def _test_session() -> "AsyncSession":
+def _test_session() -> AsyncSession:
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [Thread.__table__, ExecutionPlan.__table__, SubTask.__table__]
@@ -69,7 +69,7 @@ async def _session() -> Session:
 
 
 async def test_marking_running_records_started_at():
-    db = _session()
+    db = await _session()
 
     updated = await update_subtask_status(db, "task_1", TaskStatus.RUNNING)
 
@@ -80,7 +80,7 @@ async def test_marking_running_records_started_at():
 
 async def test_repeated_running_keeps_first_timestamp():
     """工具循环会重入节点并再次标 RUNNING——第一次的时刻必须留住。"""
-    db = _session()
+    db = await _session()
 
     first = await update_subtask_status(db, "task_1", TaskStatus.RUNNING)
     before = first.started_at
@@ -90,7 +90,7 @@ async def test_repeated_running_keeps_first_timestamp():
 
 
 async def test_completion_preserves_started_at_and_records_duration():
-    db = _session()
+    db = await _session()
 
     started = await update_subtask_status(db, "task_1", TaskStatus.RUNNING).started_at
     done = await update_subtask_status(db, "task_1", TaskStatus.COMPLETED, duration_ms=1234)
@@ -105,7 +105,7 @@ async def test_mark_running_end_to_end_and_silent_on_missing(monkeypatch):
     import database
     from utils.async_task_queue import _sync_mark_subtask_running
 
-    db = _session()
+    db = await _session()
     monkeypatch.setattr(database, "engine", db.get_bind())
 
     assert _sync_mark_subtask_running("task_1") is True

@@ -10,9 +10,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel
+from sqlmodel import SQLModel
 
 from models import AgentRun, SystemSetting
 from services.run_quota import (
@@ -22,17 +22,18 @@ from services.run_quota import (
 )
 from utils.time import utc_now
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -40,8 +41,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
-
 
 
 class _KVStubSession:
@@ -121,7 +120,7 @@ async def engine():
     )
     await _init_tables(engine, tables=_TABLES)
     yield engine
-    engine.dispose()
+    await engine.dispose()
 
 
 async def _add_run(engine, run_id: str, total_tokens: int) -> None:
@@ -141,7 +140,7 @@ async def _add_run(engine, run_id: str, total_tokens: int) -> None:
 
 
 async def test_exceeds_quota_against_real_engine(engine):
-    _add_run(engine, "r1", 300)
+    await _add_run(engine, "r1", 300)
 
     async with _test_session() as session:
         assert await today_token_usage_exceeds_quota(session, "u1", 300) is True

@@ -35,9 +35,9 @@ from utils.verification import (
 router = APIRouter(tags=["Authentication"])
 
 
-def _is_fresh_install(session: Session) -> bool:
+async def _is_fresh_install(session: Session) -> bool:
     """空库判定：user 表无任何行视为全新自部署。"""
-    return session.exec(select(func.count()).select_from(User)).one() == 0
+    return (await session.exec(select(func.count()).select_from(User))).one() == 0
 
 
 @router.post("/send-code")
@@ -62,7 +62,7 @@ async def send_verification_code(
         masked_phone = mask_phone_number(phone_number)
         logger.info("[Auth] 收到发送验证码请求: %s", masked_phone)
 
-        user = session.exec(select(User).where(User.phone_number == phone_number)).first()
+        user = (await session.exec(select(User).where(User.phone_number == phone_number))).first()
 
         # 忘记密码：验证码只发给已注册手机号，不做登录/注册那套自动建号
         if user is None and request.purpose == "password_reset":
@@ -117,7 +117,7 @@ async def send_verification_code(
             expire_minutes=settings.verification_code_expire_minutes,
         )
         if not success:
-            session.rollback()
+            await session.rollback()
             logger.warning("[Auth] 验证码短信发送失败: %s", error_message)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -128,8 +128,8 @@ async def send_verification_code(
         record_sms_send(client_ip)
 
         session.add(user)
-        session.commit()
-        session.refresh(user)
+        await session.commit()
+        await session.refresh(user)
 
         response_data = {
             "message": "验证码已发送（新用户注册）" if is_new_user else "验证码已发送",
@@ -175,7 +175,7 @@ async def verify_code_and_login(
     code = request.code
 
     # 查询用户
-    user = session.exec(select(User).where(User.phone_number == phone_number)).first()
+    user = (await session.exec(select(User).where(User.phone_number == phone_number))).first()
 
     if not user:
         raise HTTPException(
@@ -183,7 +183,7 @@ async def verify_code_and_login(
         )
 
     # 验证验证码（登录/注册与忘记密码共用校验与防爆破语义）
-    _verify_code_or_raise(user, code, session)
+    await _verify_code_or_raise(user, code, session)
 
     # 验证成功，生成token
     access_token = create_access_token(user.id)
@@ -198,8 +198,8 @@ async def verify_code_and_login(
     _clear_verification_code(user)
 
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
 
     # P0 修复: 设置 Cookie（不再返回 Token）
     set_auth_cookies(response, access_token, refresh_token)

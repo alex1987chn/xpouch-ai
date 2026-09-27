@@ -52,8 +52,10 @@ async def _load_commander_config() -> tuple[str, str, float]:
         from models import SystemExpert
 
         with get_session() as session:
-            expert = await session.exec(
-                select(SystemExpert).where(SystemExpert.expert_type == "commander")
+            expert = (
+                await session.exec(
+                    select(SystemExpert).where(SystemExpert.expert_type == "commander")
+                )
             ).first()
         if expert:
             return (

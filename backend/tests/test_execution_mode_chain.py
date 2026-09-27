@@ -14,9 +14,9 @@ sequential，与修复前的硬编码行为完全一致。
 import json
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel
+from sqlmodel import Session, SQLModel
 
 from agents.nodes.commander import ExecutionPlan, Task, derive_plan_execution_mode
 from models import ExecutionPlan as ExecutionPlanRow
@@ -24,17 +24,18 @@ from models import SubTask, Thread
 from models.enums import ExecutionMode
 from schemas.task import SubTaskCreate
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -42,7 +43,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [Thread.__table__, ExecutionPlanRow.__table__, SubTask.__table__]

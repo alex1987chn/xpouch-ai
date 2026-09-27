@@ -11,7 +11,6 @@
 出现 naive/aware 混用。
 """
 
-import asyncio
 from datetime import timedelta
 
 from services.tool_policy_service import ToolPolicyService
@@ -35,7 +34,7 @@ class TestCacheTimeBase:
         """核心回归：首次调用不得因 naive/aware 混用抛 TypeError。"""
         service, calls = _service_with_stub_load()
 
-        result = asyncio.run(await service.get_overrides())
+        result = await service.get_overrides()
 
         assert result == {}
         assert calls["n"] == 1, "首次调用应真正加载"
@@ -43,27 +42,27 @@ class TestCacheTimeBase:
     async def test_second_call_hits_cache(self):
         service, calls = _service_with_stub_load()
 
-        asyncio.run(await service.get_overrides())
-        asyncio.run(await service.get_overrides())
+        await service.get_overrides()
+        await service.get_overrides()
 
         assert calls["n"] == 1, "TTL 内应命中缓存，不再查库"
 
     async def test_cache_expires_after_ttl(self):
         service, calls = _service_with_stub_load()
-        asyncio.run(await service.get_overrides())
+        await service.get_overrides()
 
         # 把过期时刻推到过去（用同一时间基准，模拟 TTL 到期）
         service._cache_expire_at = service._cache_expire_at - timedelta(seconds=60)
-        asyncio.run(await service.get_overrides())
+        await service.get_overrides()
 
         assert calls["n"] == 2, "TTL 过期后应重新加载"
 
     async def test_invalidate_forces_reload(self):
         service, calls = _service_with_stub_load()
-        asyncio.run(await service.get_overrides())
+        await service.get_overrides()
 
-        asyncio.run(await service.invalidate())
-        asyncio.run(await service.get_overrides())
+        await service.invalidate()
+        await service.get_overrides()
 
         assert calls["n"] == 2, "invalidate 之后必须重新加载"
 

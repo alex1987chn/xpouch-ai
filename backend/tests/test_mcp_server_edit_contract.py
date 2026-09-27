@@ -170,7 +170,7 @@ def test_patch_failed_connection_rejects(monkeypatch):
     assert server.transport == "sse"
 
 
-def test_create_and_delete_invalidate_cache(monkeypatch):
+async def test_create_and_delete_invalidate_cache(monkeypatch):
     """CREATE/DELETE 落库后失效工具缓存：新服务器立即可被发现、已删服务器立即退出。"""
     recorder = _Recorder()
     _stub_network(recorder, monkeypatch)
@@ -186,6 +186,6 @@ def test_create_and_delete_invalidate_cache(monkeypatch):
         assert recorder.invalidate_calls == 1
 
     with _client(_server_fixture(), recorder) as client:
-        resp = client.delete("/api/mcp/servers/srv-1")
+        resp = await client.delete("/api/mcp/servers/srv-1")
         assert resp.status_code == 204
         assert recorder.invalidate_calls == 2

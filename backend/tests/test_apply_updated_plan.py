@@ -13,7 +13,6 @@ C2（2026-09-13）：不再重算 `current_task_index`——游标已删除，�
 让判定层能正确选出下一个任务」（这比断言一个数字更接近真实契约）。
 """
 
-import asyncio
 from types import SimpleNamespace
 
 from services.chat.stream_service import StreamService
@@ -49,7 +48,7 @@ def _task(task_id: str, *, db_id: str | None = None, deps=None, status="pending"
 async def _apply(current: list[dict], updated: list[dict]) -> dict:
     service = StreamService.__new__(StreamService)  # 不触碰 db
     graph = _FakeGraph({"task_list": current, "expert_results": []})
-    asyncio.run(await service._apply_updated_plan(graph, {}, updated))
+    await service._apply_updated_plan(graph, {}, updated)
     assert graph.updated is not None, "必须写回状态"
     return graph.updated
 
@@ -61,7 +60,7 @@ def _by_key(task_list: list[dict]) -> dict[str, dict]:
 class TestDependencyPreserved:
     """核心回归：编辑计划后依赖不得被清空。"""
 
-    def test_kept_dependency_survives_frontend_taskinfo_shape(self):
+    async def test_kept_dependency_survives_frontend_taskinfo_shape(self):
         """真实前端回传是 TaskInfo 形态：id=db uuid、**没有 task_id 字段**、
         depends_on=语义 id。此前 kept_task_ids 对这种形态全落回 uuid，
         语义依赖 ∩ uuid 集合恒空 → 依赖被清空 → 下游失去上游注入
@@ -89,42 +88,42 @@ class TestDependencyPreserved:
             },
         ]
 
-        merged = _by_key(_apply(current, updated)["task_list"])
+        merged = _by_key(await _apply(current, updated)["task_list"])
 
         assert merged["task_2"]["depends_on"] == ["task_1"], (
             "前端 TaskInfo 形态（无 task_id 字段）的语义依赖必须经 uuid→语义映射后保留"
         )
 
-    def test_kept_dependency_survives(self):
+    async def test_kept_dependency_survives(self):
         current = [_task("task_1", status="completed"), _task("task_2", deps=["task_1"])]
         updated = [_task("task_1", status="completed"), _task("task_2", deps=["task_1"])]
 
-        merged = _by_key(_apply(current, updated)["task_list"])
+        merged = _by_key(await _apply(current, updated)["task_list"])
 
         assert merged["task_2"]["depends_on"] == ["task_1"], (
             "依赖引用的 commander id 与保留集合同源时必须保留"
         )
 
-    def test_dependency_on_removed_task_is_dropped(self):
+    async def test_dependency_on_removed_task_is_dropped(self):
         """依赖清理本身仍要有效：指向被删任务的依赖应剔除。"""
         current = [_task("task_1"), _task("task_2"), _task("task_3", deps=["task_1", "task_2"])]
         updated = [_task("task_1"), _task("task_3", deps=["task_1", "task_2"])]  # 删掉 task_2
 
-        merged = _by_key(_apply(current, updated)["task_list"])
+        merged = _by_key(await _apply(current, updated)["task_list"])
 
         assert merged["task_3"]["depends_on"] == ["task_1"]
 
-    def test_all_deps_dropped_becomes_none(self):
+    async def test_all_deps_dropped_becomes_none(self):
         current = [_task("task_1"), _task("task_2", deps=["task_1"])]
         updated = [_task("task_2", deps=["task_1"])]  # task_1 被删
 
-        merged = _by_key(_apply(current, updated)["task_list"])
+        merged = _by_key(await _apply(current, updated)["task_list"])
 
         assert merged["task_2"]["depends_on"] is None
 
 
 class TestCompletedTaskPreserved:
-    def test_completed_task_keeps_output_and_status(self):
+    async def test_completed_task_keeps_output_and_status(self):
         current = [
             {
                 **_task("task_1", status="completed"),
@@ -135,26 +134,26 @@ class TestCompletedTaskPreserved:
         # 前端提交时把已完成任务的 status 写回 pending（模拟朴素客户端）
         updated = [_task("task_1"), _task("task_2", deps=["task_1"])]
 
-        merged = _by_key(_apply(current, updated)["task_list"])
+        merged = _by_key(await _apply(current, updated)["task_list"])
 
         assert merged["task_1"]["status"] == "completed"
         assert merged["task_1"]["output_result"] == "上游产出，必须保留"
 
-    def test_next_task_selected_by_wave_decision(self):
+    async def test_next_task_selected_by_wave_decision(self):
         """合并后的计划交给判定层：下一个该跑谁由依赖算出，不再靠游标。"""
         from agents.plan_waves import select_wave
 
         current = [_task("task_1", status="completed"), _task("task_2"), _task("task_3")]
         updated = [_task("task_1"), _task("task_2"), _task("task_3")]
 
-        merged = _apply(current, updated)["task_list"]
+        merged = await _apply(current, updated)["task_list"]
 
         assert select_wave(merged, max_concurrency=1) == ["task_2"], "串行下取第一个就绪任务"
-        assert "current_task_index" not in _apply(current, updated), (
+        assert "current_task_index" not in await _apply(current, updated), (
             "游标已删除：留着会与波次判定形成两套「下一个是谁」"
         )
 
-    def test_removed_upstream_leaves_downstream_runnable(self):
+    async def test_removed_upstream_leaves_downstream_runnable(self):
         """编辑时删掉上游 → 下游依赖被清理成悬空 → 它必须仍然可执行。
 
         这是「删任务」这条编辑路径与波次判定层的接口：悬空依赖按已满足处理，
@@ -166,29 +165,29 @@ class TestCompletedTaskPreserved:
         current = [_task("task_1"), _task("task_2", deps=["task_1"])]
         updated = [_task("task_2", deps=["task_1"])]  # task_1 被删
 
-        merged = _apply(current, updated)["task_list"]
+        merged = await _apply(current, updated)["task_list"]
 
         decision = plan_wave_decision(merged)
         assert decision.ready == ["task_2"]
         assert decision.blocked == [] and decision.deadlocked == []
         assert merged[0]["depends_on"] is None, "指向已删任务的依赖在合并时被剔除"
 
-    def test_only_plan_state_is_written(self):
+    async def test_only_plan_state_is_written(self):
         """计划合并只写 task_list/expert_results：消息 id 贯通已随 resume
         message_id 链拆除（聚合消息 id 由 run 创建时的 state 承载，见
         test_transform_langgraph_event），此处不得再写。"""
         current = [_task("task_1"), _task("task_2")]
         updated = [_task("task_1"), _task("task_2")]
 
-        state = _apply(current, updated)
+        state = await _apply(current, updated)
 
         assert set(state.keys()) == {"task_list", "expert_results"}
 
-    def test_no_human_message_is_injected(self):
+    async def test_no_human_message_is_injected(self):
         """不再伪造 HumanMessage：续跑由 Command(resume=) 触发。"""
         current = [_task("task_1")]
         updated = [_task("task_1")]
 
-        state = _apply(current, updated)
+        state = await _apply(current, updated)
 
         assert "messages" not in state, "静态中断时代的伪造消息注入必须已移除"

@@ -158,7 +158,9 @@ def _stub_db_stack(stack):
 
     async def _init_tables():
         async with sqlite_engine.begin() as conn:
-            await conn.run_sync(lambda c: SQLModel.metadata.create_all(c, tables=[Thread.__table__]))
+            await conn.run_sync(
+                lambda c: SQLModel.metadata.create_all(c, tables=[Thread.__table__])
+            )
 
     _init_tables_loop = __import__("asyncio").new_event_loop()
     try:
@@ -169,7 +171,9 @@ def _stub_db_stack(stack):
         patch.object(
             commander_mod,
             "SessionFactory",
-            new=async_sessionmaker(sqlite_engine, class_=_SQLModelAsyncSession, expire_on_commit=False),
+            new=async_sessionmaker(
+                sqlite_engine, class_=_SQLModelAsyncSession, expire_on_commit=False
+            ),
         )
     )
 

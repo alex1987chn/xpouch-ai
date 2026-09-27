@@ -189,7 +189,7 @@ async def _preload_expert_configs(task_list: list[dict]) -> None:
             for expert_type in expert_types:
                 try:
                     # 先从缓存检查
-                    cached = get_expert_config_cached(expert_type)
+                    cached = await get_expert_config_cached(expert_type)
                     if cached:
                         loaded_count += 1
                         continue
@@ -246,7 +246,7 @@ async def commander_node(state: AgentState, config: RunnableConfig = None) -> di
             logger.info("[COMMANDER] 本地缓存命中: commander 配置")
         else:
             # 2️⃣ 检查全局缓存
-            commander_config = get_expert_config_cached("commander")
+            commander_config = await get_expert_config_cached("commander")
             if commander_config:
                 logger.info("[COMMANDER] 全局缓存命中: commander 配置")
                 _commander_config_cache["commander"] = commander_config

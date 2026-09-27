@@ -58,17 +58,19 @@ async def close_orphaned_task_state(db: Session, run: AgentRun, *, reason: str) 
     from utils.logger import logger
 
     try:
-        rows = await db.exec(
-            select(SubTask)
-            .join(ExecutionPlan, SubTask.execution_plan_id == ExecutionPlan.id)
-            .where(
-                ExecutionPlan.run_id == run.id,
-                # RUNNING 之外还要收 PENDING/WAITING_FOR_APPROVAL：run 死了它们
-                # 永远不会被调度（曾积压 51 条 pending 僵尸——前端跟着 run 走
-                # 什么都不显示，账面却一直挂着）
-                SubTask.status.in_(
-                    (TaskStatus.RUNNING, TaskStatus.PENDING, TaskStatus.WAITING_FOR_APPROVAL)
-                ),
+        rows = (
+            await db.exec(
+                select(SubTask)
+                .join(ExecutionPlan, SubTask.execution_plan_id == ExecutionPlan.id)
+                .where(
+                    ExecutionPlan.run_id == run.id,
+                    # RUNNING 之外还要收 PENDING/WAITING_FOR_APPROVAL：run 死了它们
+                    # 永远不会被调度（曾积压 51 条 pending 僵尸——前端跟着 run 走
+                    # 什么都不显示，账面却一直挂着）
+                    SubTask.status.in_(
+                        (TaskStatus.RUNNING, TaskStatus.PENDING, TaskStatus.WAITING_FOR_APPROVAL)
+                    ),
+                )
             )
         ).all()
         for row in rows:
@@ -114,12 +116,14 @@ async def _close_stale_plans(db: Session, run: AgentRun) -> None:
     terminal = plan_terminal_by_run.get(run.status)
     if terminal is None:
         return
-    plans = await db.exec(
-        select(ExecutionPlan).where(
-            ExecutionPlan.run_id == run.id,
-            ExecutionPlan.status.in_(
-                (TaskStatus.PENDING, TaskStatus.WAITING_FOR_APPROVAL, TaskStatus.RUNNING)
-            ),
+    plans = (
+        await db.exec(
+            select(ExecutionPlan).where(
+                ExecutionPlan.run_id == run.id,
+                ExecutionPlan.status.in_(
+                    (TaskStatus.PENDING, TaskStatus.WAITING_FOR_APPROVAL, TaskStatus.RUNNING)
+                ),
+            )
         )
     ).all()
     for plan in plans:
@@ -272,7 +276,7 @@ async def get_active_run_for_thread(
         statement = statement.where(AgentRun.user_id == user_id)
     if exclude_run_id is not None:
         statement = statement.where(AgentRun.id != exclude_run_id)
-    for run in await db.exec(statement).all():
+    for run in (await db.exec(statement)).all():
         if run_holds_thread(run):
             return run
     return None
@@ -353,7 +357,7 @@ async def mark_run_completed_by_id(db: Session, run_id: str) -> AgentRun | None:
     run = await db.get(AgentRun, run_id)
     if run is None:
         return None
-    mark_run_completed(db, run)
+    await mark_run_completed(db, run)
     await db.commit()  # 🔥 关键：确保修改持久化
     return run
 
@@ -412,7 +416,7 @@ async def update_run_status_by_id(
     run = await db.get(AgentRun, run_id)
     if run is None:
         return None
-    update_run_status(db, run, status, current_node=current_node)
+    await update_run_status(db, run, status, current_node=current_node)
     return run
 
 
@@ -449,7 +453,7 @@ async def mark_run_failed_by_id(
     run = await db.get(AgentRun, run_id)
     if run is None:
         return None
-    mark_run_failed(db, run, error_message=error_message, error_code=error_code)
+    await mark_run_failed(db, run, error_message=error_message, error_code=error_code)
     await close_orphaned_task_state(db, run, reason=f"运行失败终止：{error_message}")
     return run
 

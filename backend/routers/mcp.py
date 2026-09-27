@@ -260,8 +260,8 @@ async def create_mcp_server(
         )
 
     # 检查 URL 是否已存在（虽然数据库有 unique 约束，但提前检查可以给更好的错误提示）
-    existing = await session.exec(
-        select(MCPServer).where(MCPServer.sse_url == server_data.sse_url)
+    existing = (
+        await session.exec(select(MCPServer).where(MCPServer.sse_url == server_data.sse_url))
     ).first()
 
     if existing:
@@ -303,7 +303,7 @@ async def list_mcp_servers(
     包含 connection_status 供前端展示状态灯。
     """
     statement = select(MCPServer).order_by(MCPServer.created_at.desc())
-    servers = await session.exec(statement).all()
+    servers = (await session.exec(statement)).all()
 
     return servers
 
@@ -340,8 +340,10 @@ async def update_mcp_server(
             )
 
         # 检查新 URL 是否已被其他服务器使用
-        existing = await session.exec(
-            select(MCPServer).where(MCPServer.sse_url == new_url, MCPServer.id != server_id)
+        existing = (
+            await session.exec(
+                select(MCPServer).where(MCPServer.sse_url == new_url, MCPServer.id != server_id)
+            )
         ).first()
 
         if existing:

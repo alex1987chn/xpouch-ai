@@ -43,7 +43,7 @@ async def test_deadline_guard_marks_run_timed_out():
     service = StreamService(session)
 
     with pytest.raises(AppError) as exc_info:
-        await service._raise_if_run_cancelled("run-1")
+        await service._raise_if_run_cancelled(session, "run-1")
 
     assert exc_info.value.code == ErrorCode.RUN_TIMED_OUT
     assert run.status == RunStatus.TIMED_OUT

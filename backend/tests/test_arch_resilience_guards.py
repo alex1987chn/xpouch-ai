@@ -39,7 +39,7 @@ def test_error_code_enum_is_serialized_consistently():
     assert as_error_code(ErrorCode.RESUME_IN_PROGRESS) == "RESUME_IN_PROGRESS"
 
 
-def test_mcp_tools_service_singleflight_reuses_same_inflight(monkeypatch):
+async def test_mcp_tools_service_singleflight_reuses_same_inflight(monkeypatch):
     service = MCPToolsService()
     call_count = 0
 
@@ -55,6 +55,6 @@ def test_mcp_tools_service_singleflight_reuses_same_inflight(monkeypatch):
         results = await asyncio.gather(*(await service.get_tools() for _ in range(6)))
         return results
 
-    results = asyncio.run(_run())
+    results = await _run()
     assert call_count == 1
     assert all(result == ["tool-a"] for result in results)

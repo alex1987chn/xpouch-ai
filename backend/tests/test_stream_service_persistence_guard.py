@@ -10,7 +10,7 @@ class _DummySession:
     pass
 
 
-def test_complex_persistence_guard_rejects_non_ai_message(monkeypatch):
+async def test_complex_persistence_guard_rejects_non_ai_message(monkeypatch):
     service = StreamService(_DummySession())
     execution_plan = ExecutionPlan(
         id="plan-1",
@@ -21,7 +21,7 @@ def test_complex_persistence_guard_rejects_non_ai_message(monkeypatch):
     )
     monkeypatch.setattr(service, "_get_latest_execution_plan", lambda _thread_id: execution_plan)
 
-    error = service._get_complex_result_persistence_error(
+    error = await service._get_complex_result_persistence_error(
         thread_id="thread-1",
         last_message=HumanMessage(content="user message"),
         task_list=[{"id": "task-1"}],
@@ -30,7 +30,7 @@ def test_complex_persistence_guard_rejects_non_ai_message(monkeypatch):
     assert error == "复杂模式未产出有效助手消息，已拒绝将当前结果落库为 completed"
 
 
-def test_complex_persistence_guard_rejects_missing_task_results(monkeypatch):
+async def test_complex_persistence_guard_rejects_missing_task_results(monkeypatch):
     service = StreamService(_DummySession())
     execution_plan = ExecutionPlan(
         id="plan-1",
@@ -41,7 +41,7 @@ def test_complex_persistence_guard_rejects_missing_task_results(monkeypatch):
     )
     monkeypatch.setattr(service, "_get_latest_execution_plan", lambda _thread_id: execution_plan)
 
-    error = service._get_complex_result_persistence_error(
+    error = await service._get_complex_result_persistence_error(
         thread_id="thread-1",
         last_message=AIMessage(content="assistant message"),
         task_list=[],
@@ -50,7 +50,7 @@ def test_complex_persistence_guard_rejects_missing_task_results(monkeypatch):
     assert error == "复杂模式未收集到任何任务结果，已拒绝将当前结果落库为 completed"
 
 
-def test_complex_persistence_guard_accepts_valid_result(monkeypatch):
+async def test_complex_persistence_guard_accepts_valid_result(monkeypatch):
     service = StreamService(_DummySession())
     execution_plan = ExecutionPlan(
         id="plan-1",
@@ -61,7 +61,7 @@ def test_complex_persistence_guard_accepts_valid_result(monkeypatch):
     )
     monkeypatch.setattr(service, "_get_latest_execution_plan", lambda _thread_id: execution_plan)
 
-    error = service._get_complex_result_persistence_error(
+    error = await service._get_complex_result_persistence_error(
         thread_id="thread-1",
         last_message=AIMessage(content="assistant message"),
         task_list=[{"id": "task-1"}],

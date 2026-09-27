@@ -58,10 +58,12 @@ async def today_token_usage_exceeds_quota(session: Session, user_id: str, quota:
     未设置时此函数不被调用，故长期潜伏）。
     """
     today_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
-    used = await session.exec(
-        select(func.coalesce(func.sum(AgentRun.total_tokens), 0)).where(
-            AgentRun.user_id == user_id,
-            AgentRun.started_at >= today_start,
+    used = (
+        await session.exec(
+            select(func.coalesce(func.sum(AgentRun.total_tokens), 0)).where(
+                AgentRun.user_id == user_id,
+                AgentRun.started_at >= today_start,
+            )
         )
     ).one()
     return int(used[0] or 0) >= quota

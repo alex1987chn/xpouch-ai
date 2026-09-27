@@ -51,7 +51,7 @@ class ToolPolicyService:
             now = utc_now()
             if now < self._cache_expire_at:
                 return self._cache
-            overrides = await self._load_overrides_sync()
+            overrides = await self._load_overrides_impl()
             self._cache = overrides
             self._cache_expire_at = now + timedelta(seconds=30)
             return overrides
@@ -61,9 +61,9 @@ class ToolPolicyService:
             self._cache = {}
             self._cache_expire_at = datetime.min.replace(tzinfo=UTC)  # aware，见类 docstring
 
-    async def _load_overrides_sync(self) -> dict[tuple[str, str], ToolPolicyOverride]:
+    async def _load_overrides_impl(self) -> dict[tuple[str, str], ToolPolicyOverride]:
         async with SessionFactory() as session:
-            records = await session.exec(select(ToolPolicy)).all()
+            records = (await session.exec(select(ToolPolicy))).all()
         return {
             (record.tool_name, record.source): ToolPolicyOverride(
                 tool_name=record.tool_name,

@@ -81,7 +81,7 @@ async def get_recent_artifacts_for_thread(session: SQLModelSession, thread_id: s
         .order_by(Artifact.created_at.desc())
         .limit(limit)
     )
-    rows = await session.exec(stmt).all()
+    rows = (await session.exec(stmt)).all()
 
     digests = []
     for artifact, expert_type in rows:

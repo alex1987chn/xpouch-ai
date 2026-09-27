@@ -13,9 +13,9 @@ import asyncio
 from datetime import timedelta
 
 import pytest
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel, select
+from sqlmodel import Session, SQLModel, select
 
 from crud.agent_run import ACTIVE_RUN_STATUSES
 from models import AgentRun, RunEvent, RunStatus, Thread
@@ -23,17 +23,18 @@ from services import run_lease_service as lease_service
 from utils.run_lease import RUN_OWNER_ID, lease_deadline
 from utils.time import utc_now
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -41,7 +42,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [Thread.__table__, AgentRun.__table__, RunEvent.__table__]
@@ -97,11 +97,11 @@ async def _add_run(
 
 class TestRenew:
     async def test_renews_only_own_active_runs(self, db):
-        mine = _add_run(db, "run-mine", lease_seconds=1)
-        other = _add_run(db, "run-other", owner=OTHER_OWNER, lease_seconds=1)
-        done = _add_run(db, "run-done", status=RunStatus.COMPLETED, lease_seconds=1)
+        mine = await _add_run(db, "run-mine", lease_seconds=1)
+        other = await _add_run(db, "run-other", owner=OTHER_OWNER, lease_seconds=1)
+        done = await _add_run(db, "run-done", status=RunStatus.COMPLETED, lease_seconds=1)
 
-        renewed = lease_service.renew_owned_leases(db)
+        renewed = await lease_service.renew_owned_leases(db)
 
         assert renewed == 1
         for run in (mine, other, done):
@@ -114,18 +114,20 @@ class TestRenew:
 
     async def test_paused_run_keeps_being_renewed(self, db):
         """HITL 等待中的 run 也是活跃的：用户思考期间它必须一直活着。"""
-        paused = _add_run(db, "run-paused", status=RunStatus.WAITING_FOR_APPROVAL, lease_seconds=1)
+        paused = await _add_run(
+            db, "run-paused", status=RunStatus.WAITING_FOR_APPROVAL, lease_seconds=1
+        )
 
-        assert lease_service.renew_owned_leases(db) == 1
+        assert await lease_service.renew_owned_leases(db) == 1
         await db.refresh(paused)
         assert paused.lease_expires_at > utc_now()
 
 
 class TestReclaim:
     async def test_reclaims_expired_lease(self, db):
-        run = _add_run(db, "run-zombie", owner=OTHER_OWNER, lease_seconds=-1)
+        run = await _add_run(db, "run-zombie", owner=OTHER_OWNER, lease_seconds=-1)
 
-        reclaimed = lease_service.reclaim_expired_leases(db)
+        reclaimed = await lease_service.reclaim_expired_leases(db)
 
         assert reclaimed == [("t1", ["run-zombie"])]
         await db.refresh(run)
@@ -135,16 +137,16 @@ class TestReclaim:
 
     async def test_reclaims_run_without_lease(self, db):
         """无租约 = 无存活证据（迁移前遗留 / 别的进程没认领）。"""
-        run = _add_run(db, "run-no-lease", lease_seconds=None)
+        run = await _add_run(db, "run-no-lease", lease_seconds=None)
 
-        assert lease_service.reclaim_expired_leases(db) == [("t1", ["run-no-lease"])]
+        assert await lease_service.reclaim_expired_leases(db) == [("t1", ["run-no-lease"])]
         await db.refresh(run)
         assert run.status == RunStatus.TIMED_OUT
 
     async def test_does_not_touch_alive_run(self, db):
-        run = _add_run(db, "run-alive", lease_seconds=60)
+        run = await _add_run(db, "run-alive", lease_seconds=60)
 
-        assert lease_service.reclaim_expired_leases(db) == []
+        assert await lease_service.reclaim_expired_leases(db) == []
         await db.refresh(run)
         assert run.status == RunStatus.RUNNING
 
@@ -153,7 +155,7 @@ class TestReclaim:
 
         这是「用户思考多久都不算超时」这条既有语义的守门测试。
         """
-        run = _add_run(
+        run = await _add_run(
             db,
             "run-paused",
             status=RunStatus.WAITING_FOR_APPROVAL,
@@ -161,7 +163,7 @@ class TestReclaim:
             deadline_seconds=None,
         )
 
-        assert lease_service.reclaim_expired_leases(db) == []
+        assert await lease_service.reclaim_expired_leases(db) == []
         await db.refresh(run)
         assert run.status == RunStatus.WAITING_FOR_APPROVAL
 
@@ -174,7 +176,7 @@ class TestReclaim:
         「运行进程失联」，审批卡消失、任务再也批不了（2026-09-13 实测：一小时内 5 条
         待审批 run 全被误杀，其中一条正是用户报「审批计划这个选项没出来」的那次）。
         """
-        run = _add_run(
+        run = await _add_run(
             db,
             "run-paused-expired",
             status=RunStatus.WAITING_FOR_APPROVAL,
@@ -182,7 +184,7 @@ class TestReclaim:
             deadline_seconds=None,
         )
 
-        assert lease_service.reclaim_expired_leases(db) == []
+        assert await lease_service.reclaim_expired_leases(db) == []
         await db.refresh(run)
         assert run.status == RunStatus.WAITING_FOR_APPROVAL
 
@@ -191,18 +193,18 @@ class TestReclaim:
 
         两种情况用户看到的都是「超时」，但排查结论完全不同，所以文案必须分开。
         """
-        run = _add_run(db, "run-over-budget", lease_seconds=60, deadline_seconds=-1)
+        run = await _add_run(db, "run-over-budget", lease_seconds=60, deadline_seconds=-1)
 
-        assert lease_service.reclaim_expired_leases(db) == [("t1", ["run-over-budget"])]
+        assert await lease_service.reclaim_expired_leases(db) == [("t1", ["run-over-budget"])]
         await db.refresh(run)
         assert run.status == RunStatus.TIMED_OUT
         assert "执行预算" in (run.error_message or "")
 
     async def test_terminal_runs_are_left_alone(self, db):
-        run = _add_run(db, "run-done", status=RunStatus.COMPLETED, lease_seconds=-100)
+        run = await _add_run(db, "run-done", status=RunStatus.COMPLETED, lease_seconds=-100)
         before = run.status
 
-        assert lease_service.reclaim_expired_leases(db) == []
+        assert await lease_service.reclaim_expired_leases(db) == []
         await db.refresh(run)
         assert run.status == before
 
@@ -232,22 +234,22 @@ class TestSupervisorSafety:
                 await task
             assert still_running, "supervisor 因单轮异常退出 —— 会引发批量误回收"
 
-        asyncio.run(await _run_briefly())
+        await _run_briefly()
         assert calls["n"] >= 2, "失败后应当继续下一轮，而不是只试一次"
 
     async def test_tick_renews_then_reclaims_in_one_pass(self, db, monkeypatch):
         """一轮里续租与回收都要发生（顺序：先续租再回收，避免把刚过期的自己人算进去）。"""
-        alive = _add_run(db, "run-alive", lease_seconds=1)
-        zombie = _add_run(db, "run-zombie", owner=OTHER_OWNER, lease_seconds=-1)
+        alive = await _add_run(db, "run-alive", lease_seconds=1)
+        zombie = await _add_run(db, "run-zombie", owner=OTHER_OWNER, lease_seconds=-1)
 
         monkeypatch.setattr(lease_service, "Session", lambda _engine: Session(db.get_bind()))
-        renewed, reclaimed = lease_service.supervisor_tick()
+        renewed, reclaimed = await lease_service.supervisor_tick()
 
         assert renewed >= 1
         assert reclaimed == [("t1", ["run-zombie"])]
         db.expire_all()
-        assert await db.get(AgentRun, alive.id).status == RunStatus.RUNNING
-        assert await db.get(AgentRun, zombie.id).status == RunStatus.TIMED_OUT
+        assert (await db.get(AgentRun, alive.id)).status == RunStatus.RUNNING
+        assert (await db.get(AgentRun, zombie.id)).status == RunStatus.TIMED_OUT
 
     def test_active_statuses_come_from_crud(self):
         """活跃状态集合只有一个来源（crud.ACTIVE_RUN_STATUSES），别在服务里重列一遍。"""

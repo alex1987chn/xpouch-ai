@@ -7,19 +7,26 @@ SMS 发送用 monkeypatch 打桩；验证码哈希直接写库构造（模拟 se
 实为测试夹具，无真实凭据）。
 """
 
-import asyncio
 from datetime import timedelta
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel, select
+from sqlmodel import SQLModel, select
 
 from models import User
 from utils.jwt_handler import hash_password, verify_password
 from utils.secret_hash import hash_secret
 from utils.verification import get_code_expiry_duration, utcnow
+
+_TEST_ENGINE_HOLDER = [None]
+
+
+def _test_session():
+    from sqlmodel.ext.asyncio.session import AsyncSession as _AS
+
+    return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
 
 
 class _FakeHttpRequest:
@@ -38,12 +45,13 @@ _PHONE = "13900000001"
 
 @pytest.fixture
 async def db():
-    engine = create_async_engine(
+    _TEST_ENGINE_HOLDER[0] = engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    SQLModel.metadata.create_all(engine, tables=[User.__table__])
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda c: SQLModel.metadata.create_all(c, tables=[User.__table__]))
     async with _test_session() as session:
         yield session
 
@@ -84,23 +92,21 @@ def _stage_code(user: User, code: str = _CODE, expired: bool = False) -> None:
     user.verification_code_locked_until = None
 
 
-def _reset(db, phone: str, code: str, password: str):
+async def _reset(db, phone: str, code: str, password: str):
     from auth.routes_password import reset_password
     from auth.schemas import ResetPasswordRequest
 
-    return asyncio.run(
-        reset_password(ResetPasswordRequest(phone_number=phone, code=code, password=password), db)
+    return await reset_password(
+        ResetPasswordRequest(phone_number=phone, code=code, password=password), db
     )
 
 
-def _send_code(db, phone: str, purpose: str = "login"):
+async def _send_code(db, phone: str, purpose: str = "login"):
     from auth.routes_otp import send_verification_code
     from auth.schemas import SendCodeRequest
 
-    return asyncio.run(
-        send_verification_code(
-            SendCodeRequest(phone_number=phone, purpose=purpose), _FakeHttpRequest(), db
-        )
+    return await send_verification_code(
+        SendCodeRequest(phone_number=phone, purpose=purpose), _FakeHttpRequest(), db
     )
 
 
@@ -109,7 +115,7 @@ async def test_reset_success_then_new_password_works(db, user_with_password):
     db.add(user_with_password)
     await db.commit()
 
-    resp = _reset(db, _PHONE, _CODE, _PW_NEW)
+    resp = await _reset(db, _PHONE, _CODE, _PW_NEW)
     assert "密码已重置" in resp["message"]
 
     await db.refresh(user_with_password)
@@ -125,7 +131,7 @@ async def test_reset_wrong_code_rejected_and_password_unchanged(db, user_with_pa
     await db.commit()
 
     with pytest.raises(HTTPException) as exc:
-        _reset(db, _PHONE, "000000", _PW_NEW)
+        await _reset(db, _PHONE, "000000", _PW_NEW)
     assert exc.value.status_code == 400
 
     await db.refresh(user_with_password)
@@ -142,11 +148,11 @@ async def test_reset_locks_after_too_many_failures(db, user_with_password):
 
     for _ in range(settings.verification_code_max_attempts):
         with pytest.raises(HTTPException):
-            _reset(db, _PHONE, "000000", _PW_NEW)
+            await _reset(db, _PHONE, "000000", _PW_NEW)
 
     # 锁定后即使验证码正确也拒绝
     with pytest.raises(HTTPException) as exc:
-        _reset(db, _PHONE, _CODE, _PW_NEW)
+        await _reset(db, _PHONE, _CODE, _PW_NEW)
     assert exc.value.status_code == 429
 
 
@@ -156,28 +162,28 @@ async def test_reset_expired_code_400(db, user_with_password):
     await db.commit()
 
     with pytest.raises(HTTPException) as exc:
-        _reset(db, _PHONE, _CODE, _PW_NEW)
+        await _reset(db, _PHONE, _CODE, _PW_NEW)
     assert exc.value.status_code == 400
     assert "过期" in exc.value.detail
 
 
-def test_reset_nonexistent_user_404(db):
+async def test_reset_nonexistent_user_404(db):
     with pytest.raises(HTTPException) as exc:
-        _reset(db, "13900000099", _CODE, _PW_NEW)
+        await _reset(db, "13900000099", _CODE, _PW_NEW)
     assert exc.value.status_code == 404
 
 
 async def test_send_code_reset_purpose_does_not_create_account(db, mock_sms):
     with pytest.raises(HTTPException) as exc:
-        _send_code(db, "13900000099", purpose="password_reset")
+        await _send_code(db, "13900000099", purpose="password_reset")
     assert exc.value.status_code == 404
     # 不像登录/注册那样自动建号
-    assert await db.exec(select(User).where(User.phone_number == "13900000099")).first() is None
+    assert (await db.exec(select(User).where(User.phone_number == "13900000099"))).first() is None
     assert mock_sms == []
 
 
 async def test_send_code_reset_purpose_existing_user_sends(db, user_with_password, mock_sms):
-    resp = _send_code(db, _PHONE, purpose="password_reset")
+    resp = await _send_code(db, _PHONE, purpose="password_reset")
     assert resp["expires_in"] > 0
     assert len(mock_sms) == 1
     await db.refresh(user_with_password)

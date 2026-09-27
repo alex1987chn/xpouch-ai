@@ -29,9 +29,9 @@ from unittest.mock import patch
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import Session, SQLModel, SQLModel, select
+from sqlmodel import SQLModel, select
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -57,17 +57,18 @@ from utils.error_codes import ErrorCode  # noqa: E402
 from utils.exceptions import AppError  # noqa: E402
 from utils.time import utc_now  # noqa: E402
 
-
 _TEST_ENGINE_HOLDER = [None]
 
 
-
 async def _init_tables(engine, tables=None):
-    from sqlmodel import SQLModel
 
     async with engine.begin() as conn:
         await conn.run_sync(
-            lambda c: SQLModel.metadata.create_all(c, tables=tables) if tables else SQLModel.metadata.create_all(c)
+            lambda c: (
+                SQLModel.metadata.create_all(c, tables=tables)
+                if tables
+                else SQLModel.metadata.create_all(c)
+            )
         )
 
 
@@ -75,7 +76,6 @@ def _test_session() -> "AsyncSession":
     from sqlmodel.ext.asyncio.session import AsyncSession as _AS
 
     return _AS(_TEST_ENGINE_HOLDER[0], expire_on_commit=False)
-
 
 
 TABLES = [
@@ -186,7 +186,7 @@ async def engine():
         session.add(SystemSetting(key="graph_max_concurrency", value="2"))
         await session.commit()
     yield engine
-    engine.dispose()
+    await engine.dispose()
 
 
 async def _park_at_approval(saver: MemorySaver) -> None:
@@ -309,7 +309,7 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
             except BaseException as exc:  # AppError(RUN_CANCELLED) 是契约内的上抛
                 errors.append(exc)
 
-        consumer = asyncio.create_task(await _consume())
+        consumer = asyncio.create_task(_consume())
 
         # 等第一波两个分支都开跑、且快的那个已完成——此刻取消落在「半完成」窗口
         await _wait_until(
@@ -362,10 +362,11 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     async with _test_session() as db:
         run = await db.get(AgentRun, "r1")
         assert run.status == RunStatus.CANCELLED, f"取消必须是终态，实际 {run.status}"
-        plan = await db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == "r1")).one()
+        plan = (await db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == "r1"))).one()
         assert plan.status == TaskStatus.CANCELLED
         event_types = {
-            row.event_type for row in await db.exec(select(RunEvent).where(RunEvent.run_id == "r1")).all()
+            row.event_type
+            for row in (await db.exec(select(RunEvent).where(RunEvent.run_id == "r1"))).all()
         }
         assert RunEventType.RUN_CANCELLED in event_types
 

@@ -263,7 +263,7 @@ async def debug_list_users(
     """列出所有用户（仅用于调试，需要登录且仅开发环境）"""
     _ensure_debug_enabled()
 
-    users = await session.exec(select(User).order_by(User.created_at.desc())).all()
+    users = (await session.exec(select(User).order_by(User.created_at.desc()))).all()
     return {
         "count": len(users),
         "users": [
@@ -326,13 +326,15 @@ async def debug_cleanup_users(current_user: User = Depends(get_current_user_with
     # 创建新的session，不经过get_current_user依赖
     with SASession(engine) as session:
         # 查找所有没有手机号的用户
-        users_to_delete = await session.exec(select(User).where(User.phone_number.is_(None))).all()
+        users_to_delete = (
+            await session.exec(select(User).where(User.phone_number.is_(None)))
+        ).all()
 
         count = len(users_to_delete)
 
         for user in users_to_delete:
             # 1. 先删除该用户的所有线程（会级联删除messages）
-            threads = await session.exec(select(Thread).where(Thread.user_id == user.id)).all()
+            threads = (await session.exec(select(Thread).where(Thread.user_id == user.id))).all()
             for conv in threads:
                 await session.delete(conv)
 
@@ -373,7 +375,7 @@ async def get_usage_summary(
         ).where(AgentRun.user_id == current_user.id)
         if since is not None:
             stmt = stmt.where(AgentRun.started_at >= since)
-        total, prompt, completion, runs = await session.exec(stmt).one()
+        total, prompt, completion, runs = (await session.exec(stmt)).one()
         return {
             "runs": int(runs),
             "total_tokens": int(total),

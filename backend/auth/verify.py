@@ -27,7 +27,7 @@ def _clear_verification_code(user: User) -> None:
     _reset_verification_state(user)
 
 
-def _verify_code_or_raise(user: User, code: str, session: Session) -> None:
+async def _verify_code_or_raise(user: User, code: str, session: Session) -> None:
     """校验验证码；失败按语义转成 HTTPException 并落库失败计数/锁定。
 
     登录（verify-code）与忘记密码（reset-password）共用同一套校验与防爆破语义。
@@ -42,7 +42,7 @@ def _verify_code_or_raise(user: User, code: str, session: Session) -> None:
     except VerificationCodeExpiredError:
         _clear_verification_code(user)
         session.add(user)
-        session.commit()
+        await session.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="验证码已过期，请重新发送"
         ) from None
@@ -57,7 +57,7 @@ def _verify_code_or_raise(user: User, code: str, session: Session) -> None:
         user.verification_code_attempts = attempts
         user.verification_code_locked_until = locked_until
         session.add(user)
-        session.commit()
+        await session.commit()
         if locked_until is not None:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

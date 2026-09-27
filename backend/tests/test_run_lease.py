@@ -163,26 +163,26 @@ class TestLeasePredicate:
 
 
 class TestClaimAndRelease:
-    def test_claim_sets_owner_and_deadline(self):
+    async def test_claim_sets_owner_and_deadline(self):
         run = _run(owner=None, lease_expires_at=None)
         assert _claim_lease(run, new_attempt=True) is True
         assert run.owner == RUN_OWNER_ID
         assert run.lease_expires_at is not None
         assert run.attempt == 1
 
-    def test_renewal_does_not_bump_attempt(self):
+    async def test_renewal_does_not_bump_attempt(self):
         run = _run(owner=RUN_OWNER_ID, attempt=1)
         _claim_lease(run)
         assert run.attempt == 1, "顺带写入（状态变更/心跳）只续租，不计数"
 
-    def test_claim_refuses_other_owners_run(self):
+    async def test_claim_refuses_other_owners_run(self):
         run = _run(owner="other-process:1:aaaa", lease_expires_at=lease_deadline())
         before = run.lease_expires_at
         assert _claim_lease(run) is False
         assert run.owner == "other-process:1:aaaa", "不得把别人的租约改成自己的"
         assert run.lease_expires_at == before
 
-    def test_release_clears_both_fields(self):
+    async def test_release_clears_both_fields(self):
         run = _run(owner=RUN_OWNER_ID, lease_expires_at=lease_deadline(), attempt=1)
         _release_lease(run)
         assert run.owner is None

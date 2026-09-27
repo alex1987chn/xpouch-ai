@@ -42,11 +42,13 @@ async def _purge_thread(session: Session, thread: Thread) -> list[str] | None:
     """
     try:
         with session.begin_nested():
-            execution_plans = await session.exec(
-                select(ExecutionPlan).where(ExecutionPlan.thread_id == thread.id)
+            execution_plans = (
+                await session.exec(
+                    select(ExecutionPlan).where(ExecutionPlan.thread_id == thread.id)
+                )
             ).all()
-            agent_runs = await session.exec(
-                select(AgentRun).where(AgentRun.thread_id == thread.id)
+            agent_runs = (
+                await session.exec(select(AgentRun).where(AgentRun.thread_id == thread.id))
             ).all()
 
             if thread.execution_plan_id is not None:
@@ -90,16 +92,20 @@ async def _cleanup_once() -> dict[str, Any]:
     checkpoint_targets: list[tuple[str, list[str]]] = []
 
     async with SessionFactory() as session:
-        stale_running_threads = await session.exec(
-            select(Thread).where(
-                Thread.status == ThreadStatus.RUNNING, Thread.updated_at < stale_running_before
+        stale_running_threads = (
+            await session.exec(
+                select(Thread).where(
+                    Thread.status == ThreadStatus.RUNNING, Thread.updated_at < stale_running_before
+                )
             )
         ).all()
         for thread in stale_running_threads:
-            latest_run = await session.exec(
-                select(AgentRun)
-                .where(AgentRun.thread_id == thread.id)
-                .order_by(AgentRun.created_at.desc())
+            latest_run = (
+                await session.exec(
+                    select(AgentRun)
+                    .where(AgentRun.thread_id == thread.id)
+                    .order_by(AgentRun.created_at.desc())
+                )
             ).first()
             thread.status = (
                 derive_thread_status_from_run_status(latest_run.status)
@@ -110,10 +116,12 @@ async def _cleanup_once() -> dict[str, Any]:
             session.add(thread)
             stale_running_reset += 1
 
-        expired_threads = await session.exec(
-            select(Thread).where(
-                Thread.status.in_([ThreadStatus.IDLE, ThreadStatus.PAUSED]),
-                Thread.updated_at < expired_before,
+        expired_threads = (
+            await session.exec(
+                select(Thread).where(
+                    Thread.status.in_([ThreadStatus.IDLE, ThreadStatus.PAUSED]),
+                    Thread.updated_at < expired_before,
+                )
             )
         ).all()
         for thread in expired_threads:
