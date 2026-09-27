@@ -45,14 +45,19 @@ C2（2026-09-13）: 从「主图节点 + current_task_index 游标」改为「�
 """
 
 import asyncio
-import json
-import re
 from typing import Any
 
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from agents.event_stream import emit_event
+from agents.nodes.message_normalization import (  # noqa: F401 — re-export 保持测试桩兼容
+    _branch_used_memory_tools,
+    _detect_artifact_type,
+    _format_input_data,
+    normalize_message_content,
+    normalize_messages_for_llm,
+)
 from agents.plan_waves import task_key
 from agents.routing_policy import should_trip_tool_loop_guard
 from agents.services.expert_manager import get_expert_config_cached
@@ -63,10 +68,8 @@ from config import settings
 from event_types.events import TaskFailedData, TaskStartedData
 from models.enums import GraphTaskStatus
 from providers_config import get_model_config, load_providers_config
-from services.memory_manager import memory_manager  # 🔥 导入记忆管理器
 from services.tool_policy_service import tool_policy_service
 from tools import ASYNC_TOOLS as BASE_TOOLS  # 🔥 MCP: 导入基础工具集（异步版，避免阻塞事件循环）
-from tools.memory import MEMORY_TOOL_NAMES
 from utils.artifacts import strip_code_fence
 from utils.config_cache import ConfigCache
 from utils.llm_factory import get_effective_model, get_expert_llm
@@ -85,89 +88,6 @@ class GenericWorkerError(Exception):
 
 class ExpertExecutionError(GenericWorkerError):
     """专家执行失败（LLM 调用 / 工具流程）异常。"""
-
-
-def _branch_used_memory_tools(branch_messages: list) -> bool:
-    """本分支是否调用过记忆管理工具（检索/删除）。
-
-    用过 = 输出是操作报告（"已删除 N 条：…"）而非记忆素材，逐行入库必须
-    跳过——否则删除报告自己会被存成记忆（历史"已为您删除…"回声即此形态，
-    见 docs/BACKLOG.md 记忆系统条目）。
-    """
-    for message in branch_messages:
-        for call in getattr(message, "tool_calls", None) or []:
-            if isinstance(call, dict) and call.get("name") in MEMORY_TOOL_NAMES:
-                return True
-    return False
-
-
-def normalize_message_content(content: str | list | Any) -> str:
-    """
-    将消息内容规范化为字符串格式。
-
-    某些模型（如 DeepSeek）要求 message content 必须是字符串，
-    但 ToolMessage 的 content 可能是 list[str | dict]，需要转换。
-
-    Args:
-        content: 原始内容，可能是 str, list, dict 等
-
-    Returns:
-        str: 规范化后的字符串内容
-    """
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        # 将列表转换为 JSON 字符串
-        return json.dumps(content, ensure_ascii=False)
-    if isinstance(content, dict):
-        return json.dumps(content, ensure_ascii=False)
-    # 其他类型转为字符串
-    return str(content)
-
-
-def normalize_messages_for_llm(
-    messages: list[BaseMessage], content_mode: str = "auto"
-) -> list[BaseMessage]:
-    """
-    规范化消息列表，根据模型要求处理 content 格式。
-
-    不同模型对 message content 的要求不同：
-    - string 模式：content 必须是字符串（DeepSeek, MiniMax, Moonshot 等国产模型）
-    - auto 模式：原生支持 list[str | dict]（OpenAI, Anthropic, Gemini 等）
-
-    Args:
-        messages: 原始消息列表
-        content_mode: 内容模式，"string" 或 "auto"
-
-    Returns:
-        List[BaseMessage]: 规范化后的消息列表
-    """
-    # auto 模式下不需要转换，直接返回原消息
-    if content_mode == "auto":
-        return messages
-
-    # string 模式下需要转换 ToolMessage content
-    normalized = []
-    for msg in messages:
-        if isinstance(msg, ToolMessage):
-            # ToolMessage 的 content 可能是 list/dict，需要转换为字符串
-            normalized_content = normalize_message_content(msg.content)
-            if normalized_content != msg.content:
-                # 创建新的 ToolMessage，保留其他字段
-                normalized.append(
-                    ToolMessage(
-                        content=normalized_content,
-                        tool_call_id=msg.tool_call_id,
-                        name=msg.name,
-                        additional_kwargs=msg.additional_kwargs,
-                        response_metadata=msg.response_metadata,
-                    )
-                )
-            else:
-                normalized.append(msg)
-        else:
-            normalized.append(msg)
-    return normalized
 
 
 async def expert_worker_node(
@@ -194,7 +114,6 @@ async def expert_worker_node(
     Returns:
         Dict: 分支状态更新（草稿消息 + worker_started + task_outcomes）
     """
-    from langchain_core.messages import ToolMessage
 
     # 本分支的任务 / 上游输出 / 运行标识都来自 Send payload（分支读不到主图其它通道）
     current_task = state.get("current_task") or {}
@@ -698,62 +617,10 @@ async def expert_worker_node(
 
         logger.info(f"[GenericWorker] '{expert_type}' completed (耗时: {duration_ms / 1000:.2f}s)")
 
-        # -------------------------------------------------------------
-        # 🔥 新增逻辑：如果是记忆专家，执行"写入数据库"操作
-        # -------------------------------------------------------------
         if expert_type == "memorize_expert":
-            memory_content = response.content.strip()
-            # user_id 由 Send payload 的 branch_context 带过来（wave_scheduler 的
-            # build_branch_payload）。缺失即异常路径：宁可不入库也不落共享
-            # default_user——落了就把记忆记到公共账号，任何同样缺 user_id 的
-            # 请求都能检索到（跨用户串记忆，存量 default_user 脏数据即其产物）
-            user_id = branch_context.get("user_id")
+            from agents.nodes.memory_branch import handle_memory_branch
 
-            # 删除/查看类操作：用过记忆工具的分支，输出是操作报告不是记忆素材，
-            # 逐行入库必须跳过（否则"已删除 3 条…"会被存成记忆）
-            if _branch_used_memory_tools(existing_messages):
-                logger.info("[GenericWorker] 记忆管理操作完成，跳过记忆写入（输出为操作报告）")
-                response.content = memory_content
-            elif not user_id:
-                logger.warning(
-                    "[GenericWorker] branch_context 缺 user_id，记忆拒绝入库（不落共享账号）: "
-                    "thread=%s run=%s",
-                    branch_context.get("thread_id"),
-                    branch_context.get("run_id"),
-                )
-                response.content = "未能识别当前用户，本次记忆未保存。"
-            else:
-                # 教材约定「一行一条记忆、无值得记录时只输出：无」（见
-                # expert_config.memorize_expert）——逐行入库（分条存储检索精度更高），
-                # 「无」/空行不是记忆，跳过。曾把整段输出（含 JSON 数组形态的
-                # 结构包裹）当一条 content 存：结构字段无人承接，空数组 [] 也是垃圾记忆。
-                memory_lines = [
-                    ln.strip()
-                    for ln in memory_content.splitlines()
-                    if ln.strip() and ln.strip() != "无"
-                ]
-                if memory_lines:
-                    logger.info(f"[GenericWorker] 正在保存 {len(memory_lines)} 条记忆")
-                    try:
-                        for line in memory_lines:
-                            await memory_manager.add_memory(
-                                user_id=user_id,
-                                content=line,
-                                source="conversation",
-                                memory_type="fact",
-                            )
-                        logger.info("[GenericWorker] 记忆保存成功!")
-                        response.content = "已为您记录：\n" + "\n".join(memory_lines)
-                    except (RuntimeError, ValueError) as mem_err:
-                        # 如实上报失败——不说"我会记住"（没存上就是没存上）；
-                        # 重试安全：已入库的行会被 MemoryManager 的同内容去重挡住
-                        logger.warning(f"[GenericWorker] 记忆保存失败: {mem_err}")
-                        response.content = (
-                            "记忆保存失败（向量生成或写入出错），本次未记住，请重试。"
-                        )
-                else:
-                    response.content = "本次对话没有需要记住的内容。"
-        # -------------------------------------------------------------
+            await handle_memory_branch(response, existing_messages, branch_context)
 
         # 🔥 输出截断检测：finish_reason=length 说明内容被 max_tokens 掐断，
         # artifact 可能只有半截（如 HTML 只生成了 <head>，预览整页空白）
@@ -943,41 +810,4 @@ async def expert_worker_node(
         }
 
 
-def _format_input_data(data: dict) -> str:
-    """格式化输入数据为文本"""
-    if not data:
-        return "（无额外参数）"
 
-    return "\n".join(f"- {key}: {value}" for key, value in data.items())
-
-
-def _detect_artifact_type(content: str, expert_type: str) -> str:
-    """
-    检测 artifact 类型
-
-    简化版，默认返回 "text"，但会尝试检测 HTML 和 Markdown 内容。
-    """
-    content_lower = content.lower().strip()
-
-    # 1. HTML 检测
-    if (
-        content_lower.startswith("<!doctype html")
-        or content_lower.startswith("<html")
-        or ("<html" in content_lower and "</html>" in content_lower)
-    ):
-        return "html"
-
-    # 检测 HTML 代码块
-    html_code_block = re.search(r"```html\n([\s\S]*?)```", content, re.IGNORECASE)
-    if html_code_block:
-        return "html"
-
-    # 2. Markdown 检测
-    has_markdown = any(marker in content for marker in ["# ", "## ", "### ", "> ", "- ", "* "])
-    has_code_block = "```" in content
-
-    if has_markdown or has_code_block:
-        return "markdown"
-
-    # 3. 默认返回 text
-    return "text"
