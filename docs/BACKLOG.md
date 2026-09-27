@@ -15,7 +15,7 @@
 ## 工程债（待排期）
 
 - [ ] 事件双真相源统一：同一组 pydantic 模型约束 SSE 流与 run_events 账本
-- [ ] **全异步迁移：仅余 2 个行为不变量测试待收口（WIP 后续提交）**：516/518 过；双 e2e 已在**冷启动进程**上复跑全绿（冷启动还抓出 AsyncPostgresSaver.setup 误 await 的启动阻断 bug——已修）。余下两个失败（test_planning_disconnect / test_wave_cancel_consistency）是旧会话拓扑的深度集成测试：断连后 producer 私有会话不再共享 self.db，原测试的帧持久化断言（等 finish_blocking 刷库）与新时序错位，需要按新语义改写断言而非修 bug；同批还有 4 个加固项：懒加载 ~15 处显式化、ASYNCIO_DEBUG=1 接 lifespan、AGENTS.md async 硬约束条目、finish_blocking 取消态收尾语义重建（async 化削弱了原「同步收尾保证」）。**闸门不变：518 全绿 + 双 e2e 复跑绿才可 push**
+- StreamService 五协作者分解 / generic 拆解（991 行）/ RunContext 值对象（已认可方向，可排期——全异步已收官，e2e_cancel_resume + e2e_hitl 双安全网就位；改写两个旧拓扑行为测试为可顺带完成的前置）
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）

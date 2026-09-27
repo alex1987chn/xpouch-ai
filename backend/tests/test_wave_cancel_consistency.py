@@ -30,11 +30,9 @@ from unittest.mock import patch
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
-from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel.ext.asyncio.session import AsyncSession as _SQLModelAsyncSession
-from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, select
+from sqlmodel.ext.asyncio.session import AsyncSession as _SQLModelAsyncSession
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
@@ -274,7 +272,9 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     import database as _db_mod
     from agents.nodes import aggregator as _agg_mod
 
-    _test_factory = async_sessionmaker(_TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False)
+    _test_factory = async_sessionmaker(
+        _TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False
+    )
     monkeypatch.setattr(_db_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr(_agg_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr("utils.async_task_queue.async_save_expert_result", _noop_async)

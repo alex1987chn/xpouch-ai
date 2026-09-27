@@ -193,7 +193,9 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
     # producer 自建私有会话：注入绑测试引擎的工厂（返回 async CM，与生产同形）
     from contextlib import asynccontextmanager as _acm
 
-    _maker = async_sessionmaker(_TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False)
+    _maker = async_sessionmaker(
+        _TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False
+    )
 
     @_acm
     async def _session_cm():
@@ -209,7 +211,9 @@ async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engi
     import database as _db_mod
     from agents.nodes import aggregator as _agg_mod
 
-    _test_factory = async_sessionmaker(_TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False)
+    _test_factory = async_sessionmaker(
+        _TEST_ENGINE_HOLDER[0], class_=_SQLModelAsyncSession, expire_on_commit=False
+    )
     monkeypatch.setattr(_db_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr(_agg_mod, "SessionFactory", _test_factory)
     monkeypatch.setattr(svc, "_get_mcp_tools", _fake_mcp_tools)
