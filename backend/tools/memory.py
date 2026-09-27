@@ -33,7 +33,18 @@ def build_memory_tools(user_id: str) -> list[StructuredTool]:
         """按关键词预览当前用户匹配的记忆；空关键词=列出全部（最近的在前）。"""
         if keyword.strip():
             rows = await memory_manager.delete_memories(user_id, keyword, dry_run=True)
-            return _format_rows(rows, f"关键词「{keyword.strip()}」匹配")
+            if rows:
+                return _format_rows(rows, f"关键词「{keyword.strip()}」匹配")
+            # 零命中必须自愈：记忆按教材以英文第三人称存储，中文关键词 ILIKE
+            # 必然扑空——干巴巴的"无匹配"曾让模型误判工具损坏、幻觉出
+            # "删除未能成功执行"的报告（2026-09-27 删除身份事故）。附上全部
+            # 清单与语言提示，让模型永远有下一步可走。
+            all_rows = await memory_manager.list_memories(user_id)
+            return (
+                f"关键词「{keyword.strip()}」无匹配（记忆以英文第三人称存储，"
+                "中文关键词可能搜不到，删除时请换用记忆原文中的英文词）。\n"
+                + _format_rows(all_rows, "当前全部记忆")
+            )
         rows = await memory_manager.list_memories(user_id)
         return _format_rows(rows, "当前已保存的全部记忆")
 
