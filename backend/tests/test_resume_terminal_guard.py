@@ -87,7 +87,7 @@ class TestTerminalRunGuard:
         await _seed(db, status)
 
         with pytest.raises(AppError) as exc:
-            _service(db).resume_chat(thread_id="t1", run_id="r1", user_id="u1", approved=True)
+            await _service(db).resume_chat(thread_id="t1", run_id="r1", user_id="u1", approved=True)
 
         assert exc.value.code == ErrorCode.RESUME_INVALID_STATE
         assert exc.value.status_code == 409
@@ -101,7 +101,7 @@ class TestTerminalRunGuard:
         await _seed(db, status)
 
         with pytest.raises(AppError) as exc:
-            _service(db).resume_chat(
+            await _service(db).resume_chat(
                 thread_id="t1",
                 run_id="r1",
                 user_id="u1",
@@ -124,7 +124,7 @@ class TestTerminalRunGuard:
 
         monkeypatch.setattr(RecoveryService, "_handle_approval", _fake_approval)
 
-        result = _service(db).resume_chat(
+        result = await _service(db).resume_chat(
             thread_id="t1", run_id="r1", user_id="u1", approved=True, plan_version=1
         )
 
@@ -142,7 +142,7 @@ class TestTerminalRunGuard:
 
         monkeypatch.setattr(RecoveryService, "_handle_rejection", _fake_rejection)
 
-        result = _service(db).resume_chat(
+        result = await _service(db).resume_chat(
             thread_id="t1", run_id="r1", user_id="u1", approved=False, action="terminate"
         )
 

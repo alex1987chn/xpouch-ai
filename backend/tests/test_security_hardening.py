@@ -112,11 +112,11 @@ def _count_session(count: int):
     return session
 
 
-def test_fresh_install_detection():
+async def test_fresh_install_detection():
     from auth.routes_otp import _is_fresh_install
 
-    assert _is_fresh_install(_count_session(0)) is True
-    assert _is_fresh_install(_count_session(3)) is False
+    assert await _is_fresh_install(_count_session(0)) is True
+    assert await _is_fresh_install(_count_session(3)) is False
 
 
 # ============================================================================

@@ -15,7 +15,7 @@
 ## 工程债（待排期）
 
 - [ ] 事件双真相源统一：同一组 pydantic 模型约束 SSE 流与 run_events 账本
-- [ ] **全异步迁移测试长尾收口（进行中，WIP=0dfc9bc）**：应用层已完成（引擎/Session/crud/services/routers/节点/to_thread 全拆 85→0/embedding 官方 AsyncOpenAI/alembic 与离线脚本保持官方同步口径，编译+import+ruff 绿；spike 结论与决策依据见 0dfc9bc 提交说明）。剩余：①tests ~209 失败逐簇修——sqlite 夹具已半转官方 aiosqlite（dev 依赖已加、_test_session helper 已注入），已知病灶：mangled 假类（test_generic_worker_node / test_wave_execution 的 FakeLLM 重复 ainvoke）、方法级 await 残余、假 Session 缺新 awaited 方法；②Relationship 懒加载 ~12-15 处改显式查询（async 下必炸 MissingGreenlet：crud/services 里 .sub_tasks 3 处 + .execution_plan/.thread 类 ~9 处）；③ASYNCIO_DEBUG=1 官方慢回调开关接进 lifespan；④AGENTS.md 硬约束补 async 会话条目（expire_on_commit=False 语义；单列聚合语义不变已 spike 验证）；⑤验收链 + e2e_hitl + e2e_cancel_resume 实机全绿才算完——**双 e2e 不过不得 push**
+- [ ] **全异步迁移测试长尾收口（进行中，WIP=bbca7cc）**：**应用层已由双 e2e 实机认证**（e2e_hitl + e2e_cancel_resume 三场景全绿、A 场景两轮稳定——producer 私有会话修复断连并发竞态生效）。剩余纯测试侧：105 失败 / 413 过，病灶分类：①链式调用/假类同名导致的 await 残余（pytest 警告驱动修复法已建立：grep "was never awaited" → 链头插入，见 bbca7cc 提交内的脚本模式）；②sqlite 夹具 schema 漂移（test_planning_disconnect 的 TABLES 列表落后于模型）；③假 Session 缺新 awaited 方法；④四个后续加固项不变：懒加载 ~15 处显式化、ASYNCIO_DEBUG=1 接 lifespan、AGENTS.md async 硬约束条目、finish_blocking 取消态收尾加固（async 化削弱了原「同步收尾保证」不变量）。**验收闸门：115→0 失败 + 双 e2e 复跑全绿才可 push**
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）
