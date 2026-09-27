@@ -19,6 +19,12 @@ class _FakeSession:
     async def refresh(self, obj):
         self.refreshed.append(obj)
 
+    async def get(self, model, object_id):
+        # 保存路径经 FK 标量 + db.get 取计划（关系懒加载在 async 会话必炸）
+        if object_id == "plan-1":
+            return SimpleNamespace(run_id="run-1", thread_id="thread-1")
+        return None
+
 
 async def test_save_expert_execution_result_emits_task_and_artifact_events(monkeypatch):
     session = _FakeSession()

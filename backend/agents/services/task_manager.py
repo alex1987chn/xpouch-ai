@@ -27,7 +27,7 @@ from crud.execution_plan import (
     update_execution_plan_status,
 )
 from crud.run_event import emit_artifact_generated, emit_task_completed
-from models import TaskStatus
+from models import ExecutionPlan, TaskStatus
 from utils.logger import logger
 from utils.time import utc_now
 
@@ -178,7 +178,14 @@ async def save_expert_execution_result(
         await db.commit()
         await db.refresh(subtask)
 
-        execution_plan = subtask.execution_plan
+        # FK 标量 → 显式 get：关系懒加载在 async 会话里必炸 MissingGreenlet，
+        # 队列保存路径曾因此自全异步迁移起静默全灭（产物全靠恢复回放兜底，
+        # 回放缺席的运行产物直接丢失——2026-09-27 日志逮到）
+        execution_plan = (
+            await db.get(ExecutionPlan, subtask.execution_plan_id)
+            if subtask.execution_plan_id
+            else None
+        )
         run_id = execution_plan.run_id if execution_plan else None
         thread_id = execution_plan.thread_id if execution_plan else None
 
