@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from models import RunEvent, RunEventType
@@ -20,7 +21,7 @@ def append_run_event(
     *,
     run_id: str,
     event_type: RunEventType,
-    event_data: dict[str, Any] | None = None,
+    event_data: dict[str, Any] | BaseModel | None = None,
     thread_id: str | None = None,
     execution_plan_id: str | None = None,
     task_id: str | None = None,
@@ -42,6 +43,14 @@ def append_run_event(
     Returns:
         新创建的 RunEvent 实例
     """
+    # 账本 payload 统一在此归一：BaseModel → dict（mode="json"，与 psycopg 对
+    # pydantic 的隐式适配输出同形）。显式转换的理由：①不依赖 psycopg 的隐式
+    # 适配（SQLite 测试路径直接炸）；②JSON 形态由本处单一策略决定，不受
+    # 驱动行为变化影响。SSE 侧与账本侧必须共用同一 payload 实例（见
+    # event_types/events.py 模型族）。
+    if isinstance(event_data, BaseModel):
+        event_data = event_data.model_dump(mode="json")
+
     event = RunEvent(
         run_id=run_id,
         event_type=event_type,

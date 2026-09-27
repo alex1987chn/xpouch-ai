@@ -231,14 +231,25 @@ async def expert_worker_node(
                 )
             except Exception as msg_err:
                 logger.warning(f"[GenericWorker] ⚠️ 专家消息插入失败（不影响执行）: {msg_err}")
+        # 单构造双用（事件双真相源收敛）：SSE 与账本共用同一 payload 实例——
+        # 此前两侧各自构造，字段已漂移（账本缺 message_id/sort_order/total_steps）
+        task_started_payload = TaskStartedData(
+            task_id=str(task_id),
+            expert_type=expert_type,
+            description=description,
+            started_at=utc_now().isoformat(),
+            message_id=expert_message_id,
+            sort_order=int(current_task.get("sort_order") or 0),
+            total_steps=int(branch_context.get("total_steps") or 0) or None,
+        )
         await emit_event(
             event_task_started(
-                task_id=task_id,
+                task_id=task_started_payload.task_id,
                 expert_type=expert_type,
                 description=description,
                 message_id=expert_message_id,
-                sort_order=int(current_task.get("sort_order") or 0),
-                total_steps=int(branch_context.get("total_steps") or 0) or None,
+                sort_order=task_started_payload.sort_order,
+                total_steps=task_started_payload.total_steps,
             )
         )
         logger.info(f"[GenericWorker] 已生成 task.started 事件: {expert_type}")
@@ -257,12 +268,7 @@ async def expert_worker_node(
                         thread_id=thread_id,
                         execution_plan_id=execution_plan_id,
                         task_id=str(current_task.get("id", task_id)),
-                        event_data=TaskStartedData(
-                            task_id=str(current_task.get("id", task_id)),
-                            expert_type=expert_type,
-                            description=description,
-                            started_at=utc_now().isoformat(),
-                        ).model_dump(),
+                        event_data=task_started_payload,
                     ),
                     label=f"run_event:task_started:{expert_type}",
                 )
@@ -767,9 +773,18 @@ async def expert_worker_node(
         # ✅ 生成 task.failed 事件
         from utils.event_generator import event_task_failed
 
+        # 单构造双用：账本侧原 description="" 硬编码、缺 message_id（漂移实锤）
+        task_failed_payload = TaskFailedData(
+            task_id=str(task_id),
+            expert_type=expert_type,
+            description=description,
+            error=str(e),
+            failed_at=utc_now().isoformat(),
+            message_id=expert_message_id,
+        )
         await emit_event(
             event_task_failed(
-                task_id=task_id,
+                task_id=task_failed_payload.task_id,
                 expert_type=expert_type,
                 description=description,
                 error=str(e),
@@ -789,13 +804,7 @@ async def expert_worker_node(
                         thread_id=thread_id,
                         execution_plan_id=execution_plan_id,
                         task_id=str(task_id),
-                        event_data=TaskFailedData(
-                            task_id=str(task_id),
-                            expert_type=expert_type,
-                            description="",
-                            error=str(e),
-                            failed_at=utc_now().isoformat(),
-                        ).model_dump(),
+                        event_data=task_failed_payload,
                     ),
                     label=f"run_event:task_failed:{expert_type}",
                 )
