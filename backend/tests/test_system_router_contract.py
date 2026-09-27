@@ -133,7 +133,7 @@ def test_usage_summary_contract(sample_user):
             return (0, 0, 0, 0)
 
     class _SessionStub:
-        def _session_exec(self, _statement):
+        async def _session_exec(self, _statement):
             return _Result()
 
         exec = _session_exec

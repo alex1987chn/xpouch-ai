@@ -55,7 +55,7 @@ class _FakeSession:
 
     # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）。按查询目标
     # 路由：终态收口会分别查 agentrun / subtask / executionplan
-    def _session_exec(self, statement):
+    async def _session_exec(self, statement):
         sql = str(statement)
         if "FROM executionplan" in sql or "FROM execution_plan" in sql:
             # 模拟收口查询的 WHERE status IN (未终态)——与下方 active_runs

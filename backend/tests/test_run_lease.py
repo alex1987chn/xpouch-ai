@@ -77,7 +77,7 @@ class _FakeSession:
 
     # SQLModel Session 的查询接口 mock（模拟查询，非代码执行；与
     # tests/test_agent_run_status.py 同款写法）。租约过滤由被测代码在 Python 侧做。
-    def _session_exec(self, _statement):
+    async def _session_exec(self, _statement):
         return _FakeResult(run for run in self.runs.values() if run.status in _ACTIVE_FOR_TEST)
 
     exec = _session_exec

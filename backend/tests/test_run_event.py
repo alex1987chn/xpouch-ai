@@ -35,7 +35,7 @@ class _FakeSession:
         return None
 
     # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）
-    def _session_exec(self, statement):
+    async def _session_exec(self, statement):
         # 简单实现：返回所有事件
         return _FakeResult(list(self.events.values()))
 

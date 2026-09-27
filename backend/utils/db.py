@@ -171,7 +171,7 @@ async def setup_shared_checkpointer() -> None:
         settings.get_database_url(sync_driver="plain"), autocommit=True
     )
     try:
-        await AsyncPostgresSaver(conn, serde=get_checkpointer_serializer()).setup()
+        (await AsyncPostgresSaver(conn, serde=get_checkpointer_serializer())).setup()
     finally:
         await conn.close()
     # 预热共享 saver（建表已由上面的专用连接完成，这里只完成实例化绑定池）

@@ -35,7 +35,7 @@ class _SessionStub:
     def __init__(self, rows):
         self._rows = rows
 
-    def _session_exec(self, _statement):
+    async def _session_exec(self, _statement):
         rows = self._rows
 
         class _Result:

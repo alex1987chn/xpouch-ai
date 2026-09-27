@@ -19,6 +19,11 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+
+async def _async_expert_config(_t):
+    return _EXPERT_CONFIG
+
+
 import pytest  # noqa: E402
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -170,7 +175,7 @@ async def _run_graph(tasks: list[PlanTask], *, max_concurrency: int, llm: _Recor
         patch("agents.nodes.commander_node", _fake_commander),
         patch("agents.nodes.aggregator_node", _fake_aggregator),
         patch("agents.nodes.generic.get_expert_llm", lambda **_kw: llm),
-        patch("agents.nodes.generic.get_expert_config_cached", lambda _t: _EXPERT_CONFIG),
+        patch("agents.nodes.generic.get_expert_config_cached", _async_expert_config),
         patch("agents.nodes.generic._generic_expert_cache", {}),
         patch(
             "agents.nodes.generic.get_model_config",

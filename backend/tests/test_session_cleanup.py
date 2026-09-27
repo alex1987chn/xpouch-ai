@@ -30,7 +30,7 @@ class _FakeSession:
         yield
 
     # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）
-    def _session_exec(self, stmt):
+    async def _session_exec(self, stmt):
         entity = stmt.column_descriptions[0]["entity"]
         if entity is ExecutionPlan:
             return _FakeResult(self._plans)

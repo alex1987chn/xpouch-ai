@@ -97,7 +97,7 @@ async def test_create_share_returns_token_once(db, owned_artifact):
 
 async def test_resolve_returns_artifact_and_revoked_returns_none(db, owned_artifact):
     service = ShareService(db)
-    token = await service.create_share("a1", "u1")["token"]
+    token = (await service.create_share("a1", "u1"))["token"]
 
     artifact = service.resolve(token)
     assert artifact is not None

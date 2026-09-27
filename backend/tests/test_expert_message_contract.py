@@ -54,7 +54,7 @@ class _SessionStub:
     async def rollback(self) -> None:
         pass
 
-    def _session_query(self, statement):
+    async def _session_query(self, statement):
         stmt = str(statement).lower()
         if "message" in stmt:
             rows: list = list(self._messages)

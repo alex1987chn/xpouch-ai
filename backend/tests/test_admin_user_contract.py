@@ -19,7 +19,7 @@ from routers import admin as admin_router
 class _SessionStub:
     """最小会话替身：唯一性查询一律「无冲突」，写操作静默成功。"""
 
-    def _session_exec(self, _statement):
+    async def _session_exec(self, _statement):
         class _Result:
             def first(self):
                 return None

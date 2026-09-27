@@ -88,7 +88,7 @@ class TestDependencyPreserved:
             },
         ]
 
-        merged = _by_key(await _apply(current, updated)["task_list"])
+        merged = _by_key((await _apply(current, updated))["task_list"])
 
         assert merged["task_2"]["depends_on"] == ["task_1"], (
             "前端 TaskInfo 形态（无 task_id 字段）的语义依赖必须经 uuid→语义映射后保留"
@@ -98,7 +98,7 @@ class TestDependencyPreserved:
         current = [_task("task_1", status="completed"), _task("task_2", deps=["task_1"])]
         updated = [_task("task_1", status="completed"), _task("task_2", deps=["task_1"])]
 
-        merged = _by_key(await _apply(current, updated)["task_list"])
+        merged = _by_key((await _apply(current, updated))["task_list"])
 
         assert merged["task_2"]["depends_on"] == ["task_1"], (
             "依赖引用的 commander id 与保留集合同源时必须保留"
@@ -109,7 +109,7 @@ class TestDependencyPreserved:
         current = [_task("task_1"), _task("task_2"), _task("task_3", deps=["task_1", "task_2"])]
         updated = [_task("task_1"), _task("task_3", deps=["task_1", "task_2"])]  # 删掉 task_2
 
-        merged = _by_key(await _apply(current, updated)["task_list"])
+        merged = _by_key((await _apply(current, updated))["task_list"])
 
         assert merged["task_3"]["depends_on"] == ["task_1"]
 
@@ -117,7 +117,7 @@ class TestDependencyPreserved:
         current = [_task("task_1"), _task("task_2", deps=["task_1"])]
         updated = [_task("task_2", deps=["task_1"])]  # task_1 被删
 
-        merged = _by_key(await _apply(current, updated)["task_list"])
+        merged = _by_key((await _apply(current, updated))["task_list"])
 
         assert merged["task_2"]["depends_on"] is None
 
@@ -134,7 +134,7 @@ class TestCompletedTaskPreserved:
         # 前端提交时把已完成任务的 status 写回 pending（模拟朴素客户端）
         updated = [_task("task_1"), _task("task_2", deps=["task_1"])]
 
-        merged = _by_key(await _apply(current, updated)["task_list"])
+        merged = _by_key((await _apply(current, updated))["task_list"])
 
         assert merged["task_1"]["status"] == "completed"
         assert merged["task_1"]["output_result"] == "上游产出，必须保留"
@@ -146,7 +146,7 @@ class TestCompletedTaskPreserved:
         current = [_task("task_1", status="completed"), _task("task_2"), _task("task_3")]
         updated = [_task("task_1"), _task("task_2"), _task("task_3")]
 
-        merged = await _apply(current, updated)["task_list"]
+        merged = (await _apply(current, updated))["task_list"]
 
         assert select_wave(merged, max_concurrency=1) == ["task_2"], "串行下取第一个就绪任务"
         assert "current_task_index" not in await _apply(current, updated), (
@@ -165,7 +165,7 @@ class TestCompletedTaskPreserved:
         current = [_task("task_1"), _task("task_2", deps=["task_1"])]
         updated = [_task("task_2", deps=["task_1"])]  # task_1 被删
 
-        merged = await _apply(current, updated)["task_list"]
+        merged = (await _apply(current, updated))["task_list"]
 
         decision = plan_wave_decision(merged)
         assert decision.ready == ["task_2"]

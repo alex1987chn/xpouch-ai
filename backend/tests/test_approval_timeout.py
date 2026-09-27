@@ -93,7 +93,7 @@ class _FakeSession:
             return next((r for r in self.runs if r.id == object_id), None)
         return None
 
-    def _session_exec(self, statement):
+    async def _session_exec(self, statement):
         sql = str(statement)
         if "FROM subtask" in sql or "FROM executionplan" in sql:
             return _FakeResult([])

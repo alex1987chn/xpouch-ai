@@ -157,7 +157,7 @@ def test_template_share_and_revoke_contract(monkeypatch):
             return object()
 
     class _SessionStub:
-        def _session_exec(self, _statement):
+        async def _session_exec(self, _statement):
             return _Result()
 
         exec = _session_exec

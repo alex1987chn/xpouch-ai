@@ -21,11 +21,11 @@ def _service_with_stub_load(loaded: dict | None = None) -> tuple[ToolPolicyServi
     service = ToolPolicyService()
     calls = {"n": 0}
 
-    def _fake_load() -> dict:
+    async def _fake_load() -> dict:
         calls["n"] += 1
         return dict(loaded or {})
 
-    service._load_overrides_sync = _fake_load  # type: ignore[method-assign]
+    service._load_overrides_impl = _fake_load  # type: ignore[method-assign]
     return service, calls
 
 

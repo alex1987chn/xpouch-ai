@@ -36,7 +36,7 @@ class _SessionStub:
     def __init__(self, server: MCPServer | None):
         self._server = server
 
-    def _session_exec(self, _statement):
+    async def _session_exec(self, _statement):
         class _Result:
             def first(self):
                 return None

@@ -380,5 +380,5 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
     assert len(state.values.get("task_list", [])) == 3, "计划数据在取消后应保持完整"
 
     # ⑥ 幂等：对已终态的 run 再取消，返回提示而不抛错
-    second = await RecoveryService(_test_session()).cancel_run("r1", "u1")
+    second = (await RecoveryService(_test_session())).cancel_run("r1", "u1")
     assert second["status"] == str(RunStatus.CANCELLED)

@@ -104,14 +104,14 @@ class TestPlanVersionCas:
 
     async def test_bumps_version_when_expected_matches(self, db):
         plan = await _make_plan(db, version=1)
-        (await self._service(db))._bump_plan_version_with_cas("r1", 1)
+        await self._service(db)._bump_plan_version_with_cas("r1", 1)
         await db.refresh(plan)
         assert plan.plan_version == 2
 
     async def test_stale_version_raises_conflict_and_leaves_version_untouched(self, db):
         plan = await _make_plan(db, version=2)
         with pytest.raises(AppError) as exc:
-            (await self._service(db))._bump_plan_version_with_cas("r1", 1)
+            await self._service(db)._bump_plan_version_with_cas("r1", 1)
         assert exc.value.code == ErrorCode.PLAN_VERSION_CONFLICT
         assert exc.value.status_code == 409
         await db.refresh(plan)
@@ -120,11 +120,11 @@ class TestPlanVersionCas:
     async def test_missing_plan_version_is_rejected(self, db):
         await _make_plan(db)
         with pytest.raises(ValidationError):
-            (await self._service(db))._bump_plan_version_with_cas("r1", None)
+            await self._service(db)._bump_plan_version_with_cas("r1", None)
 
     async def test_missing_plan_is_not_found(self, db):
         with pytest.raises(NotFoundError):
-            (await self._service(db))._bump_plan_version_with_cas("no-such-run", 1)
+            await self._service(db)._bump_plan_version_with_cas("no-such-run", 1)
 
 
 # ---------------------------------------------------------------------------

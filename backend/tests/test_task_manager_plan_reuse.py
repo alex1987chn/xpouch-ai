@@ -149,7 +149,7 @@ class TestSameRunReuse:
 
         await _call(db, run_id="r1")
 
-        subtask = await _all_subtasks(db, "p1")[0]
+        subtask = (await _all_subtasks(db, "p1"))[0]
         assert subtask.status == "completed"
         assert subtask.output_result == "珍贵的历史产出，不可丢失"
 
@@ -192,7 +192,7 @@ class TestNewRunCreatesNewPlan:
         assert old is not None, "旧计划不得被删除"
         assert old.run_id == "r1", "旧计划仍归其原始 run"
         assert [s.id for s in await _all_subtasks(db, "p1")] == ["s-old"]
-        assert await _all_subtasks(db, "p1")[0].output_result == "珍贵的历史产出，不可丢失"
+        assert (await _all_subtasks(db, "p1"))[0].output_result == "珍贵的历史产出，不可丢失"
 
     async def test_old_artifacts_survive(self, db):
         """核心回归：新任务不能抹掉上一任务的产物。"""

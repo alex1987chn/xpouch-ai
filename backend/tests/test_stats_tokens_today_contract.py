@@ -10,6 +10,14 @@ from fastapi.testclient import TestClient
 from routers import stats as stats_router
 
 
+async def _async_usage_123456(_db, user_id):
+    return 123456
+
+
+async def _async_usage_0(_db, user_id):
+    return 0
+
+
 class _AnySession:
     """配额/用量查询均被桩掉，session 占位即可。"""
 
@@ -24,8 +32,12 @@ def _client(sample_user) -> TestClient:
 
 def test_tokens_today_contract(sample_user, monkeypatch):
     # get_today_token_usage 顶层导入绑定在 stats 命名空间；配额读取是 handler 内延迟 import
-    monkeypatch.setattr(stats_router, "get_today_token_usage", lambda _db, user_id: 123456)
-    monkeypatch.setattr("services.run_quota.load_daily_token_quota", lambda _db: 1_000_000)
+    monkeypatch.setattr(stats_router, "get_today_token_usage", _async_usage_123456)
+
+    async def _load_quota(_db):
+        return 1_000_000
+
+    monkeypatch.setattr("services.run_quota.load_daily_token_quota", _load_quota)
 
     response = _client(sample_user).get("/api/admin/stats/tokens-today")
 
@@ -37,7 +49,7 @@ def test_tokens_today_contract(sample_user, monkeypatch):
 
 
 def test_tokens_today_unlimited_quota_is_null(sample_user, monkeypatch):
-    monkeypatch.setattr(stats_router, "get_today_token_usage", lambda _db, user_id: 0)
+    monkeypatch.setattr(stats_router, "get_today_token_usage", _async_usage_0)
     monkeypatch.setattr("services.run_quota.load_daily_token_quota", lambda _db: None)
 
     response = _client(sample_user).get("/api/admin/stats/tokens-today")

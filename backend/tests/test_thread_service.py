@@ -38,7 +38,7 @@ class _FakeThreadSession:
         return None
 
     # SQLModel Session.exec 接口的 mock（模拟查询，非代码执行）
-    def _session_exec(self, _statement):
+    async def _session_exec(self, _statement):
         statement_text = str(_statement)
         if "FROM thread" in statement_text:
             return _ExecResult(first_value=self.thread)

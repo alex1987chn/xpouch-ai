@@ -44,7 +44,7 @@ def test_update_expert_contract(sample_user, monkeypatch):
             return _UpdatedExpert()
 
     class _SessionStub:
-        def _session_exec(self, _statement):
+        async def _session_exec(self, _statement):
             return _ExecResult()
 
         # 乐观锁 UPDATE 走 SQLAlchemy 风格的 session.execute，SELECT 走 SQLModel 的 exec
@@ -88,7 +88,7 @@ def test_promote_user_contract(sample_user, monkeypatch):
             return _FakeUser()
 
     class _SessionStub:
-        def _session_exec(self, _statement):
+        async def _session_exec(self, _statement):
             return _Result()
 
         exec = _session_exec
@@ -122,7 +122,7 @@ def test_delete_expert_contract(sample_user, monkeypatch):
             return fake_expert
 
     class _SessionStub:
-        def _session_exec(self, _statement):
+        async def _session_exec(self, _statement):
             return _Result()
 
         exec = _session_exec
@@ -158,10 +158,11 @@ def test_quota_and_concurrency_contract(sample_user, monkeypatch):
         async def commit(self) -> None:
             pass
 
-    monkeypatch.setattr("services.run_quota.save_daily_token_quota", lambda _s, value: value)
-    monkeypatch.setattr(
-        "services.run_concurrency.save_graph_max_concurrency", lambda _s, value: value
-    )
+    async def _save_quota(_s, value):
+        return value
+
+    monkeypatch.setattr("services.run_quota.save_daily_token_quota", _save_quota)
+    monkeypatch.setattr("services.run_concurrency.save_graph_max_concurrency", _save_quota)
 
     app = FastAPI()
     app.include_router(admin_router.router)
@@ -216,7 +217,7 @@ def test_delete_user_contract(sample_user, monkeypatch):
         async def get(self, _model, _pk):
             return _FakeUser()
 
-        def _session_exec(self, _statement):
+        async def _session_exec(self, _statement):
             return _Result()
 
         exec = _session_exec

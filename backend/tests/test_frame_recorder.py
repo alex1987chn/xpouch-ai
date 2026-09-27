@@ -318,7 +318,7 @@ class TestRetentionWindow:
             await rec.finish_blocking("r1")
 
         await _flow()
-        row = await _frames(engine)[0]
+        row = (await _frames(engine))[0]
         assert isinstance(row.created_at, datetime)
         assert row.created_at.tzinfo is not None
 

@@ -92,7 +92,7 @@ async def test_repeated_running_keeps_first_timestamp():
 async def test_completion_preserves_started_at_and_records_duration():
     db = await _session()
 
-    started = await update_subtask_status(db, "task_1", TaskStatus.RUNNING).started_at
+    started = (await update_subtask_status(db, "task_1", TaskStatus.RUNNING)).started_at
     done = await update_subtask_status(db, "task_1", TaskStatus.COMPLETED, duration_ms=1234)
 
     assert done.started_at == started, "收尾不得抹掉开始时刻"
@@ -109,6 +109,6 @@ async def test_mark_running_end_to_end_and_silent_on_missing(monkeypatch):
     monkeypatch.setattr(database, "engine", db.get_bind())
 
     assert _sync_mark_subtask_running("task_1") is True
-    assert await update_subtask_status(db, "task_1", TaskStatus.RUNNING).started_at is not None
+    assert (await update_subtask_status(db, "task_1", TaskStatus.RUNNING)).started_at is not None
 
     assert _sync_mark_subtask_running("not-exists") is False  # 不抛，只回 False
