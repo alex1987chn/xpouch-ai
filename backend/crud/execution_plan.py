@@ -6,7 +6,10 @@ ExecutionPlan / SubTask / Artifact 数据访问层。
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
 from models import (
@@ -148,16 +151,37 @@ async def _derive_thread_id(db: Session, sub_task_id: str) -> str | None:
     return plan.thread_id if plan else None
 
 
+def _coerce_artifact_create(data: ArtifactCreate | dict[str, Any]) -> ArtifactCreate:
+    """raw dict（事件 / task_outcome 载荷，键名 artifact_id）与 DTO 的单一归一入口。
+
+    artifact_id 是产物在全链路（SSE 事件 → outcome → 各保存路径）共享的逻辑身份，
+    必须归一进 id 主键：漏了它每条并发写入路径都会生成随机新 uuid，主键去重失效，
+    重复产物行就此坐大（2026-09-27 产物 ×4 事故）。
+    """
+    if isinstance(data, ArtifactCreate):
+        return data
+    payload = dict(data)
+    if payload.get("id") is None and payload.get("artifact_id"):
+        payload["id"] = payload["artifact_id"]
+    payload.pop("artifact_id", None)
+    return ArtifactCreate.model_validate(payload)
+
+
 async def create_artifacts_batch(
     db: Session,
     sub_task_id: str,
-    artifacts_data: list[ArtifactCreate],
+    artifacts_data: list[ArtifactCreate | dict[str, Any]],
 ) -> list[Artifact]:
     """批量创建产物。
 
     v3.4.4 幂等保护：跳过已存在产物的 sub_task_id。同一任务的产物可能经
-    两条路径到达（专家完成时的实时保存 + 流结束时的批量收集），此前会
-    重复插入（每个任务出现两行相同产物）。
+    多条路径到达（任务完成时的后台队列保存 + 流收尾的批量收集 + HITL
+    恢复回放），此前会重复插入。
+
+    全异步后这些路径会**并发**抵达（各自独立 session），先查后插的护栏
+    存在 check-then-insert 竞态——真正的闸是主键：所有路径经
+    _coerce_artifact_create 归一出同一 artifact_id，并发冲突撞 PK 时
+    首写赢、后到者按幂等空手而归（2026-09-27 产物 ×4 事故修复）。
     """
     existing = (
         await db.exec(select(Artifact.sub_task_id).where(Artifact.sub_task_id == sub_task_id))
@@ -167,7 +191,8 @@ async def create_artifacts_batch(
 
     thread_id = await _derive_thread_id(db, sub_task_id)
     artifacts = []
-    for idx, data in enumerate(artifacts_data):
+    for idx, raw in enumerate(artifacts_data):
+        data = _coerce_artifact_create(raw)
         artifact_kwargs = {
             "sub_task_id": sub_task_id,
             "thread_id": thread_id,
@@ -184,7 +209,14 @@ async def create_artifacts_batch(
         artifacts.append(artifact)
         db.add(artifact)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # 并发竞态：另一路已写入同 id 产物（首写赢）。必须回滚——commit 失败
+        # 后会话残留失效事务态，调用方随后还有写（如更新助手消息）会以
+        # PendingRollbackError 把局部失败放大成整轮失败。
+        await db.rollback()
+        return []
     for artifact in artifacts:
         await db.refresh(artifact)
 

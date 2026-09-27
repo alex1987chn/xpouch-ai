@@ -14,8 +14,9 @@ async def get_embedding(text: str) -> list[float]:
     从 providers.yaml 读取配置，支持动态切换提供商
     """
     try:
-        # 从统一配置获取客户端
-        client, model, dimensions = await get_embedding_client_async()
+        # 从统一配置获取客户端（同步工厂，返回 (client, model, dimensions) 三元组；
+        # 误 await 会 TypeError 被下方 except 吞成空列表，全部向量操作静默全灭）
+        client, model, dimensions = get_embedding_client_async()
 
         response = await client.embeddings.create(input=text.replace("\n", " "), model=model)
         return response.data[0].embedding
