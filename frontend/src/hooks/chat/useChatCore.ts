@@ -227,7 +227,13 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       debug('Detaching stream (thread switch), task keeps running server-side')
       abortControllerRef.current.abort()
     }
-  }, [])
+    // 挂断即本地生成态终结（必须同步）：此前只 abort 不清 isGenerating，
+    // abort 的异步收尾跑完之前 useSessionRestore 的活跃流守卫就执行了，
+    // 撞上 true 直接放弃恢复——切线程后消息永远不加载，页面停在空态
+    // （2026-09-27 执行态切会话失效事故）。异步收尾的 finalizeStream
+    // 稍后幂等再跑一遍。
+    setGenerating(false)
+  }, [setGenerating])
 
   /**
    * Stop generation

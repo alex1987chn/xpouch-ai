@@ -183,9 +183,12 @@ export function useSessionRestore(
       return false
     }
     
-    // 检查是否有活跃的 SSE 连接（强制模式跳过）
+    // 检查是否有活跃的 SSE 连接（强制模式跳过）。
+    // 会话作用域：只有活跃流属于**本会话**才回避（避免覆盖正在流式累积的
+    // 本会话消息）；别的会话的在途流不构成回避理由——否则执行态切会话时
+    // 恢复被静默跳过，页面停在空态（2026-09-27 切换失效事故）。
     const chatStore = useChatStore.getState()
-    if (!force && chatStore.isGenerating) {
+    if (!force && chatStore.isGenerating && chatStore.currentThreadId === threadId) {
       hasActiveStreamRef.current = true
       return false
     }
