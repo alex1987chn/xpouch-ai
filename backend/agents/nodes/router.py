@@ -115,7 +115,7 @@ async def router_node(state: AgentState, config: RunnableConfig = None) -> dict[
         relevant_memories = ""
 
     # 2. 🔥 v3.5: 加载 System Prompt（DB -> Cache -> Constants 兜底）
-    system_prompt = _load_router_system_prompt()
+    system_prompt = await _load_router_system_prompt()
 
     # 3. 🔥 v3.5: 填充占位符
     system_prompt = _fill_router_placeholders(

@@ -84,7 +84,8 @@ async def send_verification_code(
                 phone_number=phone_number,
                 auth_provider="phone",
                 is_verified=False,
-                role="admin" if _is_fresh_install(session) else "user",
+                # 漏 await 时协程对象恒为真值 → 每个新注册者都会拿到 admin，安全回归点
+                role="admin" if await _is_fresh_install(session) else "user",
             )
 
         enforce_send_rate_limit(

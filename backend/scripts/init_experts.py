@@ -7,8 +7,7 @@
 特性：
 1. 安全模式（默认）：仅创建缺失的专家，不覆盖现有专家
 2. 更新模式（--update）：覆盖现有专家的配置为默认值
-3. 异步兼容：自动检测数据库引擎类型，支持同步和异步会话
-4. 模型自动适配：从环境变量读取默认模型
+3. 模型自动适配：从环境变量读取默认模型
 
 使用方法（从项目根目录运行）：
   python -m backend.scripts.init_experts [options]
@@ -32,106 +31,54 @@
 
 import asyncio
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import Session
+from sqlmodel import select
 
-from database import engine
+from database import SessionFactory
 from expert_config import EXPERT_DEFAULTS
+from models import SystemExpert
 from utils.logger import logger
 
 
-def get_session_class_and_engine():
-    """返回适当的会话类和引擎实例"""
-    # 检查引擎是否为异步引擎
-    try:
-        from sqlalchemy.ext.asyncio import AsyncEngine
-
-        if isinstance(engine, AsyncEngine):
-            logger.info("[Info] Using AsyncSession (async engine detected)")
-            return AsyncSession, engine
-    except ImportError:
-        pass
-
-    # 回退到同步会话
-    logger.info("[Info] Using Session (sync engine)")
-    return Session, engine
-
-
-# EXPERT_DEFAULTS 已移至 config/experts.py，避免重复导入数据库模型
-
-
 async def init_experts_async(update_existing=False, update_commander=False):
-    """异步初始化系统专家数据
+    """初始化系统专家数据
 
     Args:
         update_existing: 是否更新所有现有专家（覆盖自定义配置）
         update_commander: 是否只更新 commander（用于启用思维链功能）
     """
-    session_class, engine = get_session_class_and_engine()
+    async with SessionFactory() as session:
+        existing_experts = (await session.exec(select(SystemExpert))).all()
+        existing_keys = {e.expert_type for e in existing_experts}
+        logger.info(f"Found {len(existing_experts)} existing experts in database")
 
-    # 选择上下文管理器
-    if session_class == AsyncSession:
-        async with session_class(engine) as session:
-            await process_experts(session, update_existing, update_commander)
-    else:
-        with session_class(engine) as session:
-            # 同步会话，但我们仍可以调用异步函数
-            await process_experts(session, update_existing, update_commander)
+        updated_count = 0
+        created_count = 0
+        commander_updated = False
 
+        for expert_config in EXPERT_DEFAULTS:
+            expert_type = expert_config["expert_type"]
 
-async def process_experts(session, update_existing=False, update_commander=False):
-    """处理专家插入/更新逻辑
-
-    Args:
-        update_existing: 是否更新所有现有专家（覆盖自定义配置）
-        update_commander: 是否只更新 commander（用于启用思维链功能）
-    """
-    from sqlmodel import select
-
-    from models import SystemExpert
-
-    # 检查现有专家
-    if isinstance(session, AsyncSession):
-        result = await session.execute(select(SystemExpert))
-        existing_experts = result.scalars().all()
-    else:
-        existing_experts = session.exec(select(SystemExpert)).all()
-
-    existing_keys = {e.expert_type for e in existing_experts}
-    logger.info(f"Found {len(existing_experts)} existing experts in database")
-
-    updated_count = 0
-    created_count = 0
-    commander_updated = False
-
-    for expert_config in EXPERT_DEFAULTS:
-        expert_type = expert_config["expert_type"]
-
-        if expert_type in existing_keys:
-            # 情况1：强制更新所有专家
-            if update_existing:
-                await _update_expert(session, expert_config)
-                updated_count += 1
-            # 情况2：只更新 commander（用于启用思维链）
-            elif update_commander and expert_type == "commander":
-                await _update_expert(session, expert_config)
-                updated_count += 1
-                commander_updated = True
-                logger.info("✓ Commander updated to enable thinking chain!")
+            if expert_type in existing_keys:
+                # 情况1：强制更新所有专家
+                if update_existing:
+                    await _update_expert(session, expert_config)
+                    updated_count += 1
+                # 情况2：只更新 commander（用于启用思维链）
+                elif update_commander and expert_type == "commander":
+                    await _update_expert(session, expert_config)
+                    updated_count += 1
+                    commander_updated = True
+                    logger.info("✓ Commander updated to enable thinking chain!")
+                else:
+                    logger.warning(f"⚠ Skipping existing expert: {expert_type}")
             else:
-                logger.warning(f"⚠ Skipping existing expert: {expert_type}")
-        else:
-            # 创建新专家
-            expert = SystemExpert(**expert_config)
-            session.add(expert)
-            created_count += 1
-            logger.info(f"✓ Created expert: {expert_type}")
+                # 创建新专家
+                expert = SystemExpert(**expert_config)
+                session.add(expert)
+                created_count += 1
+                logger.info(f"✓ Created expert: {expert_type}")
 
-    # 提交事务
-    if isinstance(session, AsyncSession):
         await session.commit()
-    else:
-        session.commit()
 
     logger.info("\nInitialization complete:")
     logger.info(f"  - Created: {created_count} experts")
@@ -144,21 +91,11 @@ async def process_experts(session, update_existing=False, update_commander=False
 
 async def _update_expert(session, expert_config):
     """更新单个专家的辅助函数"""
-    from sqlmodel import select
-
-    from models import SystemExpert
-
     expert_type = expert_config["expert_type"]
 
-    if isinstance(session, AsyncSession):
-        result = await session.execute(
-            select(SystemExpert).where(SystemExpert.expert_type == expert_type)
-        )
-        expert = result.scalar_one_or_none()
-    else:
-        expert = session.exec(
-            select(SystemExpert).where(SystemExpert.expert_type == expert_type)
-        ).first()
+    expert = (
+        await session.exec(select(SystemExpert).where(SystemExpert.expert_type == expert_type))
+    ).first()
 
     if expert:
         expert.name = expert_config["name"]
@@ -170,33 +107,14 @@ async def _update_expert(session, expert_config):
 
 
 def init_experts(update_existing=False, update_commander=False):
-    """同步包装器，向后兼容"""
+    """CLI 同步入口"""
     asyncio.run(init_experts_async(update_existing, update_commander))
 
 
 async def list_experts_async():
-    """异步列出所有专家"""
-    session_class, engine = get_session_class_and_engine()
-
-    if session_class == AsyncSession:
-        async with session_class(engine) as session:
-            await list_experts_process(session)
-    else:
-        with session_class(engine) as session:
-            await list_experts_process(session)
-
-
-async def list_experts_process(session):
-    """处理列出专家逻辑"""
-    from sqlmodel import select
-
-    from models import SystemExpert
-
-    if isinstance(session, AsyncSession):
-        result = await session.execute(select(SystemExpert))
-        experts = result.scalars().all()
-    else:
-        experts = session.exec(select(SystemExpert)).all()
+    """列出所有专家"""
+    async with SessionFactory() as session:
+        experts = (await session.exec(select(SystemExpert))).all()
 
     logger.info(f"\nTotal experts in database: {len(experts)}\n")
 
@@ -211,7 +129,7 @@ async def list_experts_process(session):
 
 
 def list_experts():
-    """同步包装器，向后兼容"""
+    """CLI 同步入口"""
     asyncio.run(list_experts_async())
 
 

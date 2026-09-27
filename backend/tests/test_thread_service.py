@@ -88,15 +88,73 @@ async def test_get_thread_detail_prefers_execution_plan_id_over_agent_type(monke
         "_build_complex_thread_response",
         _fake_complex_response,
     )
+
+    async def _fake_simple_response(self, _thread):
+        return {"mode": "simple"}
+
     monkeypatch.setattr(
         ChatThreadService,
         "_build_simple_thread_response",
-        lambda self, _thread: {"mode": "simple"},
+        _fake_simple_response,
     )
 
     result = await service.get_thread_detail("thread-1", "user-1")
 
     assert result == {"mode": "complex"}
+
+
+@pytest.mark.asyncio
+async def test_get_thread_detail_simple_mode_returns_dict_not_coroutine():
+    """简单模式详情必须返回 dict：全异步迁移曾在此路径漏 await，
+    协程对象直达 FastAPI 响应校验炸 500（GET /api/threads/{id} 回归锚点）"""
+    thread = Thread(
+        id="thread-1",
+        title="history",
+        user_id="user-1",
+        agent_type="default",
+        agent_id="sys-default-chat",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    session = _FakeThreadSession(thread)
+    service = ChatThreadService(session)
+
+    result = await service.get_thread_detail("thread-1", "user-1")
+
+    assert isinstance(result, dict)
+    assert result["id"] == "thread-1"
+    assert result["messages"] == []
+    assert result["latest_run"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_thread_detail_complex_mode_returns_dict_not_coroutine():
+    """复杂模式详情（execution_plan 存在）：base_response 拼装处 await 回归锚点"""
+    thread = Thread(
+        id="thread-1",
+        title="history",
+        user_id="user-1",
+        agent_type="ai",
+        agent_id="ai-assistant",
+        execution_plan_id="plan-1",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    execution_plan = ExecutionPlan(
+        id="plan-1",
+        thread_id="thread-1",
+        run_id="run-1",
+        user_query="hello",
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    session = _FakeThreadSession(thread, execution_plans=[execution_plan])
+    service = ChatThreadService(session)
+
+    result = await service.get_thread_detail("thread-1", "user-1")
+
+    assert isinstance(result, dict)
+    assert result["execution_plan"]["id"] == "plan-1"
 
 
 @pytest.mark.asyncio

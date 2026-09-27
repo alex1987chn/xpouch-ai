@@ -329,13 +329,13 @@ class ChatThreadService:
             return await self._build_complex_thread_response(thread)
 
         # 简单模式返回
-        return self._build_simple_thread_response(thread)
+        return await self._build_simple_thread_response(thread)
 
     async def _build_complex_thread_response(self, thread: Thread) -> dict:
         """构建复杂模式的线程响应（包含 ExecutionPlan 详情）"""
         execution_plan = await self.db.get(ExecutionPlan, thread.execution_plan_id)
         if not execution_plan:
-            return self._build_simple_thread_response(thread)
+            return await self._build_simple_thread_response(thread)
 
         # 预加载 artifacts 关系，避免 N+1 查询
         statement = (
@@ -346,7 +346,7 @@ class ChatThreadService:
         )
         sub_tasks = (await self.db.exec(statement)).all()
 
-        base_response = self._build_simple_thread_response(thread)
+        base_response = await self._build_simple_thread_response(thread)
         base_response["execution_plan"] = {
             "id": execution_plan.id,
             "execution_plan_id": execution_plan.id,
