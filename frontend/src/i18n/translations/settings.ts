@@ -20,6 +20,7 @@ export const zh = {
   language: '语言',
   userSettings: '个人设置',
   modelConfig: '模型配置',
+  modelPrefsSaved: '模型偏好已保存',
 
   // Personal Settings Dialog
   uploadAvatar: '上传头像',
@@ -85,6 +86,7 @@ export const en = {
   language: 'Language',
   userSettings: 'User Settings',
   modelConfig: 'Model Config',
+  modelPrefsSaved: 'Model preferences saved',
 
   // Personal Settings Dialog
   uploadAvatar: 'Upload Avatar',
@@ -150,6 +152,7 @@ export const ja = {
   language: '言語',
   userSettings: '個人設定',
   modelConfig: 'モデル設定',
+  modelPrefsSaved: 'モデル設定を保存しました',
 
   // Personal Settings Dialog
   uploadAvatar: 'アバターをアップロード',
