@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 变更
 
+- **后端全异步化（半异步治理收官）**：运行时唯一引擎 = SQLAlchemy async engine（psycopg3 一方言双模）；crud/services/routers/agents 全量 await 化，85 处 `asyncio.to_thread` 桥清零；`expire_on_commit=False`（官方 async 推荐，对 DetachedInstance 族结构性免疫）；producer 断连转后台后用 `_producer_session_factory` 私有会话（请求级 Session 关闭不再与之并发冲突）；Relationship 懒加载改显式查询（async 下必炸 MissingGreenlet）；embedding 换官方 `AsyncOpenAI`；Alembic 迁移与离线脚本保持官方同步口径（`create_offline_sync_engine`）；`ASYNCIO_DEBUG=1` 官方慢回调开关接入 lifespan；producer 后台死亡不再静默（done callback 记录异常）。验收：518 单测 + e2e_hitl + e2e_cancel_resume 三场景（真实 LLM）全绿
+
 - **T2 请求 DTO 契约锚点（前后端契约全覆盖收口）**：请求侧此前是盲区——生成器只锚 response_model，前端 payload 全手写（auth 的 `SendCodeRequest` 手写版已实际漂移：缺 `purpose` 字段）。现在 ①后端请求模型归拢 schemas/（chat 域 6 个、admin 域 10 个、user 域 2 个，共 18 个从 routers 内联迁出，类名不变故生成物零漂移）②前端请求类型全部改为生成物别名/`satisfies` 锚定（chat/auth/admin/models/user/systemStatus/artifacts/mcp 八个 service）——不是"检测漂移"而是结构上不可能漂移：后端改字段前端编译期即红。暴露并修掉的真实偏差：`UpdateUserRequest` 边界收紧（user/me PUT 只发白名单字段，不再把 UserProfile 整个序列化上送）
 
 ### 修复
