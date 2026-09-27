@@ -48,9 +48,7 @@ async def handle_memory_branch(
         # 「无」/空行不是记忆，跳过。曾把整段输出（含 JSON 数组形态的
         # 结构包裹）当一条 content 存：结构字段无人承接，空数组 [] 也是垃圾记忆。
         memory_lines = [
-            ln.strip()
-            for ln in memory_content.splitlines()
-            if ln.strip() and ln.strip() != "无"
+            ln.strip() for ln in memory_content.splitlines() if ln.strip() and ln.strip() != "无"
         ]
         if memory_lines:
             logger.info(f"[GenericWorker] 正在保存 {len(memory_lines)} 条记忆")
@@ -68,8 +66,6 @@ async def handle_memory_branch(
                 # 如实上报失败——不说"我会记住"（没存上就是没存上）；
                 # 重试安全：已入库的行会被 MemoryManager 的同内容去重挡住
                 logger.warning(f"[GenericWorker] 记忆保存失败: {mem_err}")
-                response.content = (
-                    "记忆保存失败（向量生成或写入出错），本次未记住，请重试。"
-                )
+                response.content = "记忆保存失败（向量生成或写入出错），本次未记住，请重试。"
         else:
             response.content = "本次对话没有需要记住的内容。"

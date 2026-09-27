@@ -239,10 +239,6 @@ class PersistenceMixin:
                             len(bucket),
                         )
 
-    # ============================================================================
-    # 公共流式方法（供 RecoveryService 复用）
-    # ============================================================================
-
     async def _get_latest_execution_plan(self, thread_id: str) -> ExecutionPlan | None:
         """获取线程最新的 ExecutionPlan（单一实现在 crud.execution_plan）。"""
         from crud.execution_plan import get_latest_execution_plan_by_thread
@@ -262,7 +258,7 @@ class PersistenceMixin:
         *,
         current_node: str | None = None,
     ) -> None:
-        """更新 AgentRun 状态（写路径经 to_thread；单一实现在 run_lifecycle）。"""
+        """更新 AgentRun 状态（单一实现在 run_lifecycle）。"""
         from services.chat.run_lifecycle import update_run_status
 
         await update_run_status(
@@ -279,7 +275,7 @@ class PersistenceMixin:
         *,
         error_code: str | None = None,
     ) -> None:
-        """将 AgentRun 标记为失败（写路径经 to_thread；单一实现在 run_lifecycle）。"""
+        """将 AgentRun 标记为失败（单一实现在 run_lifecycle）。"""
         from services.chat.run_lifecycle import mark_run_failed
 
         await mark_run_failed(
@@ -291,6 +287,11 @@ class PersistenceMixin:
 
     async def _get_plan_version(self, thread_id: str) -> int:
         """获取当前线程的计划版本号（乐观锁）"""
+        execution_plan = await self._get_latest_execution_plan(thread_id)
+        return int(execution_plan.plan_version) if execution_plan else 1
+
+    async def _update_execution_plan_status(self, thread_id: str, status: TaskStatus) -> None:
+        """更新线程最新计划的 ExecutionPlan 状态。"""
         execution_plan = (
             await self.db.exec(
                 select(ExecutionPlan)
@@ -298,36 +299,13 @@ class PersistenceMixin:
                 .order_by(ExecutionPlan.created_at.desc())
             )
         ).first()
-        return int(execution_plan.plan_version) if execution_plan else 1
 
-    async def _update_execution_plan_status(self, thread_id: str, status: TaskStatus) -> None:
-        """
-        更新 ExecutionPlan 状态（写路径经 to_thread，避免阻塞事件循环）
-
-        Args:
-            thread_id: 线程ID
-            status: 新状态（TaskStatus 枚举）
-        """
-
-        async def _write() -> None:
-            execution_plan = (
-                await self.db.exec(
-                    select(ExecutionPlan)
-                    .where(ExecutionPlan.thread_id == thread_id)
-                    .order_by(ExecutionPlan.created_at.desc())
-                )
-            ).first()
-
-            if execution_plan:
-                execution_plan.status = status
-                execution_plan.updated_at = utc_now()
-                self.db.add(execution_plan)
-                await self.db.commit()
-                logger.info(
-                    f"[StreamService] ExecutionPlan {execution_plan.id} 状态更新为 {status}"
-                )
-
-        await _write()
+        if execution_plan:
+            execution_plan.status = status
+            execution_plan.updated_at = utc_now()
+            self.db.add(execution_plan)
+            await self.db.commit()
+            logger.info(f"[StreamService] ExecutionPlan {execution_plan.id} 状态更新为 {status}")
 
     async def _apply_updated_plan(self, graph, config: dict, updated_plan: list[dict]):
         """把用户在审批页编辑过的计划合并进图状态。
@@ -413,7 +391,3 @@ class PersistenceMixin:
             "expert_results": current_expert_results,  # 保留已有结果，而不是清空
         }
         await graph.aupdate_state(config, state_update)
-
-    # ============================================================================
-    # 事件转换和构建
-    # ============================================================================

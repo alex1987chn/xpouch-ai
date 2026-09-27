@@ -767,6 +767,3 @@ class StreamService(EventBuildersMixin, PersistenceMixin, EventTransformMixin):
 
         # message.done 由 aggregator_node 通过 event_queue 发送
         # 这里不再重复发送
-
-
-

@@ -7,7 +7,7 @@
    generic 的逐行入库必须跳过（历史"已为您删除…"回声即违反此条的产物）
 """
 
-from agents.nodes.generic import _branch_used_memory_tools
+from agents.nodes.message_normalization import _branch_used_memory_tools
 from agents.tool_policy import evaluate_tool_policy
 from tools.memory import MEMORY_TOOL_NAMES
 

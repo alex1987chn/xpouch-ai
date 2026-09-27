@@ -51,11 +51,9 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
 from agents.event_stream import emit_event
-from agents.nodes.message_normalization import (  # noqa: F401 — re-export 保持测试桩兼容
-    _branch_used_memory_tools,
+from agents.nodes.message_normalization import (
     _detect_artifact_type,
     _format_input_data,
-    normalize_message_content,
     normalize_messages_for_llm,
 )
 from agents.plan_waves import task_key
@@ -808,6 +806,3 @@ async def expert_worker_node(
             **base_return,
             "task_outcomes": {outcome["task_key"]: outcome},
         }
-
-
-

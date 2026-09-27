@@ -6,6 +6,8 @@ transform_langgraph_event 是消息流/任务事件的**纯转换**层：输入 
 
 from __future__ import annotations
 
+import json
+
 _DELTA_ALLOWED_NODES = frozenset({"aggregator", "direct_reply"})
 
 
@@ -35,8 +37,6 @@ class EventTransformMixin:
         与 aggregator 落库同源——聚合行必须排在所有专家消息之后）；
         direct_reply（简单模式）挂请求侧 message_id（占位=正文同一行）。
         """
-        import json
-
         # 🔥 修复：token 可能是字符串或其他类型，需要安全检查
         if not isinstance(token, dict):
             return None
