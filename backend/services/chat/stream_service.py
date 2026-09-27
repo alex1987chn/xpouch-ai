@@ -212,7 +212,7 @@ class StreamService(EventBuildersMixin, PersistenceMixin, EventTransformMixin):
                     "thread_id": isolated_thread_id,
                     "stream_queue": stream_queue,
                     "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
-                    "graph_max_concurrency": resolve_graph_max_concurrency(self.db),
+                    "graph_max_concurrency": await resolve_graph_max_concurrency(self.db),
                 },
             }
             logger.info(f"[StreamService] 使用隔离的 thread_id: {isolated_thread_id}")
@@ -607,7 +607,7 @@ class StreamService(EventBuildersMixin, PersistenceMixin, EventTransformMixin):
                 "stream_queue": realtime_queue,
                 "mcp_tools": mcp_tools,  # 🔥 MCP: 注入动态工具
                 # 续跑必须与初始执行同口径，否则「审批后剩下的任务」会悄悄退回串行
-                "graph_max_concurrency": resolve_graph_max_concurrency(self.db),
+                "graph_max_concurrency": await resolve_graph_max_concurrency(self.db),
             },
         }
         logger.info(f"[StreamService] 恢复流程使用隔离的 thread_id: {isolated_thread_id}")

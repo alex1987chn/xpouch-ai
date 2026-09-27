@@ -48,10 +48,10 @@ async def _load_commander_config() -> tuple[str, str, float]:
     try:
         from sqlmodel import select
 
-        from database import get_session
+        from database import SessionFactory
         from models import SystemExpert
 
-        with get_session() as session:
+        async with SessionFactory() as session:
             expert = (
                 await session.exec(
                     select(SystemExpert).where(SystemExpert.expert_type == "commander")
@@ -135,7 +135,7 @@ async def revise_plan_tasks(
         return parsed
 
     try:
-        revised = await asyncio.wait_for(await _invoke(), timeout=REVISION_TIMEOUT_SECONDS)
+        revised = await asyncio.wait_for(_invoke(), timeout=REVISION_TIMEOUT_SECONDS)
         logger.info(
             f"[PLAN_REVISION] 修订完成：{len(revised.tasks)} 个任务（原 {len(previous_tasks)} 个）"
         )

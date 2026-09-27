@@ -308,7 +308,7 @@ async def update_expert(
 
     # 自动刷新 LangGraph 缓存（无需重启）
     try:
-        refresh_cache(session)
+        await refresh_cache(session)
         logger.info("[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
@@ -589,7 +589,7 @@ async def create_expert(
 
     # 自动刷新 LangGraph 缓存
     try:
-        refresh_cache(session)
+        await refresh_cache(session)
         logger.info("[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
@@ -657,7 +657,7 @@ async def delete_expert(
 
     # 自动刷新 LangGraph 缓存
     try:
-        refresh_cache(session)
+        await refresh_cache(session)
         logger.info("[Admin] LangGraph cache refreshed successfully")
     except Exception as e:
         logger.warning(f"[Admin] Warning: Failed to refresh cache: {e}")
@@ -734,7 +734,7 @@ async def get_system_status(
         # `effective` = 本次运行实际会用的值（设置表 → env → 串行）
         "graph_max_concurrency": {
             "configured": await load_graph_max_concurrency(session),
-            "effective": resolve_graph_max_concurrency(session),
+            "effective": await resolve_graph_max_concurrency(session),
             "env_default": app_settings.graph_max_concurrency,
             "limit": MAX_CONCURRENCY_LIMIT,
         },
@@ -1162,7 +1162,7 @@ async def list_audit_logs_endpoint(
     """审计日志列表（管理面关键变更留痕，时间倒序）"""
     from crud.audit_log import list_audit_logs as _list
 
-    entries, total = _list(session, search=search, limit=limit, offset=offset)
+    entries, total = await _list(session, search=search, limit=limit, offset=offset)
     return PaginatedAuditLogResponse(
         items=[
             AuditLogResponse(
