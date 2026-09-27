@@ -23,6 +23,7 @@ import ArtifactViewerModal from '@/components/artifacts/ArtifactViewerModal'
 import { cn } from '@/lib/utils'
 import type { Components } from 'react-markdown'
 import { useCopy } from '@/hooks/useCopy'
+import { useToast } from '@/components/ui/use-toast'
 import { expertColor, expertLabel } from '@/lib/expertIdentity'
 import { getArtifactDetail } from '@/services/artifacts'
 import type { ExpertMessageData, Message } from '@/types'
@@ -591,6 +592,7 @@ function ExpertResultCard({
   extra: ExpertMessageData
 }) {
   const { t } = useTranslation()
+  const { toast } = useToast()
   const [docView, setDocView] = useState<{
     type: string
     title: string
@@ -620,6 +622,13 @@ function ExpertResultCard({
         title: artifact.title || name,
         content: artifact.content ?? '',
         language: artifact.language ?? null,
+      })
+    } catch (err) {
+      // 拉详情失败必须可见：静默无反应曾让用户以为按钮坏了（404 = 消息引用的产物行已不存在）
+      console.error('[MessageItem] 产物详情加载失败:', artifactId, err)
+      toast({
+        title: t('artifactLoadFailed'),
+        variant: 'destructive',
       })
     } finally {
       setLoadingArtifact(false)
