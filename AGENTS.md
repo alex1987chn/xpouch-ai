@@ -24,7 +24,7 @@ AI 多智能体工作台（开源自托管）。后端：Python 3.13 / FastAPI /
 
 ## 生成物与提交
 - `frontend/src/types/*.generated.ts` 由后端脚本产出，勿手改（有新鲜度闸门）
-- 提交走 Conventional Commits、中文主题，先例见 git log
+- 提交走 Conventional Commits、主题与正文一律英文（2026-09-28 起，GitHub 受众国际化；此前历史提交为中文，不改写）
 
 ## 硬约束（代码里看不出来的，均有事故案底）
 - 时间一律 `utils/time.utc_now()`（aware UTC）；禁用 NaiveDatetime 注解，timestamptz 列勿改回 naive——naive/aware 混用会抛错或漂移时区
