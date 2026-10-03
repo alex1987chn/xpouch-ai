@@ -52,18 +52,6 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
   const routeNavState = location.state as { isNew?: boolean } | null
   const isNewThread = routeNavState?.isNew ?? false
 
-  // 切换线程清残留（restore 前的干净起点；与 UnifiedChatPage 同款）
-  useEffect(() => {
-    if (threadId) {
-      const currentId = useChatStore.getState().currentThreadId
-      if (currentId !== threadId) {
-        useChatStore.getState().setMessages([])
-        useTaskStore.getState().resetAll()
-        useChatStore.getState().setCurrentThreadId(threadId)
-      }
-    }
-  }, [threadId])
-
   // ===== 聊天编排（与 UnifiedChatPage 同序列） =====
   // startPolling 在下面才由 useRunPolling 产出，而 useChat 必须先调用（Hook 顺序），
   // 所以用 ref 转一手：中断回调触发时轮询接口已就位（同 useRunPolling 内的
@@ -86,12 +74,20 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
     setInputMessage: setInputValue,
   } = useChat({ threadUrlBase: '/workbench', onStreamInterrupted: handleStreamInterrupted })
 
-  const { isRestored, isMissingSession, isLatestRunControllable, latestRunId, restore: restoreSession } =
-    useSessionRestore({ enabled: !!threadId && !isNewThread })
-
-  // 挂断在途流（真实线程切换时）：只 abort 前端 SSE——服务端任务继续跑完，
-  // 回来时 restore/轮询接管现场，绝不 cancelRun（用户主动停止才真取消）；
-  // 旧流的回调另有归属守卫兜底丢弃事件
+  // 切换线程（含切去新会话）：挂断旧线程在途流 + 清残留。
+  //
+  // ⚠️ 本 effect 必须注册在 useSessionRestore 的恢复 effect **之前**（即在这里
+  // 声明），恢复守卫读的是 live store——若旧流的 isGenerating 未先被同步清掉，
+  // 守卫会在同一 commit 里读到「isGenerating=true 且 currentThreadId===新线程」
+  // （currentThreadId 刚被本 effect 设成新线程），把旧流的生成态误判成新线程
+  // 自己的活跃流，恢复被跳过；跳过不产生任何状态变化，effect 不会重跑——
+  // 页面卡死在空态，切走再切回才恢复（2026-10-03 执行态切会话事故。此前
+  // 「清残留」与「挂断」分居两个 effect，恢复被夹在中间读到旧值）。
+  //
+  // 挂断语义：真实线程变化（含 → null 新会话）即挂断；**首条消息创建线程
+  // （null→新 id）除外**——那条流正是当前消息自己的流，挂了它就是 2026-09-12
+  // 会话空消息事故。只 abort 前端 SSE：服务端任务继续跑完，回来时 restore/轮询
+  // 接管现场，绝不 cancelRun（用户主动停止才真取消）；旧流回调另有归属守卫兜底。
   const prevThreadIdRef = useRef<string | null>(null)
   useEffect(() => {
     const prevThreadId = prevThreadIdRef.current
@@ -99,7 +95,18 @@ export function WorkbenchChatCore({ threadId }: WorkbenchChatCoreProps) {
     if (prevThreadId !== null && prevThreadId !== threadId) {
       detachActiveStream()
     }
+    if (threadId) {
+      const currentId = useChatStore.getState().currentThreadId
+      if (currentId !== threadId) {
+        useChatStore.getState().setMessages([])
+        useTaskStore.getState().resetAll()
+        useChatStore.getState().setCurrentThreadId(threadId)
+      }
+    }
   }, [threadId, detachActiveStream])
+
+  const { isRestored, isMissingSession, isLatestRunControllable, latestRunId, restore: restoreSession } =
+    useSessionRestore({ enabled: !!threadId && !isNewThread })
 
   const { startPolling, stopPolling, isPolling, currentStatus: pollingStatus, isHITLPaused, isTerminal, hasError } =
     useRunPolling({ enabled: true })
