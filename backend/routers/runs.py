@@ -135,21 +135,26 @@ async def get_run_plan(
         revision_error=revision_error,
         tasks=[
             RunPlanTask(
-                id=str(index + 1),
+                # id 必须是 SubTask 真实主键（uuid）：前端批准时把这份计划原样
+                # 回传 updated_plan，执行产物的 db_uuid 与落库保存都按它对行。
+                # 此前返回位置号 "1"/"2"（语义 id）——修订后批准回传，语义 id
+                # 流进 task_list，保存路径查不到 SubTask（"SubTask 不存在"），
+                # 产物全灭 + 依赖清洗把 uuid 依赖线误剪（2026-10-03 e68b5a40）。
+                # 位置语义由 sort_order 承载（前端 diff 本就按位置比对，见
+                # frontend/src/lib/planDiff.ts）。
+                id=str(st.id),
                 expert_type=st.expert_type,
                 description=st.description,
                 sort_order=st.sort_order,
                 depends_on=st.depends_on or [],
             )
-            for index, st in enumerate(
-                (
-                    await db.exec(
-                        select(SubTask)
-                        .where(SubTask.execution_plan_id == plan.id)
-                        .order_by(SubTask.sort_order.asc())
-                    )
-                ).all()
-            )
+            for st in (
+                await db.exec(
+                    select(SubTask)
+                    .where(SubTask.execution_plan_id == plan.id)
+                    .order_by(SubTask.sort_order.asc())
+                )
+            ).all()
         ],
     )
 

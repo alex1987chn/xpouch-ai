@@ -159,13 +159,28 @@ def main() -> int:
         print("  ✗", failures[-1])
 
     if new_version:
-        print("### A4. 批准新计划并等执行完成")
+        print("### A4. 批准新计划并等执行完成（按前端真实形状回传 updated_plan）")
+        # 前端 PlanReviewCard 批准时**无条件**把当前展示的计划回传 updated_plan
+        # （id 来自 GET /runs/{id}/plan 的轮询结果）。2026-10-03 e68b5a40 事故：
+        # 该接口曾返回位置号 id，语义 id 流进 task_list → 产物保存 "SubTask
+        # 不存在" 全灭。此处复刻前端 payload 形状，钉住这条链路。
+        frontend_plan = [
+            {
+                "id": task["id"],
+                "expert_type": task["expert_type"],
+                "description": task["description"],
+                "sort_order": index,
+                "depends_on": task.get("depends_on") or [],
+            }
+            for index, task in enumerate(plan_state.get("tasks") or [])
+        ]
         s2, h2 = _resume(
             opener,
             {
                 "thread_id": thread_id,
                 "run_id": run_id,
                 "plan_version": new_version,
+                "updated_plan": frontend_plan,
                 "approved": True,
                 "action": "approve",
             },

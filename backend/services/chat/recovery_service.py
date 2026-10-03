@@ -574,6 +574,16 @@ class RecoveryService:
                 except AppError as e:
                     if e.code == ErrorCode.RUN_CANCELLED:
                         yield self._build_error_event(ErrorCode.RUN_CANCELLED, e.message)
+                    elif e.code == ErrorCode.PLAN_VERSION_CONFLICT:
+                        # 客户端揣着过期计划（如修订后未刷新的旧标签页）被守卫
+                        # 拒绝：run 本身无罪，退回待审批让人重新裁决，不判死。
+                        # 入口处已把 run/plan 推进到 RESUMING/RUNNING，这里必须
+                        # 还原，否则审批卡永远回不来。
+                        await self._update_run_status(run_id, RunStatus.WAITING_FOR_APPROVAL)
+                        await self._update_execution_plan_status(
+                            run_id, TaskStatus.WAITING_FOR_APPROVAL
+                        )
+                        yield self._build_error_event(ErrorCode.PLAN_VERSION_CONFLICT, e.message)
                     else:
                         logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
                         await self._mark_run_failed(run_id, str(e))

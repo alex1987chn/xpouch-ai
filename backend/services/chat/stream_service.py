@@ -622,47 +622,64 @@ class StreamService(EventBuildersMixin, PersistenceMixin, EventTransformMixin):
         if "aggregate_message_id" not in (snapshot.values or {}):
             await graph.aupdate_state(config, {"aggregate_message_id": aggregate_message_id})
 
-        # 如果提供了更新后的计划，应用它
-        if updated_plan is None and run_id:
-            # 修订流（后台 LLM 改计划）批准时前端不带 updated_plan，但图状态的
-            # task_list 还揣着修订前的 db uuid——修订会整行替换 subtask，旧 uuid
-            # 全部失效，不重联的话队列保存全部落空（"SubTask 不存在"，产物
-            # 丢失，2026-09-27 修订重提事故）。按 DB 真相对账：发现图内有死 id
-            # 才重建（修订语义 id = 位置 1 基数字，见 run_revision_job 的
-            # task.id = str(index)，与行内 depends_on 同命名空间）。
-            graph_task_list = (snapshot.values or {}).get("task_list") or []
-            graph_ids = {
-                t.get("id") for t in graph_task_list if isinstance(t, dict) and t.get("id")
-            }
-            plan_row = await self._get_execution_plan_by_run(run_id)
-            if graph_ids and plan_row:
-                from crud.execution_plan import get_subtasks_by_execution_plan
+        # 如果提供了更新后的计划，应用它。
+        # 图/库两份任务清单只加载一次，供下方「命名空间守卫」与「修订对账」共用。
+        graph_task_list = (snapshot.values or {}).get("task_list") or []
+        graph_ids = {t.get("id") for t in graph_task_list if isinstance(t, dict) and t.get("id")}
+        plan_row = await self._get_execution_plan_by_run(run_id) if run_id else None
+        db_subtasks: list = []
+        if plan_row:
+            from crud.execution_plan import get_subtasks_by_execution_plan
 
-                db_subtasks = await get_subtasks_by_execution_plan(self.db, plan_row.id)
-                db_ids = {st.id for st in db_subtasks}
-                if not graph_ids.issubset(db_ids):
-                    updated_plan = [
-                        {
-                            "id": st.id,
-                            "task_id": str(st.sort_order + 1),
-                            "expert_type": st.expert_type,
-                            "description": st.description,
-                            "input_data": {},
-                            "sort_order": st.sort_order,
-                            "status": (
-                                st.status.value if hasattr(st.status, "value") else st.status
-                            ),
-                            "depends_on": list(st.depends_on or []),
-                            "output_result": None,
-                            "started_at": None,
-                            "completed_at": None,
-                        }
-                        for st in db_subtasks
-                    ]
-                    logger.warning(
-                        "[StreamService] 检测到修订后图状态与库内 subtask 脱钩，"
-                        f"已按 DB 重建任务清单（{len(updated_plan)} 项）"
-                    )
+            db_subtasks = await get_subtasks_by_execution_plan(self.db, plan_row.id)
+        db_ids = {st.id for st in db_subtasks}
+
+        if updated_plan is not None and run_id:
+            # 命名空间守卫（fail-loud）：批准回传的任务 id 必须能对上「图当前
+            # id」（普通批准/弹窗编辑）或「库内 subtask PK」（修订后批准——前端
+            # 从 GET /runs/{id}/plan 轮询到的就是新行 uuid）二者之一。
+            # 对不上 = 客户端揣着过期计划（如修订后未刷新的旧标签页）——静默
+            # 应用会让死 id 流进 task_list，产物保存全部落空 + 依赖线被误剪
+            # （2026-10-03 e68b5a40 修订后批准产物全灭即此病灶）。拒绝并让
+            # 前端走计划版本冲突路径（提示刷新），绝不带病续跑。
+            incoming_ids = {
+                str(t.get("id")) for t in updated_plan if isinstance(t, dict) and t.get("id")
+            }
+            unknown = incoming_ids - graph_ids - db_ids
+            if unknown:
+                raise AppError(
+                    message="计划已变更，请刷新后重试",
+                    code=ErrorCode.PLAN_VERSION_CONFLICT,
+                    status_code=409,
+                    details={"unknown_task_ids": sorted(unknown)},
+                )
+        elif updated_plan is None and run_id:
+            # 修订流（后台 LLM 改计划）批准时不带 updated_plan 的调用方（e2e/
+            # API 直调），图状态的 task_list 还揣着修订前的 db uuid——修订会
+            # 整行替换 subtask，旧 uuid 全部失效，不重联的话队列保存全部落空
+            # （"SubTask 不存在"，产物丢失，2026-09-27 修订重提事故）。按 DB
+            # 真相对账：发现图内有死 id 才重建。
+            if graph_ids and not graph_ids.issubset(db_ids):
+                updated_plan = [
+                    {
+                        "id": st.id,
+                        "task_id": str(st.sort_order + 1),
+                        "expert_type": st.expert_type,
+                        "description": st.description,
+                        "input_data": {},
+                        "sort_order": st.sort_order,
+                        "status": (st.status.value if hasattr(st.status, "value") else st.status),
+                        "depends_on": list(st.depends_on or []),
+                        "output_result": None,
+                        "started_at": None,
+                        "completed_at": None,
+                    }
+                    for st in db_subtasks
+                ]
+                logger.warning(
+                    "[StreamService] 检测到修订后图状态与库内 subtask 脱钩，"
+                    f"已按 DB 重建任务清单（{len(updated_plan)} 项）"
+                )
         if updated_plan:
             await self._apply_updated_plan(graph, config, updated_plan)
             if run_id:

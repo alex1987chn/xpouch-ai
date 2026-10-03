@@ -82,7 +82,12 @@ class RunStatusResponse(BaseModel):
 
 
 class RunPlanTask(BaseModel):
-    """计划修订轮询用：单个任务快照"""
+    """计划修订轮询用：单个任务快照。
+
+    id 是 SubTask 真实主键（uuid）——前端批准时原样回传 updated_plan，
+    图 task_list 与产物落库都以它对行；位置语义用 sort_order（前端
+    跨版本 diff 按位置比对，不依赖 id 延续性）。
+    """
 
     id: str
     expert_type: str

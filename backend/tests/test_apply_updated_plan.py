@@ -191,3 +191,77 @@ class TestCompletedTaskPreserved:
         state = await _apply(current, updated)
 
         assert "messages" not in state, "静态中断时代的伪造消息注入必须已移除"
+
+
+class TestPostRevisionUuidPlan:
+    """修订后批准的真实形状（2026-10-03 e68b5a40 事故回归）。
+
+    修订整行替换 subtask 后，前端从 GET /runs/{id}/plan 轮询到新计划
+    （id=新行 uuid、depends_on=uuid）并原样回传。此时图 task_list 还揣着
+    修订前的旧 uuid，current_task_map 必然全部 miss——语义上这是「按 DB
+    新真相整表替换」。要钉住的三件事：
+    1. 新 uuid 成为任务 id（保存路径按它对 SubTask 行，语义 id 会全灭）
+    2. uuid 依赖线必须保留（kept 集合回退到 payload id，uuid 依赖 ⊆ uuid id）
+    3. 合并结果可被波次判定消费（依赖解析按 task_key 回退 id）
+    """
+
+    async def test_revised_uuid_plan_replaces_identity_and_keeps_deps(self):
+        current = [  # 修订前的图状态：旧 uuid（修订已把这些行删了）
+            _task("task_1", db_id="old-uuid-1"),
+            _task("task_2", db_id="old-uuid-2", deps=["task_1"]),
+        ]
+        updated = [  # 修订后批准回传：新 uuid id + uuid 依赖（GET /plan 轮询产物）
+            {
+                "id": "new-uuid-1",
+                "expert_type": "writer",
+                "description": "d1",
+                "sort_order": 0,
+                "depends_on": [],
+            },
+            {
+                "id": "new-uuid-2",
+                "expert_type": "coder",
+                "description": "d2",
+                "sort_order": 1,
+                "depends_on": ["new-uuid-1"],
+            },
+        ]
+
+        merged_list = (await _apply(current, updated))["task_list"]
+        by_id = {t["id"]: t for t in merged_list}
+
+        assert set(by_id) == {"new-uuid-1", "new-uuid-2"}, (
+            "修订后批准 = 按 DB 新行整表替换：任务 id 必须是新 uuid（db 身份），"
+            "不得混入旧 uuid 或位置号"
+        )
+        assert by_id["new-uuid-2"]["depends_on"] == ["new-uuid-1"], (
+            "uuid 依赖线必须保留——被剪断时下游拿不到上游产出注入"
+        )
+
+    async def test_merged_uuid_plan_feeds_wave_decision(self):
+        """合并结果交给判定层：uuid 命名空间下波次与依赖解析仍然成立。"""
+        from agents.plan_waves import plan_wave_decision
+
+        current = [_task("task_1", db_id="old-uuid-1")]
+        updated = [
+            {
+                "id": "u1",
+                "expert_type": "writer",
+                "description": "d1",
+                "sort_order": 0,
+                "depends_on": [],
+            },
+            {
+                "id": "u2",
+                "expert_type": "coder",
+                "description": "d2",
+                "sort_order": 1,
+                "depends_on": ["u1"],
+            },
+        ]
+
+        merged_list = (await _apply(current, updated))["task_list"]
+
+        decision = plan_wave_decision(merged_list)
+        assert decision.ready == ["u1"], "uuid 命名空间下首波应选出无依赖任务"
+        assert decision.blocked == [] and decision.deadlocked == []
