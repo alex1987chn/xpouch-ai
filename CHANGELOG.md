@@ -5,10 +5,13 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [未发布]
+## [2026-10-03] - v3.5.8 漏 await 收网、审批与产物链路修复、依赖产物引用
 
 ### 变更
 
+- **依赖传递改「摘要 + 产物引用」**：上游输出现为 2000 字符内联截断，多跳链路（A→B→C）逐跳衰减、下游拿半截上下文硬跑。现在 Send payload 平行携带上游完整产物引用（id/type/title——全文已在库，任务完成即后台落库 artifact 行），worker 摘要不够用时经 get_artifact 按需取全文（prompt 明示「摘要够用则不调用」控制额外工具往返）；摘要通道原样保留，无产物/失败上游自然退化为旧行为
+- **commander 波次均衡指引（迁移 20261003_000906）**：波次屏障下同波任务互相等齐——规划把 5 分钟大任务与 10 秒小任务混进同波时小任务全程陪跑。教材核心约束新增第 6 条 Wave Balance：同波工作量均衡、大任务拆细用 depends_on 串行。选规划侧指引而非重写调度（重写需放弃 checkpointer 原生分支检查点，代价不成比例）
+- **验证码短信发送让出事件循环**：腾讯云 SDK 为同步客户端，async 路由直接调用会在发送期间卡住整个事件循环（全站请求停摆）；包 asyncio.to_thread 丢线程池执行
 - **后端全异步化（半异步治理收官）**：运行时唯一引擎 = SQLAlchemy async engine（psycopg3 一方言双模）；crud/services/routers/agents 全量 await 化，85 处 `asyncio.to_thread` 桥清零；`expire_on_commit=False`（官方 async 推荐，对 DetachedInstance 族结构性免疫）；producer 断连转后台后用 `_producer_session_factory` 私有会话（请求级 Session 关闭不再与之并发冲突）；Relationship 懒加载改显式查询（async 下必炸 MissingGreenlet）；embedding 换官方 `AsyncOpenAI`；Alembic 迁移与离线脚本保持官方同步口径（`create_offline_sync_engine`）；`ASYNCIO_DEBUG=1` 官方慢回调开关接入 lifespan；producer 后台死亡不再静默（done callback 记录异常）。验收：518 单测 + e2e_hitl + e2e_cancel_resume 三场景（真实 LLM）全绿
 - **StreamService / generic 分解落地**：StreamService 1251→772 行——落库与状态写路径拆 `parts/persistence.py`（10 方法）、HITL 修订应用归 persistence、`transform_langgraph_event` 拆 `parts/event_transform.py`（纯转换层，`_DELTA_ALLOWED_NODES` 常量随迁）；generic 983→813 行——消息归一化/输入格式化/产物类型探测 5 个纯函数拆 `message_normalization.py`、记忆专家三分支拆 `memory_branch.py`（护栏语义由 test_memory_write_guard + e2e_memory_check 锁定）；删除零调用死代码 `invalidate_mcp_cache`；修正 `parts/__init__` 失真的模块索引。验收：每批全绿（518 单测）+ 双 e2e 收官全绿
 
@@ -16,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 修复
 
+- **漏 await 收网（全异步迁移漏网，两批六处 + wait_for 反模式）**：线程详情 500（thread_service 三处漏 await，测试桩用同步 lambda 掩盖）、LLM 路由必炸（router 系统提示加载漏 await——确定性路由分支先返回造成 e2e 盲区）、审计日志/系统状态页 500（from-import 是调用审计盲区）、系统设置缓存刷新三处静默失效、wait_for(await X()) 三处（内层完成后外层拿到非可等待对象必 TypeError）、记忆向量调用全灭（同步工厂返回值被误 await，TypeError 被吞成空结果——检索/入库全瘫而无报错）
+- **新注册用户全员提权（阻断级）**：OTP 注册角色判定 `"admin" if await _is_fresh_install(...) else "user"` ——三元里先求值的是协程对象、恒真值，空库判定退化为「人人 admin」；真 await 后仅首个注册用户得 admin
+- **产物并发 ×4 与幂等写**：四条保存路径（队列保存/断连恢复/流收尾/审批应用）并发落同一产物，check-then-insert 跨会话竞态 + pydantic 归一丢弃 artifact_id 键 → 单产物四行。归一收敛 crud `_coerce_artifact_create` 单一入口（dict 键 artifact_id → 模型字段 id），并发冲突走 savepoint（`begin_nested`），不再全量 rollback 毒化调用方会话实例（全量 rollback 过期实例、后续摸属性即 MissingGreenlet 级联）
+- **修订后批准产物全灭**：计划修订整表替换 subtask 行后，图 checkpoint 里 task_list 仍是旧 uuid——批准续跑时产物对不上新行全部悬空。扇出前按库内真相对账重建（graph ids ⊄ db ids 时以 DB subtask 重建计划态）；配套 `e2e_plan_actions_check` 双场景（修订循环→批准→产物落库 + 终止）进验收链
+- **队列保存路径自全异步迁移起静默全灭**：task_manager 摸 `subtask.execution_plan` 关系属性——async 会话下懒加载必炸 MissingGreenlet，异常被吞后产物从不落库；改显式 `db.get(ExecutionPlan, ...)`。配套真实会话回归测试（fake 会话结构上测不出懒加载）
+- **删除记忆从未执行（幻觉合理化）**：记忆以英文第三人称存储，中文关键词 ILIKE 必然零命中，连搜四次全空后模型幻觉出「删除未能成功执行——需工具恢复后重试」报告（实际从未调用 delete_memories）。工具侧零命中自愈（返回全部清单 + 存储语言提示）+ 教材反幻觉条款（严禁未调用 delete_memories 就声称删除失败；20260926_000905 下发）
+- **前端三处静默失败**：产物预览点击无反应（openArtifact 无 catch，加载失败静默——补错误可见化 + toast）；模型配置保存零反馈（成功/失败均无提示，成功/失败双 toast）；执行态切历史会话停在空态（恢复被全局生成态守卫静默跳过 + detach 不清 generating 标志）
 - **断连后图驱动被杀成僵尸 run（e2e 实抓）**：客户端断连时 producer 按设计转后台继续，但请求级 Session 随请求关闭并把 ORM 实例过期——后台图驱动在取消检查点摸 `agent_run.id` 抛 `DetachedInstanceError`，异常处理器里同样摸实例二次炸掉，run 永远等不到终态标记，且租约仍被 supervisor 无差别续着，直到 deadline 兜底才回收（期间用户侧表现"发了没反应"）。修复：producer 体内（含异常处理器）一律使用请求域内捕获的 `run_id` 裸值，禁止再摸 ORM 实例
 - **live 续传缺传输级 [DONE]（e2e 实抓）**：`[DONE]` 是传输级标记只进主连接队列、不经 hub 广播，而 live 续流的收尾哨兵处理直接 `return`——断线重连跟随到最后一帧后流静默关闭，前端 `onclose` 按「回答可能不完整」报错（内容其实一条不少）。修复：续流收到收尾哨兵时补发 `[DONE]`（与 paused-replay 路径同一条理由）
 
