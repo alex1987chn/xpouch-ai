@@ -10,6 +10,11 @@
 - [ ] 图片输入收尾：附件入口现仅图片；文档/文件输入=独立功能（定位已讨论：解析为文本注入当前对话上下文，不持久化；pypdf/python-docx/openpyxl；单文件 10MB / 单次 3 个）
 - [ ] 图片进复杂任务的传递管道（image_analyzer 当前收不到图片）：用户消息附图只挂在初始消息（router 可见），commander 分派到专家执行无任何图片通道——image_analyzer 教材虽好但拿到的只有文字（2026-09-23 审计发现，用户拍板暂缓：管道就绪前该专家不可用，也未移出内置）
 - [ ] Selective approval UI 或记忆系统（二选一，方向待讨论）。记忆系统侧 2026-09-26 已落地删除/查看能力（闭包工具 + 教材 + 000903 下发，见 DECISIONS）；剩余可做：管理台记忆查看/清理入口、记忆改写（"把 XX 改成 YY"）、检索注入的时效衰减
+- [ ] 依赖传递改「摘要 + 产物引用」（2026-10-03 架构审视）：上游输出现为 2000 字符内联截断（`task_outcome.DEPENDENCY_CONTEXT_LIMIT`），多跳链路信息累积衰减；改为 Send payload 带摘要 + artifact 引用，worker 经现有 `get_artifact` 工具按需取全文（需 prompt 引导「摘要够用不拉全文」，工具零新增）
+- [ ] planner 波均衡指引（2026-10-03 架构审视）：波次屏障下同波短任务被长任务拖等；commander 规划 prompt 加「同波任务工作量均衡、大任务拆细」指引，一行级
+- [ ] 专家语义从人设改能力包（2026-10-03 架构审视，对齐行业方向）：专家 = 工具集 + 领域知识 + 权限边界 + 默认模型，persona 降级为纯 UX 识别；只改 prompt 组装层语义，`expert_type` 标识符不动（历史数据耦合，见 DECISIONS 词汇收敛）
+- [ ] 工具延迟加载（2026-10-03 架构审视）：MCP 工具现全量进上下文（`mcp_tools_service.get_tools()`）；改为专家固定带高频工具 + 低频标 deferred 按需检索展开（`tool_policy` 的 allow/block 之上加一层）；检索进来的第三方工具描述按不可信输入处理
+- [ ] 技能包提案闭环（缺工具 → 提案 → 审批 → 入库复用，2026-10-03 架构审视判定挂起）：等真实用户需求再启动；硬前提 = 脚本执行沙箱（现无）；注意与 `skill_template`（聊天提示模板）是两回事，勿复用混淆
 - [ ] BYOK（认可方向，未排期）
 - [ ] xpouch.ai 在线 demo 挂链（站已有，差入口串联）
 
@@ -17,6 +22,7 @@
 
 - 事件双真相源统一——**2026-09-27 已收口**：①crud 中央归一（append_run_event 接受 BaseModel 统一 model_dump(mode=json)，不再依赖 psycopg 隐式适配——SQLite 测试路径会炸、格式不受控）；②task_started/task_failed 单构造双用（此前 SSE 与账本各自构造已实际漂移：账本缺 message_id/sort_order/total_steps、description 硬编码空串，e2e 账本 payload 复核已补齐）；③tool_result 原本就是单构造范本；④task_completed/artifact_generated 的 SSE 与账本是「落库前通知 vs 落库后权威记录」两个事实、router_decided 两边 reason 是展示文案 vs 机器规则名——语义不同，**判定不做统一**（避免丢信息），后人勿再疑惑
 - RunContext 值对象 / 事件双真相源统一（同一组 pydantic 模型约束 SSE 流与 run_events 账本；StreamService 772 行 + parts 三 Mixin、generic 813 行 + 两个纯函数模块的拆解已于 2026-09-27 完成，双 e2e 全绿——结构性大手术已完成，剩余为语义统一类小项）
+- [ ] SMS 同步调用阻塞事件循环（2026-09 审计遗留未登记）：`auth/routes_otp.py` 直接同步调腾讯云 SDK，发送期间整个事件循环卡住；包 `asyncio.to_thread` 即可，一行级
 - [ ] 前端状态三轨统一（消息 zustand / 会话产物 react-query / taskStore——周级重构，单独立项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
 - [ ] 未使用 i18n 键审计：判据 `git grep "t('<key>')"` 为空 ≠ 死键（`expertIdentity` 这类类型→key 映射是动态引用，删前连映射表一起查）
