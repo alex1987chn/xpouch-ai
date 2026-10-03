@@ -48,8 +48,11 @@ class ExpertWorkerState(TypedDict, total=False):
 
     # --- Send payload 注入（只读）---
     current_task: dict[str, Any]
-    # 已解析好的上游输出：{依赖 key: 输出文本}。分支读不到主图状态，故随 payload 带
+    # 已解析好的上游输出：{依赖 key: 输出摘要}。分支读不到主图状态，故随 payload 带
     dependency_outputs: dict[str, str]
+    # 上游完整产物的引用 {依赖 key: {id/type/title}}：摘要不够用时 worker 经
+    # get_artifact(id) 取全文（全文已在库）。同为 Send payload 只读输入
+    dependency_artifacts: dict[str, dict[str, str]]
     # 运行标识打包（thread_id / run_id / execution_plan_id / user_id）
     #
     # ⚠️ 为什么打包成一个键而不是四个平铺键（实测踩过，别改回去）：

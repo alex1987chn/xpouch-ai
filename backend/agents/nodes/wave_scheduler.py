@@ -84,15 +84,28 @@ def build_branch_payload(state: dict[str, Any], task: dict[str, Any]) -> dict[st
     """
     outcomes = state.get("task_outcomes") or {}
     dependency_outputs: dict[str, str] = {}
+    # 上游完整产物以引用传递：全文已在库（任务完成即后台落库 artifact 行），
+    # worker 摘要不够用时经 get_artifact(id) 按需取——多跳链路不再每跳截
+    # 2000 字符逐级衰减。摘要通道保持原样，引用是平行附加信息。
+    dependency_artifacts: dict[str, dict[str, str]] = {}
     for dep in task.get("depends_on") or []:
         outcome = outcomes.get(str(dep))
         output = (outcome or {}).get("output")
         if output:
             dependency_outputs[str(dep)] = output[:DEPENDENCY_CONTEXT_LIMIT]
+        artifact = (outcome or {}).get("artifact") or {}
+        artifact_id = artifact.get("artifact_id")
+        if artifact_id:
+            dependency_artifacts[str(dep)] = {
+                "id": str(artifact_id),
+                "type": str(artifact.get("type") or ""),
+                "title": str(artifact.get("title") or ""),
+            }
 
     return {
         "current_task": task,
         "dependency_outputs": dependency_outputs,
+        "dependency_artifacts": dependency_artifacts,
         "branch_context": {
             "thread_id": state.get("thread_id"),
             "run_id": state.get("run_id"),

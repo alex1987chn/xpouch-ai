@@ -116,6 +116,7 @@ async def expert_worker_node(
     # 本分支的任务 / 上游输出 / 运行标识都来自 Send payload（分支读不到主图其它通道）
     current_task = state.get("current_task") or {}
     dependency_outputs = state.get("dependency_outputs") or {}
+    dependency_artifacts = state.get("dependency_artifacts") or {}
     branch_context = state.get("branch_context") or {}
     existing_messages = state.get("worker_messages", [])
 
@@ -473,12 +474,23 @@ async def expert_worker_node(
                 for dep_id in depends_on:
                     dep_output = dependency_outputs.get(str(dep_id))
                     if dep_output:
-                        context_parts.append(
+                        context_part = (
                             # 截断上限同源 task_outcome.DEPENDENCY_CONTEXT_LIMIT
                             # （Send payload 在 wave_scheduler 已按同一上限裁过，
                             # 这里是防御性第二刀）
                             f"【上游任务 {dep_id} 的输出】:\n{dep_output[:DEPENDENCY_CONTEXT_LIMIT]}..."
                         )
+                        # 上游完整产物以引用随 payload 带入（全文已在库）——
+                        # 摘要不够用时 worker 经 get_artifact 按 id 取，多跳链路
+                        # 不再逐跳衰减。明确「够用就别调」控制额外工具往返。
+                        ref = dependency_artifacts.get(str(dep_id))
+                        if ref:
+                            context_part += (
+                                f"\n（以上为摘要。完整产物《{ref.get('title') or ref.get('type')}》"
+                                f"类型 {ref.get('type')}，产物 ID: {ref.get('id')}——"
+                                "仅当摘要不敷使用时调用 get_artifact 工具取全文，摘要够用则不要调用）"
+                            )
+                        context_parts.append(context_part)
                         logger.info(f"[GenericWorker] ✅ 找到依赖 {dep_id}: {len(dep_output)} 字符")
                     else:
                         missing_deps.append(dep_id)

@@ -210,6 +210,40 @@ async def test_dependency_outputs_are_injected_into_prompt():
 
 
 @pytest.mark.asyncio
+async def test_dependency_artifact_ref_rendered_with_fetch_hint():
+    """上游产物引用随 payload 带入：prompt 标注产物 ID 与 get_artifact 取用口径。"""
+    task = _task(depends_on=["task_0"])
+    seen: dict = {}
+
+    class _CaptureLLM(_FakeLLM):
+        async def ainvoke(self, messages, config=None):
+            seen["prompt"] = "\n".join(str(m.content) for m in messages)
+            return await super().ainvoke(messages, config=config)
+
+    with (
+        _patches(),
+        patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
+        patch("agents.nodes.generic.filter_tools_for_binding", return_value=([], [])),
+    ):
+        await expert_worker_node(
+            _branch_state(
+                task,
+                {
+                    "dependency_outputs": {"task_0": "上游摘要"},
+                    "dependency_artifacts": {
+                        "task_0": {"id": "art-123", "type": "markdown", "title": "检索报告"}
+                    },
+                },
+            ),
+            llm=_CaptureLLM([_FakeResponse("下游答案")]),
+        )
+
+    assert "art-123" in seen["prompt"], "产物 ID 必须出现在 prompt（get_artifact 的取用键）"
+    assert "get_artifact" in seen["prompt"], "必须告知取全文的工具口径"
+    assert "检索报告" in seen["prompt"], "引用要带产物标题，便于判断是否需要全文"
+
+
+@pytest.mark.asyncio
 async def test_missing_dependency_is_tolerated():
     """payload 里没有的上游（失败被跳过 / 被编辑删除）→ 走容错提示，不炸。"""
     task = _task(depends_on=["task_0"])
