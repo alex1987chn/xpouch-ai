@@ -175,7 +175,9 @@ async def _wait_for_frame(engine, needle: str, timeout: float = 5.0) -> list[Run
 async def test_disconnect_during_planning_keeps_producer_alive(monkeypatch, engine):
     monkeypatch.setattr(settings, "stream_timeout", 0.05)  # 心跳加速：断连不必等 120s
     saver = MemorySaver()
-    recorder = RunFrameRecorder(session_factory=lambda: _test_session_cm(), flush_interval=5)
+    # flush_interval 必须 << _wait_for_frame 的轮询窗口（5s）：帧是缓冲+定时批量
+    # 落库，间隔取默认 5s 时落库时机与轮询窗口同长贴脸赛跑，慢 CI 上必偶挂
+    recorder = RunFrameRecorder(session_factory=lambda: _test_session_cm(), flush_interval=0.1)
 
     async def _fake_router(state, config=None):
         return {"router_decision": "complex", "router_reason": "test"}

@@ -285,8 +285,11 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
         return {}
 
     # 帧记录器必须换成本测试的 SQLite 引擎：全局 recorder 默认绑 database.engine（PG），
-    # 测试进程里那是一次必然失败的连接 + 2s 退避重试，会拖死 executor 收尾
-    recorder = RunFrameRecorder(session_factory=lambda: _test_session_cm(), flush_interval=5)
+    # 测试进程里那是一次必然失败的连接 + 2s 退避重试，会拖死 executor 收尾。
+    # flush_interval 必须 << 断言轮询窗口（5s）：帧是缓冲+定时批量落库，间隔取
+    # 默认 5s 时落库时机与轮询窗口同长贴脸赛跑——慢 CI 上 producer 收尾刷帧
+    # 稍慢就会在窗口内等不到任何帧（2026-10-03 CI 实挂）
+    recorder = RunFrameRecorder(session_factory=lambda: _test_session_cm(), flush_interval=0.1)
 
     async def _async_expert_config_stub(_t):
         return {"name": "E", "system_prompt": "{input}"}
