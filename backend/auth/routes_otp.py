@@ -1,5 +1,6 @@
 """手机验证码登录/注册（send-code / verify-code）。"""
 
+import asyncio
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -112,7 +113,10 @@ async def send_verification_code(
         user.verification_code_send_count_reset_at = send_count_reset_at
         _reset_verification_state(user)
 
-        success, error_message = send_verification_code_with_fallback(
+        # 腾讯云 SDK 是同步客户端：直接调用会卡住整个事件循环（发送期间
+        # 全站请求停摆），丢线程池执行
+        success, error_message = await asyncio.to_thread(
+            send_verification_code_with_fallback,
             phone_number,
             code,
             expire_minutes=settings.verification_code_expire_minutes,
