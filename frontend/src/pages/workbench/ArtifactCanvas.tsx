@@ -10,7 +10,7 @@
  * [画布两档宽度] 330px 紧凑 ↔ 560px 宽屏。
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@/i18n'
 import { useNavigate } from 'react-router-dom'
 import { Package, LayoutGrid, PanelRight, MessagesSquare, SearchX } from 'lucide-react'
@@ -54,12 +54,33 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
   }, [searchInput])
 
   const threadQuery = useThreadArtifactsQuery(threadId)
-  const galleryQuery = useArtifactsQuery(1, typeFilter || undefined, search || undefined)
+  const galleryQuery = useArtifactsQuery(typeFilter || undefined, search || undefined)
 
+  // 画廊为无限查询：拍平已加载页（滚动到底自动续拉，镜像会话列表模式）
+  const galleryItems = useMemo(
+    () => galleryQuery.data?.pages.flatMap(page => page.items) ?? [],
+    [galleryQuery.data],
+  )
   const activeList: ArtifactListItem[] =
-    tab === 'thread' ? (threadQuery.data?.items ?? []) : (galleryQuery.data?.items ?? [])
+    tab === 'thread' ? (threadQuery.data?.items ?? []) : galleryItems
   const isLoading = tab === 'thread' ? threadQuery.isLoading : galleryQuery.isLoading
   const hasFilters = tab === 'gallery' && (!!typeFilter || !!search)
+
+  // 画廊加载更多哨兵（thread 页是单查询全量投影，无需翻页）
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const { fetchNextPage: fetchNextGalleryPage, hasNextPage: hasNextGalleryPage } = galleryQuery
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || !hasNextGalleryPage || tab !== 'gallery') return
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) void fetchNextGalleryPage()
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextGalleryPage, fetchNextGalleryPage, tab])
 
   const locale = localeForLanguage(language)
 
@@ -237,9 +258,10 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
             />
           )
         ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {activeList.map(renderCard)}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-2">{activeList.map(renderCard)}</div>
+            {tab === 'gallery' && hasNextGalleryPage && <div ref={sentinelRef} className="h-6" />}
+          </>
         )}
       </div>
 
