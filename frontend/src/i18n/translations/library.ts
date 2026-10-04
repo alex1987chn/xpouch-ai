@@ -9,7 +9,7 @@ export const zh = {
   documents: '文档',
   comingSoon: '即将上线',
   knowledgeBaseDescription: '知识库功能正在开发中',
-  skillTemplates: '技能模板',
+  skillTemplates: '对话模板',
   // 产物中心
   artifactShareAction: '分享链接',
   artifactShareCopied: '链接已复制',
@@ -162,7 +162,7 @@ export const en = {
   documents: 'Documents',
   comingSoon: 'Coming Soon',
   knowledgeBaseDescription: 'Knowledge base feature is under development',
-  skillTemplates: 'Skill Templates',
+  skillTemplates: 'Chat Templates',
   // Artifact center
   artifactShareAction: 'Share',
   artifactShareCopied: 'Link copied',
@@ -315,7 +315,7 @@ export const ja = {
   documents: 'ドキュメント',
   comingSoon: '近日公開',
   knowledgeBaseDescription: 'ナレッジベース機能は開発中です',
-  skillTemplates: 'スキルテンプレート',
+  skillTemplates: 'チャットテンプレート',
   // 産物センター
   artifactShareAction: '共有リンク',
   artifactShareCopied: 'リンクをコピーしました',
