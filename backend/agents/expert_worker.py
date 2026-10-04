@@ -66,6 +66,9 @@ class ExpertWorkerState(TypedDict, total=False):
     worker_messages: Annotated[list[BaseMessage], add_messages]
     # 是否已发过 task.started：工具循环重入本节点时据此跳过重复事件与账本写入
     worker_started: bool
+    # 延迟工具层（协议见 agents/deferred_tools.py）：search_tools 检索命中并
+    # 已展开进绑定集的工具名。主图没有该键 → 天然分支私有，不回写
+    expanded_tool_names: list[str]
     # --- 交回主图 ---
     task_outcomes: Annotated[dict[str, dict[str, Any]], merge_task_outcomes]
 
@@ -75,10 +78,25 @@ async def worker_tools_node(state: ExpertWorkerState, config: RunnableConfig = N
 
     `dynamic_tool_node`（含 ToolNode）读写的是 `messages`，而分支的草稿在
     `worker_messages`。这层只做键名搬运，工具治理/超时/重试逻辑一行不改。
+
+    另承载延迟工具层的**展开记账**：search_tools 的返回由服务端生成、首行
+    带 `[matched]:` 机器头——这里解析该头把命中工具名并入 `expanded_tool_names`
+    （去重并集），worker 重入时（每次重入都重新绑定）把它们加回绑定集。
+    解析不到就静默跳过（绑定集不变，无损）。
     """
     tool_state = {**state, "messages": state.get("worker_messages") or []}
     result = await dynamic_tool_node(tool_state, config)
-    return {"worker_messages": result.get("messages") or []}
+    update: dict = {"worker_messages": result.get("messages") or []}
+
+    from agents.deferred_tools import SEARCH_TOOL_NAME, parse_matched_names
+
+    expanded: set[str] = set(state.get("expanded_tool_names") or [])
+    for message in update["worker_messages"]:
+        if getattr(message, "name", "") == SEARCH_TOOL_NAME:
+            expanded.update(parse_matched_names(getattr(message, "content", "") or ""))
+    if expanded:
+        update["expanded_tool_names"] = sorted(expanded)
+    return update
 
 
 def route_worker(state: ExpertWorkerState) -> str:

@@ -35,6 +35,7 @@ class ToolInfo(BaseModel):
     allowed_experts: list[str] | None = None
     blocked_experts: list[str] | None = None
     policy_note: str | None = None
+    deferred: bool = False
 
 
 class ToolsListResponse(BaseModel):
@@ -114,6 +115,7 @@ async def _build_effective_tool_infos(session: Session) -> list[ToolInfo]:
                     allowed_experts=list(effective.allowed_experts) or None,
                     blocked_experts=list(effective.blocked_experts) or None,
                     policy_note=effective.policy_note,
+                    deferred=effective.deferred,
                 )
             )
     except Exception as e:
@@ -169,6 +171,7 @@ async def list_tool_policies(
             allowed_experts=tool.allowed_experts,
             blocked_experts=tool.blocked_experts,
             policy_note=tool.policy_note,
+            deferred=tool.deferred,
             description=tool.description,
             created_at=records.get((tool.name, tool.category)).created_at
             if records.get((tool.name, tool.category))
@@ -224,6 +227,7 @@ async def upsert_tool_policy(
         "allowed_experts",
         "blocked_experts",
         "policy_note",
+        "deferred",
     ):
         value = getattr(payload, field_name)
         if value is not None:
@@ -244,6 +248,7 @@ async def upsert_tool_policy(
         allowed_experts=policy.allowed_experts,
         blocked_experts=policy.blocked_experts,
         policy_note=policy.policy_note,
+        deferred=policy.deferred,
         created_at=policy.created_at,
         updated_at=policy.updated_at,
     )

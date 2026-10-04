@@ -517,3 +517,59 @@ class TestArtifactTitleExtraction:
 
     def test_empty_output_falls_back(self):
         assert artifact_title_from_output("\n  \n", "写作专家结果") == "写作专家结果"
+
+
+@pytest.mark.asyncio
+async def test_deferred_tool_hidden_until_searched_and_rebound_on_expansion():
+    """延迟工具层（绑定侧）：标记 deferred 的 MCP 工具不进 prompt 工具清单，
+    search_tools 伪工具挂载；分支状态 expanded_tool_names 里的工具重新绑定。"""
+    from types import SimpleNamespace
+
+    from services.tool_policy_service import ToolPolicyOverride
+
+    task = _task()
+    fake_mcp = SimpleNamespace(name="maps_geocode", description="地理编码")
+    fake_calc = SimpleNamespace(name="calculator", description="数学计算")
+    overrides = {
+        ("maps_geocode", "mcp"): ToolPolicyOverride(
+            tool_name="maps_geocode",
+            source="mcp",
+            enabled=True,
+            risk_tier="medium",
+            approval_required=False,
+            allowed_experts=(),
+            blocked_experts=(),
+            policy_note=None,
+            deferred=True,
+        )
+    }
+    seen: dict = {}
+
+    class _CaptureLLM(_FakeLLM):
+        async def ainvoke(self, messages, config=None):
+            seen["prompt"] = "\n".join(str(m.content) for m in messages)
+            return await super().ainvoke(messages, config=config)
+
+    async def _arun(extra_state: dict):
+        with (
+            _patches(),
+            patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value=overrides),
+            patch(
+                "agents.nodes.generic.filter_tools_for_binding",
+                return_value=([fake_mcp, fake_calc], []),
+            ),
+        ):
+            return await expert_worker_node(
+                _branch_state(task, extra_state),
+                llm=_CaptureLLM([_FakeResponse("ok")]),
+            )
+
+    # ① 未展开：延迟工具不在清单，search_tools 挂载
+    await _arun({})
+    assert "maps_geocode" not in seen["prompt"], "延迟工具不得进 prompt 工具清单"
+    assert "search_tools" in seen["prompt"], "延迟工具非空时必须挂载 search_tools 伪工具"
+    assert "calculator" in seen["prompt"], "常驻工具照常进清单"
+
+    # ② 已展开（分支状态记名）：延迟工具重新进入绑定集
+    await _arun({"expanded_tool_names": ["maps_geocode"]})
+    assert "maps_geocode" in seen["prompt"], "已展开的延迟工具必须重新绑定"

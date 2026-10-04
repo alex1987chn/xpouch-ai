@@ -25,6 +25,8 @@ class ToolPolicyOverride:
     allowed_experts: tuple[str, ...]
     blocked_experts: tuple[str, ...]
     policy_note: str | None
+    # 延迟加载标记（仅 MCP 生效，见 agents/deferred_tools.py）
+    deferred: bool = False
 
 
 class ToolPolicyService:
@@ -74,6 +76,7 @@ class ToolPolicyService:
                 allowed_experts=tuple(record.allowed_experts or ()),
                 blocked_experts=tuple(record.blocked_experts or ()),
                 policy_note=record.policy_note,
+                deferred=bool(getattr(record, "deferred", False)),
             )
             for record in records
         }

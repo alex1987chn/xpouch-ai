@@ -72,6 +72,7 @@ export interface ToolInfo {
   allowed_experts?: string[] | null
   blocked_experts?: string[] | null
   policy_note?: string | null
+  deferred: boolean
 }
 
 export interface ToolsListResponse {
@@ -91,6 +92,7 @@ export interface ToolPolicyRecord {
   allowed_experts?: string[] | null
   blocked_experts?: string[] | null
   policy_note?: string | null
+  deferred?: boolean
   description?: string | null
   created_at?: string | null
   updated_at?: string | null

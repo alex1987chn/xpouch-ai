@@ -331,6 +331,21 @@ async def dynamic_tool_node(
     builtin_tool_names = {get_tool_name(tool) for tool in BASE_TOOLS} | set(MEMORY_TOOL_NAMES)
     tool_name_to_tool = {get_tool_name(tool): tool for tool in runtime_tools}
 
+    # 延迟工具层（执行侧）：模型可见性由绑定侧唯一控制，这里保持全量可执行；
+    # 但 search_tools 伪工具必须可执行（延迟工具非空时模型会调它检索）。
+    # 与绑定侧同一判定源（policy overrides + extract_deferred），确定性一致。
+    from agents.deferred_tools import SEARCH_TOOL_NAME, build_search_tool, extract_deferred
+
+    _overrides_for_search = await tool_policy_service.get_overrides()
+    _deferred, _ = extract_deferred(
+        runtime_tools, expert_type=_expert_type, overrides=_overrides_for_search
+    )
+    if _deferred and SEARCH_TOOL_NAME not in tool_name_to_tool:
+        runtime_tools = runtime_tools + [build_search_tool(_deferred)]
+        tool_name_to_tool[SEARCH_TOOL_NAME] = runtime_tools[-1]
+        # 本地纯函数工具，按内置超时档处理（默认会落 MCP 90s 档）
+        builtin_tool_names.add(SEARCH_TOOL_NAME)
+
     # 超时值在 build_tool_call_wrapper 内按**单个工具**选取，
     # 此处仅保留「本 run 是否挂了 MCP」用于日志标注
     has_mcp_tools = len(mcp_tools) > 0

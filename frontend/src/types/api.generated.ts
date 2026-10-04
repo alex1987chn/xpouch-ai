@@ -3206,6 +3206,11 @@ export interface components {
             blocked_experts?: string[] | null;
             /** Policy Note */
             policy_note?: string | null;
+            /**
+             * Deferred
+             * @default false
+             */
+            deferred: boolean;
         };
         /** ToolPolicyListResponse */
         ToolPolicyListResponse: {
@@ -3234,6 +3239,11 @@ export interface components {
             blocked_experts?: string[] | null;
             /** Policy Note */
             policy_note?: string | null;
+            /**
+             * Deferred
+             * @default false
+             */
+            deferred: boolean;
             /** Description */
             description?: string | null;
             /** Created At */
@@ -3255,6 +3265,8 @@ export interface components {
             blocked_experts?: string[] | null;
             /** Policy Note */
             policy_note?: string | null;
+            /** Deferred */
+            deferred?: boolean | null;
         };
         /**
          * ToolsListResponse

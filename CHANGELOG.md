@@ -5,6 +5,13 @@ All notable changes to this project will be documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0.html),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [未发布]
+
+### 变更
+
+- **专家语义从人设改能力包（2026-10-03 架构审视第一项）**：11 个内置专家的 description 全面改写为能力契约（输入 → 产出 → 适用条件——commander 匹配的唯一文本面就是它），教材开头的人设叙事（"你是一名资深/世界级…"）换成能力包框架；事故换来的协议正文逐字保留（memorize 反幻觉条款、router 镜像规则、aggregator 格式透传）。commander 话术「专家资源/Expert Matching/分配」→「能力包/Pack Matching/选用」。行业依据：persona 对客观任务无增益（EMNLP 2024 实证），能力包（工具+知识+契约）是 Claude Code subagent / Agent Skills 的收敛形态。expert_type 标识符与用户自建专家不动。迁移 20261003_000907 下发
+- **MCP 工具延迟加载（client-side Tool Search）**：低频 MCP 工具可标记 deferred（管理台按工具开关，默认全 false = 行为零变化），不进常驻绑定集与 prompt 清单；模型经 `search_tools` 伪工具按需检索（关键词匹配 + 零匹配自愈列全量），命中工具由分支状态记账、worker 重入时自动重新绑定。第三方工具描述按不可信输入净化（压空白 + 截断，防 Tool Poisoning 类注入）。对齐 Anthropic Tool Search Tool / OpenAI defer_loading 范式（服务端展开为平台绑定，故做客户端版）。迁移 20261003_000908 加 `toolpolicy.deferred` 列
+
 ## [2026-10-03] - v3.5.8 漏 await 收网、审批与产物链路修复、依赖产物引用
 
 ### 变更

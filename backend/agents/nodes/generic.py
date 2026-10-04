@@ -60,7 +60,7 @@ from agents.plan_waves import task_key
 from agents.routing_policy import should_trip_tool_loop_guard
 from agents.services.expert_manager import get_expert_config_cached
 from agents.task_outcome import DEPENDENCY_CONTEXT_LIMIT, build_task_outcome
-from agents.tool_policy import filter_tools_for_binding, get_builtin_tool_names
+from agents.tool_policy import filter_tools_for_binding, get_builtin_tool_names, get_tool_name
 from agents.tool_runtime import collect_runtime_tools
 from config import settings
 from event_types.events import TaskFailedData, TaskStartedData
@@ -388,6 +388,29 @@ async def expert_worker_node(
                 overrides=policy_overrides,
             )
             builtin_names = get_builtin_tool_names()
+
+            # 延迟工具层（client-side Tool Search，协议见 agents/deferred_tools.py）：
+            # 允许集合再分（常驻, 延迟）两组——延迟工具不进绑定与 prompt 清单，
+            # 改挂 search_tools 伪工具按需检索；已展开的（分支状态里记了名）
+            # 重新并回绑定集。defer 默认全 false，未配置时此处为空转。
+            from agents.deferred_tools import build_search_tool, extract_deferred
+
+            deferred_tools, resident_tools = extract_deferred(
+                bindable_tools, expert_type=expert_type, overrides=policy_overrides
+            )
+            if deferred_tools:
+                expanded_names = set(state.get("expanded_tool_names") or [])
+                reexpanded = [t for t in deferred_tools if get_tool_name(t) in expanded_names]
+                bindable_tools = resident_tools + reexpanded + [build_search_tool(deferred_tools)]
+                logger.info(
+                    "[GenericWorker] 🔧 延迟层: 常驻 %s 个，延迟 %s 个（已展开 %s 个），"
+                    "search_tools 已挂载",
+                    len(resident_tools),
+                    len(deferred_tools),
+                    len(reexpanded),
+                )
+            else:
+                bindable_tools = resident_tools
 
             # 🔥 警告：如果 MCP 工具为空但预期应该有
             if not mcp_tools and settings.mcp_servers:

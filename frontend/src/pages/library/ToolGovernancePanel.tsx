@@ -26,6 +26,7 @@ interface PolicyDraft {
  enabled: boolean
  risk_tier: ToolRiskTier
  approval_required: boolean
+ deferred: boolean
  allowed_experts: string
  blocked_experts: string
  policy_note: string
@@ -36,6 +37,7 @@ function draftFromPolicy(policy: ToolPolicyRecord): PolicyDraft {
   enabled: policy.enabled,
   risk_tier: policy.risk_tier,
   approval_required: policy.approval_required,
+  deferred: !!policy.deferred,
   allowed_experts: (policy.allowed_experts ?? []).join(', '),
   blocked_experts: (policy.blocked_experts ?? []).join(', '),
   policy_note: policy.policy_note ?? '',
@@ -176,6 +178,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
     enabled: !policy.enabled,
     risk_tier: policy.risk_tier,
     approval_required: policy.approval_required,
+    deferred: policy.source === 'mcp' ? !!policy.deferred : undefined,
     allowed_experts: policy.allowed_experts ?? null,
     blocked_experts: policy.blocked_experts ?? null,
     policy_note: policy.policy_note ?? null,
@@ -199,6 +202,7 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
     enabled: draft.enabled,
     risk_tier: draft.risk_tier,
     approval_required: draft.approval_required,
+    deferred: selectedPolicy.source === 'mcp' ? draft.deferred : undefined,
     allowed_experts: splitCsv(draft.allowed_experts),
     blocked_experts: splitCsv(draft.blocked_experts),
     policy_note: draft.policy_note || null,
@@ -377,6 +381,22 @@ export function ToolGovernancePanel({ searchQuery, canView, canEdit }: ToolGover
          </span>
         </div>
        </Field>
+       {selectedPolicy.source === 'mcp' && (
+        <Field label={t('toolDeferred') || 'Deferred Loading'}>
+         <div className="flex h-[34px] items-center gap-2.5">
+          <PillSwitch
+           on={draft.deferred}
+           disabled={!canEdit}
+           onToggle={() => setDraft(prev => prev ? { ...prev, deferred: !prev.deferred } : prev)}
+          />
+          <span className="text-xs text-content-secondary">
+           {draft.deferred
+            ? t('toolDeferredOn') || 'On-demand via search'
+            : t('toolDeferredOff') || 'Always bound'}
+          </span>
+         </div>
+        </Field>
+       )}
        <Field label={t('allowedExperts') || 'Allowed Experts'} className="md:col-span-2">
         <input
          value={draft.allowed_experts}

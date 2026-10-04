@@ -14,6 +14,8 @@ class ToolPolicyUpdate(BaseModel):
     allowed_experts: list[str] | None = None
     blocked_experts: list[str] | None = None
     policy_note: str | None = None
+    # 延迟加载（仅 MCP 工具生效）：经 search_tools 按需检索展开
+    deferred: bool | None = None
 
 
 class ToolPolicyResponse(BaseModel):
@@ -26,6 +28,7 @@ class ToolPolicyResponse(BaseModel):
     allowed_experts: list[str] | None = None
     blocked_experts: list[str] | None = None
     policy_note: str | None = None
+    deferred: bool = False
     description: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

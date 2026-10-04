@@ -4,7 +4,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, Index, String, func
+from sqlalchemy import JSON, Boolean, Column, Index, String, func
 from sqlmodel import Field, SQLModel
 
 from utils.time import utc_now
@@ -30,6 +30,13 @@ class ToolPolicy(SQLModel, table=True):
     allowed_experts: list[str] | None = Field(default=None, sa_column=Column(JSON))
     blocked_experts: list[str] | None = Field(default=None, sa_column=Column(JSON))
     policy_note: str | None = Field(default=None, description="策略说明")
+    # 延迟加载（仅 MCP 工具生效）：不进常驻绑定集，经 search_tools 按需检索展开。
+    # 见 agents/deferred_tools.py 协议说明；默认 false = 行为与延迟层引入前一致
+    deferred: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default="false"),
+        description="是否延迟加载（按需检索展开，仅 MCP 生效）",
+    )
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(
         default_factory=utc_now,

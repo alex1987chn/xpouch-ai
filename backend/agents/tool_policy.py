@@ -27,6 +27,9 @@ class ToolPolicyMetadata:
     allowed_experts: tuple[str, ...] = ()
     blocked_experts: tuple[str, ...] = ()
     policy_note: str | None = None
+    # 延迟加载（仅 MCP 工具生效，resolve 侧强制）：不进常驻绑定集，经
+    # search_tools 按需检索展开（见 agents/deferred_tools.py 协议说明）
+    deferred: bool = False
 
 
 @dataclass(frozen=True)
@@ -202,6 +205,8 @@ def resolve_tool_metadata(
         allowed_experts=override.allowed_experts,
         blocked_experts=override.blocked_experts,
         policy_note=override.policy_note or metadata.policy_note,
+        # defer 仅对 MCP 工具生效：内置工具体量小恒常驻（内置行上误配也被忽略）
+        deferred=bool(override.deferred) if metadata.source == "mcp" else False,
     )
 
 
