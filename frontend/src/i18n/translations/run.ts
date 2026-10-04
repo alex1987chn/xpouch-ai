@@ -21,6 +21,21 @@ export const zh = {
   runStatusFailed: '失败',
   runStatusCancelled: '已取消',
   runStatusTimedOut: '已超时',
+  // —— 自 common.ts 按域迁入 ——
+  totalRuns: '总运行数',
+  successRate: '成功率',
+  hitlCount: '待审核',
+  avgDuration: '平均耗时',
+  trends: '趋势',
+  days: '天',
+  noRuns: '暂无运行记录',
+  noRunsHint: '完成第一个任务后，这里会展示你的运行趋势和消耗',
+  todayTokens: '今日 Token',
+  quotaRemaining: '配额剩余',
+  runList: '运行记录',
+  prev: '上一页',
+  next: '下一页',
+  loadFailed: '加载失败',
 }
 
 export const en = {
@@ -43,6 +58,21 @@ export const en = {
   runStatusFailed: 'Failed',
   runStatusCancelled: 'Cancelled',
   runStatusTimedOut: 'Timed Out',
+  // —— 自 common.ts 按域迁入 ——
+  totalRuns: 'Total Runs',
+  successRate: 'Success Rate',
+  hitlCount: 'Awaiting review',
+  avgDuration: 'Avg Duration',
+  trends: 'Trends',
+  days: 'days',
+  noRuns: 'No runs yet',
+  noRunsHint: 'Your run trends and usage appear here after your first task',
+  todayTokens: 'Tokens Today',
+  quotaRemaining: 'Quota left',
+  runList: 'Run History',
+  prev: 'Prev',
+  next: 'Next',
+  loadFailed: 'Load Failed',
 }
 
 export const ja = {
@@ -65,4 +95,19 @@ export const ja = {
   runStatusFailed: '失敗',
   runStatusCancelled: 'キャンセル済み',
   runStatusTimedOut: 'タイムアウト',
+  // —— 自 common.ts 按域迁入 ——
+  totalRuns: '総実行数',
+  successRate: '成功率',
+  hitlCount: '承認待ち',
+  avgDuration: '平均所要時間',
+  trends: '傾向',
+  days: '日',
+  noRuns: '実行記録なし',
+  noRunsHint: '最初のタスク完了後、ここに実行トレンドと消費量が表示されます',
+  todayTokens: '今日のトークン',
+  quotaRemaining: '残り枠',
+  runList: '実行履歴',
+  prev: '前へ',
+  next: '次へ',
+  loadFailed: '読み込み失敗',
 }

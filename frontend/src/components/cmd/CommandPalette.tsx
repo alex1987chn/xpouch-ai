@@ -19,8 +19,7 @@ import { cn } from '@/lib/utils'
 import { useTranslation } from '@/i18n'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useUserStore } from '@/store/userStore'
-import { useChatStore } from '@/store/chatStore'
-import { useTaskStore } from '@/store/taskStore'
+import { leaveCurrentThread } from '@/store/sessionLifecycle'
 import { useChatHistoryQuery } from '@/hooks/queries/useChatHistoryQuery'
 import { useThemeStore, THEMES } from '@/store/themeStore'
 
@@ -83,9 +82,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         label: t('cmdNewSession'),
         icon: Plus,
         run: () => {
-          useChatStore.getState().setMessages([])
-          useChatStore.getState().setCurrentThreadId(null)
-          useTaskStore.getState().resetAll(true)
+          leaveCurrentThread()
           navigate('/workbench')
         },
       },
@@ -146,9 +143,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       entry.item.run()
     } else {
       // 与地层切换同一守卫序列：清态再跳线程
-      useChatStore.getState().setMessages([])
-      useChatStore.getState().setCurrentThreadId(null)
-      useTaskStore.getState().resetAll(true)
+      leaveCurrentThread()
       navigate(`/workbench/${entry.item.id}`)
     }
     close()

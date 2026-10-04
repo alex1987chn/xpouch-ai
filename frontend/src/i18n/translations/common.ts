@@ -1,22 +1,7 @@
-// 通用翻译 - 导航、按钮、通用操作等
+// 通用翻译 - 跨域共用的按钮 / 状态 / 提示词（域词条见各域文件；死键审计与拆分记录见 BACKLOG）
 
 export const zh = {
-  // Navigation
-  newChat: '新会话',
-  history: '会话记录',
-  knowledgeBase: '知识库',
-  library: '资源工坊',
-  settings: '设置',
-  navDashboard: '首页',
-  navExperts: '能力包管理',
-  navConsole: '系统管理',
-  systemStatusLockedDesc: '管理控制台仅对管理员开放，包含系统状态、专家与模型、工具治理等实例级管理功能',
-  navStats: '运行统计',
-
-  // Error
   error: '错误',
-
-  // Common
   save: '保存',
   cancel: '取消',
   delete: '删除',
@@ -25,62 +10,22 @@ export const zh = {
   totalItems: '项内容',
   noMatchingHistory: '未找到匹配的历史记录',
   tryOtherKeywords: '尝试其他关键词',
-
-  // Create Agent
-  create: '创建',
-  description: '描述',
-  systemPrompt: '系统提示词',
-  systemPromptPlaceholder: '你是一个专业的助手，擅长...',
-  required: '必填',
-
-  // User Menu
-  currentPlan: '当前计划',
   logout: '退出登录',
   confirmLogoutTitle: '确认退出登录',
   download: '下载',
   copyFailed: '复制失败',
   confirmLogoutDesc: '退出后需要重新验证才能继续使用。',
-
-  // Chat Actions
-  copy: '复制',
-  copied: '已复制',
-  regenerate: '重新生成',
-  retry: '重试',
-
-  // Delete Dialog
   confirmDeleteTitle: '确认删除',
   confirmDeleteThread: '删除会话',
   deleteThreadWarning: '会话及其消息、运行记录将一并删除，此操作不可恢复。',
   sessionDeleted: '会话已删除',
   confirmDeleteDescription: '此操作无法撤销，请确认是否继续？',
   deleting: '删除中...',
-  
-  // Cancel Dialog
-
-  // Common states
   success: '成功',
   failed: '失败',
   loading: '加载中...',
   serverErrorTitle: '服务端错误',
   serverErrorFallback: '请求处理失败，请重试',
-
-  // StatsPage
-  totalRuns: '总运行数',
-  successRate: '成功率',
-  hitlCount: '待审核',
-  avgDuration: '平均耗时',
-  trends: '趋势',
-  days: '天',
-  noRuns: '暂无运行记录',
-  noRunsHint: '完成第一个任务后，这里会展示你的运行趋势和消耗',
-  todayTokens: '今日 Token',
-  quotaRemaining: '配额剩余',
-  runList: '运行记录',
-  prev: '上一页',
-  next: '下一页',
-  loadFailed: '加载失败',
-
-  // 权限与通用提示
   permissionDenied: '权限不足',
   adminOnly: '该功能仅限管理员使用',
   welcomeBack: '欢迎回来',
@@ -116,7 +61,6 @@ export const zh = {
   loginRequiredDesc: '登录后即可查看该页面内容',
   loginRequired: '请先登录',
   retryAction: '重试',
-  menu: '菜单',
   image: '图片',
   attachment: '附件',
   artifactChartGenerating: '图表生成中...',
@@ -138,8 +82,6 @@ export const zh = {
   mediaFile: '媒体文件',
   resend: '重新发送',
   noData: '暂无数据',
-
-  // 验证提示
   enterValidPhone: '请输入有效的手机号码',
   enterCode: '请输入验证码',
   uploadImageFile: '请上传图片文件',
@@ -149,34 +91,10 @@ export const zh = {
   imageSizeExceeded: '图片大小不能超过 2MB',
   imageProcessFailed: '图片处理失败，请重试',
   saveFailedLater: '保存失败，请稍后重试',
-
-  // 语言选择
-
-  // 默认助手
-
-  // 登录后消息重发
-
-  // 批量删除
-  select: '选择',
 }
 
 export const en = {
-  // Navigation
-  newChat: 'New Chat',
-  history: 'Conversations',
-  knowledgeBase: 'Knowledge Base',
-  library: 'Library',
-  settings: 'Settings',
-  navDashboard: 'Dashboard',
-  navExperts: 'Capability Packs',
-  navConsole: 'System',
-  systemStatusLockedDesc: 'The management console is admin-only: system status, experts & models, tool governance and other instance-level settings',
-  navStats: 'Run Stats',
-
-  // Error
   error: 'Error',
-
-  // Common
   save: 'Save',
   cancel: 'Cancel',
   delete: 'Delete',
@@ -185,27 +103,9 @@ export const en = {
   totalItems: 'total items',
   noMatchingHistory: 'No matching history found',
   tryOtherKeywords: 'Try other keywords',
-
-  // Create Agent
-  create: 'Create',
-  description: 'Description',
-  systemPrompt: 'System Prompt',
-  systemPromptPlaceholder: 'You are a helpful assistant who specializes in...',
-  required: 'Required',
-
-  // User Menu
-  currentPlan: 'Current Plan',
   logout: 'Logout',
   confirmLogoutTitle: 'Confirm logout',
   confirmLogoutDesc: 'You will need to sign in again to continue.',
-
-  // Chat Actions
-  copy: 'Copy',
-  copied: 'Copied',
-  regenerate: 'Regenerate',
-  retry: 'Retry',
-
-  // Delete Dialog
   confirmDeleteTitle: 'Confirm Delete',
   confirmDeleteThread: 'Delete conversation',
   deleteThreadWarning: 'Conversation, its messages and runs will be deleted. This cannot be undone.',
@@ -214,33 +114,11 @@ export const en = {
   copyFailed: 'Copy failed',
   confirmDeleteDescription: 'This action cannot be undone. Are you sure you want to continue?',
   deleting: 'Deleting...',
-  
-  // Cancel Dialog
-
-  // Common states
   success: 'Success',
   failed: 'Failed',
   loading: 'Loading...',
   serverErrorTitle: 'Server error',
   serverErrorFallback: 'Request failed, please try again',
-
-  // StatsPage
-  totalRuns: 'Total Runs',
-  successRate: 'Success Rate',
-  hitlCount: 'Awaiting review',
-  avgDuration: 'Avg Duration',
-  trends: 'Trends',
-  days: 'days',
-  noRuns: 'No runs yet',
-  noRunsHint: 'Your run trends and usage appear here after your first task',
-  todayTokens: 'Tokens Today',
-  quotaRemaining: 'Quota left',
-  runList: 'Run History',
-  prev: 'Prev',
-  next: 'Next',
-  loadFailed: 'Load Failed',
-
-  // 权限与通用提示
   permissionDenied: 'Permission Denied',
   adminOnly: 'This feature is for administrators only',
   welcomeBack: 'Welcome Back',
@@ -276,7 +154,6 @@ export const en = {
   retryAction: 'Retry',
   oldPasswordRequired: 'Enter your current password',
   passwordSaved: 'Password saved',
-  menu: 'Menu',
   image: 'Image',
   attachment: 'Attachment',
   artifactChartGenerating: 'Generating chart...',
@@ -298,8 +175,6 @@ export const en = {
   mediaFile: 'Media File',
   resend: 'Resend',
   noData: 'No data',
-
-  // 验证提示
   enterValidPhone: 'Please enter a valid phone number',
   enterCode: 'Please enter the verification code',
   uploadImageFile: 'Please upload an image file',
@@ -309,34 +184,10 @@ export const en = {
   imageSizeExceeded: 'Image size cannot exceed 2MB',
   imageProcessFailed: 'Image processing failed, please try again',
   saveFailedLater: 'Save failed, please try again later',
-
-  // 语言选择
-
-  // Default Agent
-
-  // Post-login message retry
-
-  // Batch delete
-  select: 'Select',
 }
 
 export const ja = {
-  // Navigation
-  newChat: '新しいチャット',
-  history: '会話記録',
-  knowledgeBase: 'ナレッジベース',
-  library: 'ライブラリ',
-  settings: '設定',
-  navDashboard: 'ダッシュボード',
-  navExperts: '能力パック管理',
-  navConsole: 'システム管理',
-  systemStatusLockedDesc: '管理コンソールは管理者専用です。システム状態、エキスパートとモデル、ツールガバナンスなどのインスタンス設定を含みます',
-  navStats: '実行統計',
-
-  // Error
   error: 'エラー',
-
-  // Common
   save: '保存',
   cancel: 'キャンセル',
   delete: '削除',
@@ -345,27 +196,9 @@ export const ja = {
   totalItems: '件のアイテム',
   noMatchingHistory: '一致する履歴が見つかりません',
   tryOtherKeywords: '他のキーワードを試してください',
-
-  // Create Agent
-  create: '作成',
-  description: '説明',
-  systemPrompt: 'システムプロンプト',
-  systemPromptPlaceholder: 'あなたは専門的なアシスタントで、...',
-  required: '必須',
-
-  // User Menu
-  currentPlan: '現在のプラン',
   logout: 'ログアウト',
   confirmLogoutTitle: 'ログアウトの確認',
   confirmLogoutDesc: '続行するには再度サインインが必要です。',
-
-  // Chat Actions
-  copy: 'コピー',
-  copied: 'コピー済み',
-  regenerate: '再生成',
-  retry: '再試行',
-
-  // Delete Dialog
   confirmDeleteTitle: '削除の確認',
   confirmDeleteThread: '会話を削除',
   deleteThreadWarning: '会話とメッセージ・実行履歴はすべて削除されます。元に戻せません。',
@@ -374,33 +207,11 @@ export const ja = {
   copyFailed: 'コピーに失敗しました',
   confirmDeleteDescription: 'この操作は取り消せません。続行しますか？',
   deleting: '削除中...',
-  
-  // Cancel Dialog
-
-  // Common states
   success: '成功',
   failed: '失敗',
   loading: '読み込み中...',
   serverErrorTitle: 'サーバーエラー',
   serverErrorFallback: 'リクエストが失敗しました。もう一度お試しください',
-
-  // StatsPage
-  totalRuns: '総実行数',
-  successRate: '成功率',
-  hitlCount: '承認待ち',
-  avgDuration: '平均所要時間',
-  trends: '傾向',
-  days: '日',
-  noRuns: '実行記録なし',
-  noRunsHint: '最初のタスク完了後、ここに実行トレンドと消費量が表示されます',
-  todayTokens: '今日のトークン',
-  quotaRemaining: '残り枠',
-  runList: '実行履歴',
-  prev: '前へ',
-  next: '次へ',
-  loadFailed: '読み込み失敗',
-
-  // 权限与通用提示
   permissionDenied: '権限がありません',
   adminOnly: 'この機能は管理者のみ使用可能です',
   welcomeBack: 'おかえりなさい',
@@ -436,7 +247,6 @@ export const ja = {
   retryAction: '再試行',
   oldPasswordRequired: '現在のパスワードを入力してください',
   passwordSaved: 'パスワードを保存しました',
-  menu: 'メニュー',
   image: '画像',
   attachment: '添付ファイル',
   artifactChartGenerating: 'チャート生成中...',
@@ -458,8 +268,6 @@ export const ja = {
   mediaFile: 'メディアファイル',
   resend: '再送信',
   noData: 'データがありません',
-
-  // 验证提示
   enterValidPhone: '有効な電話番号を入力してください',
   enterCode: '認証コードを入力してください',
   uploadImageFile: '画像ファイルをアップロードしてください',
@@ -469,13 +277,4 @@ export const ja = {
   imageSizeExceeded: '画像サイズは2MBを超えることはできません',
   imageProcessFailed: '画像の処理に失敗しました。もう一度お試しください',
   saveFailedLater: '保存に失敗しました。後でもう一度お試しください',
-
-  // 语言选择
-
-  // デフォルトアシスタント
-
-  // ログイン後のメッセージ再送信
-
-  // 一括削除
-  select: '選択',
 }

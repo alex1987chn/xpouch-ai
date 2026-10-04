@@ -14,8 +14,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { SessionStrata } from './SessionStrata'
 import { WorkbenchChatCore } from './WorkbenchChatCore'
 import { ArtifactCanvas } from './ArtifactCanvas'
-import { useChatStore } from '@/store/chatStore'
-import { useTaskStore } from '@/store/taskStore'
+import { leaveCurrentThread } from '@/store/sessionLifecycle'
 
 export default function WorkbenchPage() {
   const { id: threadId } = useParams<{ id: string }>()
@@ -23,9 +22,7 @@ export default function WorkbenchPage() {
 
   // 新会话：清残留聊天态（从旧线程返回 /workbench 时）
   const handleNewChat = useCallback(() => {
-    useChatStore.getState().setMessages([])
-    useChatStore.getState().setCurrentThreadId(null)
-    useTaskStore.getState().resetAll(true)
+    leaveCurrentThread()
     navigate('/workbench')
   }, [navigate])
 

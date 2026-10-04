@@ -177,6 +177,11 @@ export const zh = {
   resumeFailed: '启动失败，请检查网络后重试',
   planRejectedMsg: '计划已驳回，任务已终止',
 
+  // —— 自 common.ts 按域迁入 ——
+  copy: '复制',
+  copied: '已复制',
+  regenerate: '重新生成',
+  retry: '重试',
 }
 
 export const en = {
@@ -354,6 +359,11 @@ export const en = {
   resumeFailed: 'Failed to start, check your network and retry',
   planRejectedMsg: 'Plan rejected, task terminated',
 
+  // —— 自 common.ts 按域迁入 ——
+  copy: 'Copy',
+  copied: 'Copied',
+  regenerate: 'Regenerate',
+  retry: 'Retry',
 }
 
 export const ja = {
@@ -531,4 +541,9 @@ export const ja = {
   resumeFailed: '開始に失敗しました。ネットワークを確認して再試行してください',
   planRejectedMsg: 'プランは却下され、タスクは終了しました',
 
+  // —— 自 common.ts 按域迁入 ——
+  copy: 'コピー',
+  copied: 'コピー済み',
+  regenerate: '再生成',
+  retry: '再試行',
 }

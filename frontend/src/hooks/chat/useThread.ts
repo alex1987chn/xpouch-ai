@@ -8,11 +8,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { deleteThread as apiDeleteThread } from '@/services/chat'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { errorHandler } from '@/utils/logger'
+import { leaveCurrentThread } from '@/store/sessionLifecycle'
 
 import {
   useMessages,
   useCurrentThreadId,
-  useChatActions,
 } from '@/hooks/useChatSelectors'
 /**
  * Thread management Hook
@@ -21,12 +21,6 @@ export function useThread() {
   const queryClient = useQueryClient()
   const messages = useMessages()
   const currentThreadId = useCurrentThreadId()
-
-  // Actions
-  const {
-    setMessages,
-    setCurrentThreadId,
-  } = useChatActions()
 
   /**
    * Delete thread
@@ -40,13 +34,14 @@ export function useThread() {
       queryClient.removeQueries({ queryKey: chatHistoryKeys.detail(threadId) })
 
       if (currentThreadId === threadId) {
-        setMessages([])
-        setCurrentThreadId(null)
+        // 经生命周期单一入口（含执行/审批态重置——旧序列漏了它，删除当前
+        // 会话后残留 pendingPlan/isWaitingForApproval 属编排缺口）
+        leaveCurrentThread()
       }
     } catch (error) {
       errorHandler.handle(error, 'deleteThread')
     }
-  }, [queryClient, currentThreadId, setMessages, setCurrentThreadId])
+  }, [queryClient, currentThreadId])
 
   return {
     messages,

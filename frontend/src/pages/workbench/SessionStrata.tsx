@@ -20,8 +20,7 @@ import { DeleteConfirmDialog } from '@/components/settings/DeleteConfirmDialog'
 import { pushToast } from '@/components/ui/use-toast'
 import { SearchInput } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/states'
-import { useChatStore } from '@/store/chatStore'
-import { useTaskStore } from '@/store/taskStore'
+import { leaveCurrentThread } from '@/store/sessionLifecycle'
 import type { Thread } from '@/types'
 import { agentDotStyle, expertDisplayName } from '@/lib/expertIdentity'
 import { toLocalDate, localeForLanguage, type Locale } from '@/lib/datetime'
@@ -127,9 +126,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
       await deleteThreadMutation.mutateAsync(pendingDelete.id)
       pushToast({ title: t('sessionDeleted') })
       if (pendingDelete.id === activeThreadId) {
-        useChatStore.getState().setMessages([])
-        useChatStore.getState().setCurrentThreadId(null)
-        useTaskStore.getState().resetAll(true)
+        leaveCurrentThread()
         navigate('/workbench')
       }
     } catch (error) {
@@ -142,9 +139,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
   // 切换会话：清空聊天态再换线程（与 HistoryPageWrapper 同一守卫序列）
   const handleSelect = (thread: Thread) => {
     if (thread.id === activeThreadId) return
-    useChatStore.getState().setMessages([])
-    useChatStore.getState().setCurrentThreadId(null)
-    useTaskStore.getState().resetAll(true)
+    leaveCurrentThread()
     navigate(`/workbench/${thread.id}`)
   }
 

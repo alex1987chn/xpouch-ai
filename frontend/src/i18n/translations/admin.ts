@@ -138,6 +138,11 @@ export const zh = {
   toolUsageExample: '使用示例',
   loadingTools: '加载工具列表中...',
   noToolsAvailable: '暂无可用工具',
+  // —— 自 common.ts 按域迁入 ——
+  create: '创建',
+  description: '描述',
+  systemPrompt: '系统提示词',
+  systemPromptPlaceholder: '你是一个专业的助手，擅长...',
 }
 
 export const en = {
@@ -278,6 +283,11 @@ export const en = {
   toolUsageExample: 'Usage Example',
   loadingTools: 'Loading tools...',
   noToolsAvailable: 'No tools available',
+  // —— 自 common.ts 按域迁入 ——
+  create: 'Create',
+  description: 'Description',
+  systemPrompt: 'System Prompt',
+  systemPromptPlaceholder: 'You are a helpful assistant who specializes in...',
 }
 
 export const ja = {
@@ -418,4 +428,9 @@ export const ja = {
   toolUsageExample: '使用例',
   loadingTools: 'ツールリスト読み込み中...',
   noToolsAvailable: '利用可能なツールがありません',
+  // —— 自 common.ts 按域迁入 ——
+  create: '作成',
+  description: '説明',
+  systemPrompt: 'システムプロンプト',
+  systemPromptPlaceholder: 'あなたは専門的なアシスタントで、...',
 }
