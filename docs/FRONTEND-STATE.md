@@ -76,9 +76,9 @@
 ## 五、执行态转换（Phase C 已收敛）
 
 三份投影（isGenerating / isWaitingForApproval / activeRunId）在组件/hook 层
-的**唯一写入入口**是 `src/store/executionState.ts` 的八种转换：
+的**唯一写入入口**是 `src/store/executionState.ts` 的九种转换：
 beginStreaming / attachRunId / detachStream / beginAwaitingApproval /
-resolveApproval / endExecution / abandonTracking / adoptRestoredExecution。合法例外写入面：
+resolveApproval / endExecution / endStream / abandonTracking / adoptRestoredExecution。合法例外写入面：
 - SSE 事件面：systemEvents 经 `setPendingPlan` 下发审批数据（slice 内置 waiting=true）
 - 服务端校准面：useSessionRestore（经 adoptRestoredExecution / endExecution）
 - 会话生命周期：leaveCurrentThread / resetAll（整体重置，不做投影级区分）
@@ -90,6 +90,11 @@ resolveApproval / endExecution / abandonTracking / adoptRestoredExecution。合�
 2. **轮询错误停止 ≠ 执行终点**：前端跟丢（网络抖动/404）时走
    abandonTracking（清 generating/runId、**保留审批卡**）——run 在服务端
    可能仍好好等着，撤卡理由必须是 run 终态（endExecution），不是前端失联。
+3. **流收尾 ≠ 执行终点**：流在 HITL 中断处是正常 resolve（不是错误），
+   finalizeStream 必须走 endStream——它按 run 真相分流：等待审批时只终结
+   生成态（保留审批卡与 runId），否则等价 endExecution。（2026-10-04 实测
+   回归：finalizeStream 直调 endExecution，初始发送打到审批点时审批卡当场
+   被撤、轮询锚点丢失，页面停在规划帧，用户只能重进会话靠 restore 救回。）
 
 **已知行为差异**（有意）：等审批时发送新消息，beginStreaming 会撤下审批卡
 （原行为卡片残留）；后端 ACTIVE_RUN_CONFLICT 的 409 提示接管用户认知，

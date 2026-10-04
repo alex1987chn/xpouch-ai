@@ -8,7 +8,7 @@
  * 点批准被 isGenerating 误拦、修订后输入台停在生成中（三起都修在各自点位上）。
  *
  * 【规则】本模块是这三份投影在**组件/hook 层的唯一写入入口**。合法组合只有
- * 七种转换（见函数），每个转换一次性写齐三份投影，结构上不可能再出现
+ * 九种转换（见函数），每个转换一次性写齐三份投影，结构上不可能再出现
  * 「清了 A 忘了 B」。例外写入面（见 docs/FRONTEND-STATE.md）：
  * - SSE 事件面：systemEvents 经 `setPendingPlan` 下发审批数据（slice 内置
  *   waiting=true，数据到达即等待裁决）
@@ -63,6 +63,26 @@ export function endExecution(options: { keepRunId?: boolean } = {}): void {
   useChatStore.getState().setGenerating(false)
   useTaskStore.getState().setIsWaitingForApproval(false)
   if (!options.keepRunId) useTaskStore.getState().clearActiveRunId()
+}
+
+/**
+ * 流收尾（与 beginStreaming 对偶）。**流生命周期结束 ≠ 执行结束**：
+ * - 流在 HITL 中断处正常 resolve（初始发送/重试打到审批点）：waiting 是
+ *   SSE 事件面刚落下的 run 真相（setPendingPlan），审批卡可见性与轮询
+ *   锚点都靠它——只终结生成态（同 detachStream），runId 留给审批/轮询接管。
+ * - 其余情况（message.done 正常完成 / 失败收尾）：与 endExecution 等价。
+ *
+ * 为什么不由调用方分支：finalizeStream 曾直调 endExecution，把 waiting 一并
+ * 归零——初始发送打到审批点时审批卡当场被撤、轮询锚点丢失，页面停在规划帧
+ * （2026-10-04 实测回归，用户只能重进会话靠 restore 救回）。流/执行的语义差
+ * 必须封装在唯一写入入口，散在 hook 里就是下一颗雷。
+ */
+export function endStream(options: { keepRunId?: boolean } = {}): void {
+  if (useTaskStore.getState().isWaitingForApproval) {
+    detachStream()
+    return
+  }
+  endExecution(options)
 }
 
 /**

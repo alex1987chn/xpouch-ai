@@ -41,6 +41,7 @@ import {
   beginStreaming,
   detachStream,
   endExecution,
+  endStream,
 } from '@/store/executionState'
 import { useTaskStore } from '@/store/taskStore'
 
@@ -123,17 +124,21 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     useStreamHandler()
 
   /**
-   * 三条流程共用的收尾：flush 缓冲 → 复位生成态 → 清 run → 释放 abort，
+   * 三条流程共用的收尾：flush 缓冲 → 流收尾转换 → 释放 abort，
    * 并失效地层/产物缓存（会话标题、latest_run 状态、产物卡都以服务端为准，
    * 不失效则审批恢复执行结束后侧栏仍停在"待审核"、画布缺卡，需手动刷新）。
    *
    * `keepRunId`：**流被中断但服务端任务还活着**时用（见 catch 里的
    * `interruptedRunId`）。此时清掉 runId 会让轮询无从接管——服务端任务跑完
    * 也无人对账，用户只能手动刷新才看得到结果。
+   *
+   * 收尾走 endStream 而非 endExecution：初始发送流在 HITL 中断处是**正常
+   * resolve**，执行并未结束——endExecution 会把 waiting 一并归零，审批卡
+   * 当场被撤、页面停在规划帧（2026-10-04 实测回归）。
    */
   const finalizeStream = useCallback((opts: { keepRunId?: boolean } = {}) => {
     forceFlush()
-    endExecution(opts)
+    endStream(opts)
     abortControllerRef.current = null
     queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
     queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
