@@ -96,7 +96,12 @@ async def is_private_url(url: str) -> tuple[bool, str]:
 
         # 3. 尝试解析域名并检查解析后的 IP
         try:
-            addr_info = await socket.getaddrinfo(hostname, None)
+            # loop.getaddrinfo 是异步 DNS 解析（线程池内跑 getaddrinfo，不卡事件循环）。
+            # 此前误写成 `await socket.getaddrinfo(...)`——那是同步函数，对 list await
+            # 必抛 TypeError，被外层 except 吞成「URL 安全检查失败」→ MCP 工具列表
+            # 400（2026-10-04 用户报「工具加载失败」实案）
+            loop = asyncio.get_running_loop()
+            addr_info = await loop.getaddrinfo(hostname, None)
             resolved_ips = set()
             for info in addr_info:
                 ip_str = info[4][0]
