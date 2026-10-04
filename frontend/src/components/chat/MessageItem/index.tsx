@@ -11,6 +11,7 @@
 import { useState, useCallback, useRef, useLayoutEffect, memo, useMemo } from 'react'
 import { Copy, Check, RefreshCw, FileText, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react'
 import { useTranslation } from '@/i18n'
+import { toolDisplayName } from '@/lib/planTaskKind'
 import type { MessageItemProps } from '../types'
 import { extractCodeBlocks, detectContentType, detectMediaUrl } from '../utils'
 import ReactMarkdown from 'react-markdown'
@@ -719,7 +720,7 @@ function ExpertResultCard({
           {visibleLive.map((call, i) => (
             <div key={i} className="flex items-center gap-1.5 text-xs text-content-muted">
               <Wrench className="h-3 w-3 shrink-0" />
-              <span className="truncate font-mono">{call.tool}</span>
+              <span className="truncate font-mono">{toolDisplayName(call.tool, t)}</span>
               {call.source === 'mcp' && (
                 <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
               )}
@@ -767,7 +768,7 @@ function ExpertResultCard({
                       call.success === false ? 'bg-status-offline' : 'bg-status-online'
                     }`}
                   />
-                  <span className="truncate font-mono">{call.tool}</span>
+                  <span className="truncate font-mono">{toolDisplayName(call.tool, t)}</span>
                   {call.source === 'mcp' && (
                     <span className="shrink-0 rounded-sm border border-border-divider px-1 text-nano">MCP</span>
                   )}

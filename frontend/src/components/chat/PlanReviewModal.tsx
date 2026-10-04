@@ -14,6 +14,7 @@ import { useTranslation } from '@/i18n'
 import { ModalShell } from '@/components/ui/modal-shell'
 import { PlanDiffList } from './PlanDiffList'
 import { changedRowsOnly, diffPlans } from '@/lib/planDiff'
+import { OUTPUT_LABEL_KEY, planTaskOutputKind } from '@/lib/planTaskKind'
 import { expertDotStyle } from '@/lib/expertIdentity'
 import { useExpertLabel } from '@/hooks/useExpertLabel'
 import { cn } from '@/lib/utils'
@@ -200,6 +201,15 @@ export function PlanReviewModal({
                     <div className="mt-1.5 flex items-center gap-1.5 text-tiny text-content-muted">
                       <span className="h-[7px] w-[7px] rounded-full" style={expertDotStyle(task.expert_type)} />
                       {t('planStepExecutor', { expert: expertLabelOf(task.expert_type) })}
+                      {(() => {
+                        const kind = planTaskOutputKind(task.description)
+                        if (!kind) return null
+                        return (
+                          <span className="rounded-sm border border-border-divider px-1 text-nano text-content-secondary">
+                            {t(OUTPUT_LABEL_KEY[kind])}
+                          </span>
+                        )
+                      })()}
                     </div>
                   </div>
                   {isEditing && editedPlan.length > 1 && (
