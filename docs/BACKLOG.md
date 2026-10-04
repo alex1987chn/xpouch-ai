@@ -33,4 +33,4 @@
 
 ## 等用户拍板
 
-- B3b：checkpoint thread 对齐业务 thread + 生命周期守卫（"以后可讨论"非否决；动它须重跑 `e2e_hitl_check.py`）
+- B3b：checkpoint thread 对齐业务 thread + 生命周期守卫（**2026-10-04 复核：维持暂停**——历史回溯=状态快照+中途分叉重跑，事件流水（runevent/流帧）已覆盖调试场景，无近期消费者；重开触发=真出现"执行回放/从中途重跑"产品需求，届时 TARGET-ARCHITECTURE.md B3b 条目下两道坎为必答项；动它须重跑 `e2e_hitl_check.py`）
