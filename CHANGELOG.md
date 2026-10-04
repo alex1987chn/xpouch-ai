@@ -7,10 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [未发布]
 
+## [2026-10-05] - v3.5.9 能力包语义、MCP 工具延迟加载、前端状态统一与列表分页修复
+
 ### 变更
 
 - **专家语义从人设改能力包（2026-10-03 架构审视第一项）**：11 个内置专家的 description 全面改写为能力契约（输入 → 产出 → 适用条件——commander 匹配的唯一文本面就是它），教材开头的人设叙事（"你是一名资深/世界级…"）换成能力包框架；事故换来的协议正文逐字保留（memorize 反幻觉条款、router 镜像规则、aggregator 格式透传）。commander 话术「专家资源/Expert Matching/分配」→「能力包/Pack Matching/选用」。行业依据：persona 对客观任务无增益（EMNLP 2024 实证），能力包（工具+知识+契约）是 Claude Code subagent / Agent Skills 的收敛形态。expert_type 标识符与用户自建专家不动。迁移 20261003_000907 下发
-- **MCP 工具延迟加载（client-side Tool Search）**：低频 MCP 工具可标记 deferred（管理台按工具开关，默认全 false = 行为零变化），不进常驻绑定集与 prompt 清单；模型经 `search_tools` 伪工具按需检索（关键词匹配 + 零匹配自愈列全量），命中工具由分支状态记账、worker 重入时自动重新绑定。第三方工具描述按不可信输入净化（压空白 + 截断，防 Tool Poisoning 类注入）。对齐 Anthropic Tool Search Tool / OpenAI defer_loading 范式（服务端展开为平台绑定，故做客户端版）。迁移 20261003_000908 加 `toolpolicy.deferred` 列
+- **MCP 工具延迟加载（client-side Tool Search）**：低频 MCP 工具可标记 deferred（管理台按工具开关，默认全 false = 行为零变化），不进常驻绑定集与 prompt 清单；模型经 `search_tools` 伪工具按需检索（关键词匹配 + 零匹配自愈列全量），命中工具由分支状态记账、worker 重入时自动重新绑定。第三方工具描述按不可信输入净化（压空白 + 截断，防 Tool Poisoning 类注入）。对齐 Anthropic Tool Search Tool / OpenAI defer_loading 范式（服务端展开为平台绑定，故做客户端版）。迁移 20261003_000908 加 `toolpolicy.deferred` 列。已对真实 MCP 服务器实机验证完整往返（defer → search_tools → 展开 → 重绑 → 真实调用）
+- **三层能力词汇冻结 + 治理面命名对齐**：聊天模板（输入侧）= 原"技能模板"改名；能力包（执行侧单一真相）；技能包（能力包内件，未来域）。管理台「专家管理/模板管理」→「能力包管理/对话模板」，管理台新增「记忆管理」页签
+- **前端状态三轨统一（Phase A–D）**：执行态三投影（isGenerating/isWaitingForApproval/activeRunId）收敛到 `executionState.ts` 唯一写入入口（九种转换），离开会话编排单点化 `leaveCurrentThread`，恢复写入同帧提交；所有权清单与顺序铁律成文 `docs/FRONTEND-STATE.md`
+- **记忆系统三补丁**：①`rewrite_memory` 精确改写（old_content 逐字匹配单行 + 重嵌入 + created_at 刷新，未命中 fail-loud 附自愈指引；教材经迁移 000910 下发）②检索时效衰减：相似度 × 90 天半衰期重排（半衰期为排序行为契约，纯函数测试钉住）③管理台记忆查看/清理（逐条删，刻意不提供批量删——记忆属终端用户数据，摩擦即护栏）
+- **计划修订基线持久化（迁移 000909）**：v(n-1) 快照落 `executionplan.baseline_snapshot`，修订后刷新/切会话，restore 从 `GET /runs/{id}/plan` 重建对比视图；顺带修复修订失败路径 rollback 后读过期实例的 MissingGreenlet（revision_failed 事件被吞、前端永远"修订中"）
+- **i18n 按域拆分 + 重复键审计**：common.ts 481→145 行，Navigation/Chat/Admin/Auth 等域文件拆出；15 个跨文件重复键全清零（合并后展开者胜出曾静默覆盖域内措辞），顺带修掉两个现行错显（代码查看器"源码"按钮错显"来源"、模板下拉被 settings 长文案覆盖）
+- **画廊与会话列表分页修复**：产物画廊此前硬编码第 1 页（24 条封顶）——改无限滚动；会话列表翻页触发改 onScroll 直判 + 显式"加载更多"按钮双触发器（用户环境 IntersectionObserver 首载不触发，滚动事件无此环境敏感性）
+- **「当前计划」单一访问入口**：三条选取口径（thread 指针 / created_at 最新 / 按 run 定位）收敛为 `get_current_execution_plan_by_thread`（指针优先、created_at 兜底，吸收指针悬挂）；runs.py 的 uuid 主键排序哑弹（无时间语义，多行时选"随机一个"）换 created_at
+- **帧记录器取消安全加固**：终态收尾写经 shield（批次先离队再裸 await，CancelledError 穿透即丢帧且无重试路径——全异步化时破坏了"收尾同步写"的设计契约）；producer 三连收尾取消砸中时重走；flush 失败后主动武装退避重试（此前只放回缓冲，安静期永远等不到重试）
+
+### 修复
+
+- **审批卡消失（执行态收尾误撤）**：初始发送流在 HITL 中断处正常收尾，收尾转换把事件刚设上的等待审批一并归零——审批卡卸载、页面停在规划帧，只能重进会话救回（用户实测报出）；新增 `endStream` 转换按 run 真相分流
+- **轮询网络错误不再撤审批卡**：run 服务端仍好好等着，前端失联不构成撤卡理由（abandonTracking 语义）
+- **MCP 服务器工具列表加载失败**：SSRF 校验里 `await` 了同步的 `socket.getaddrinfo`（TypeError 被吞成"URL 安全检查失败"→ 400）
+- **runningTaskIds 退出 localStorage**：服务端派生态持久化 = 刷新后陈旧副本假阳性"执行中"；isExecuting 派生口径补 run 级投影
+- **wave-cancel CI 时序抖动（两连挂）**：取消门槛补"首帧已落库"前置——LLM 桩记账先于图级事件发射，慢 CI 上取消落下时零帧流经管道，断言前提不成立；现构造性成立，与机器速度无关
+
+### 其他
+
+- 死代码清扫：后端 5 处 + 前端 5 处零引用死代码删除（含误 await 工具函数、删除路径、主题元信息、死翻译键 5 个）
+- 验收：558 后端 + 108 前端测试全绿；迁移 000907–000910 空库链 + 开发库 + alembic check 零漂移；e2e 三套（真实 LLM）全绿
 
 ## [2026-10-03] - v3.5.8 漏 await 收网、审批与产物链路修复、依赖产物引用
 
