@@ -138,6 +138,7 @@ class RunFrameRecorder:
             return len(batch)
         # 写失败：整批放回队首等重试——一次 DB 抖动不该在重放里留下空洞。
         self._requeue_after_failure(run_id, batch)
+        self._arm_retry(run_id)
         return 0
 
     async def finish_blocking(self, run_id: str) -> int:
@@ -148,10 +149,13 @@ class RunFrameRecorder:
         重新查库续号在那种时刻会读到旧的最大值而重号（唯一索引会让新号段整批
         回滚）。条目交由 `_evict_idle_runs` 按 LRU 回收。
 
-        用**同步**写而不是 await：收尾处在 producer 的 `finally` 里，任务处于
-        取消态时任何 await 都可能被跳过——那不仅会丢掉尾部帧，还会连带
-        `hub.close` 与 `done` 哨兵都发不出去，订阅者就此悬挂。
-        写失败时已无处重试（定时器停、缓冲清），只告警。
+        取消安全（2026-10-05 CI 实挂回归的根因）：收尾处在 producer 的 `finally`
+        里，调用方任务可能正处取消态。历史上这里设计为「同步写」正是为此；
+        全异步化后误改成裸 `await`——批次先离队再 await，CancelledError 一旦
+        砸中该 await，批次已从缓冲摘走而写未发生，且无任何重试路径，帧就此
+        丢失（run_stream_frame 永远为空）。现在写任务经 shield 保护：外层取消
+        只中断「等待」，内层写任务继续跑完（等待它落定后才放行取消语义），
+        帧必然落库。
         """
         buf = self._runs.get(run_id)
         if buf is None:
@@ -163,7 +167,15 @@ class RunFrameRecorder:
             return 0
         batch = buf.pending
         buf.pending = []
-        return len(batch) if await self._write_batch(run_id, batch) else 0
+        write_task = asyncio.get_running_loop().create_task(self._write_batch(run_id, batch))
+        try:
+            ok = await asyncio.shield(write_task)
+        except asyncio.CancelledError:
+            # 内层 task 不受外层取消影响：等它落定（通常几毫秒）再放行取消，
+            # 保证「先离队」的批次必然有一个写入结局
+            ok = await write_task
+            raise
+        return len(batch) if ok else 0
 
     # ── 内部 ──────────────────────────────────────────────────────────────
 
@@ -200,6 +212,21 @@ class RunFrameRecorder:
                 overflow,
             )
         buf.retry_at = asyncio.get_running_loop().time() + FLUSH_RETRY_BACKOFF_SECONDS
+
+    def _arm_retry(self, run_id: str) -> None:
+        """失败批次的重试定时器（2026-10-05 补）。
+
+        `_requeue_after_failure` 此前只放回批次、设 retry_at，**不重新武装定时器**——
+        重试要等下一帧 `record()` 到达才被动触发。安静期（无新帧：run 刚被取消/
+        流已结束）的失败批次就此滞留，只能指望收尾 `finish_blocking` 那一把。
+        主动武装后，退避一过重试自行发生。
+        """
+        buf = self._runs.get(run_id)
+        if buf is None or buf.flush_task is not None:
+            return
+        buf.flush_task = asyncio.get_running_loop().create_task(
+            self._flush_later(run_id, self._next_delay(buf))
+        )
 
     def _next_delay(self, buf: _RunFrames) -> float:
         """下一次 flush 的等待时长：正常就是提交间隔，写失败后退避到重试时刻。"""

@@ -18,8 +18,9 @@ tests/test_wave_cancel_consistency.py 锁定，重构不得改变）：
 1. 断连不杀 producer；
 2. producer 内异常沿 `await producer_task` 传播到消费方；
 3. 取消感知两条路：领域正文的 token 检查点 + 消费循环的超时检查；
-4. finish_blocking 必须同步调用（producer 的 finally 可能处在取消态，
-   任何 await 都可能被跳过，见 frame_recorder 的说明）。
+4. 收尾临界区取消安全：取消砸中收尾时，帧写入由 finish_blocking 内部的
+   shield 保证落库，三连收尾由 _spawn_producer 的重走保证完成
+   （见 frame_recorder 的说明；2026-10-05 CI 实挂回归的根因点）。
 
 frames/hub 由调用方注入（而非本模块自行 import）：调用方所在的
 stream_service 模块符号可被测试替换（M4 两条回归测试桩的就是那里的
@@ -150,9 +151,18 @@ class StreamPipeline:
             await body()
         finally:
             # 三连收尾保证「异常/取消/正常结束」三条路径都会执行。
-            # finish_blocking 是同步写：取消态下任何 await 都可能被跳过，
-            # 那会连 done 哨兵都发不出去，消费者就悬挂了（见 frame_recorder）
-            if self.run_id:
-                await self._frames.finish_blocking(self.run_id)
-                self._hub.close(self.run_id)
-            await self._queue.put({"type": "done"})
+            # 取消是一次性投递：恰好砸中收尾临界区的某个 await 时，整段被跳过
+            # ——done 哨兵发不出去，消费者悬挂；帧的写入由 finish_blocking 内部
+            # 的 shield 保证（见 frame_recorder）。这里重走一遍收尾（此刻不再有
+            # 在途取消，必然跑完），完成后放行取消语义（2026-10-05 CI 实挂回归）
+            try:
+                await self._teardown()
+            except asyncio.CancelledError:
+                await self._teardown()
+                raise
+
+    async def _teardown(self) -> None:
+        if self.run_id:
+            await self._frames.finish_blocking(self.run_id)
+            self._hub.close(self.run_id)
+        await self._queue.put({"type": "done"})
