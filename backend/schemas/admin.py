@@ -5,6 +5,7 @@ OpenAPI schema 名，frontend/src/types/api.generated.ts 的请求形状由
 本文件生成。响应 DTO 仍留在路由文件，随响应侧后续收敛。
 """
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, field_validator
@@ -144,3 +145,19 @@ class AdminCreateUserRequest(BaseModel):
     role: UserRole = UserRole.USER
     initial_password: str | None = PydanticField(default=None, min_length=8, max_length=64)
     generate_random_password: bool = False
+
+
+class MemoryAdminItem(BaseModel):
+    """管理台记忆条目（不含 embedding——大向量不进列表负载）"""
+
+    id: int
+    user_id: str
+    content: str
+    memory_type: str
+    source: str
+    created_at: datetime
+
+
+class MemoryAdminListResponse(BaseModel):
+    items: list[MemoryAdminItem]
+    total: int

@@ -16,7 +16,7 @@ from services.memory_manager import memory_manager
 # 记忆管理工具名集合：generic 用它判断"本分支用过记忆工具"（此时输出是
 # 操作报告而非记忆素材，逐行入库必须跳过——否则删除报告自己会变成记忆，
 # 历史"已为您删除…"回声即此形态）
-MEMORY_TOOL_NAMES = frozenset({"search_memories", "delete_memories"})
+MEMORY_TOOL_NAMES = frozenset({"search_memories", "delete_memories", "rewrite_memory"})
 
 
 def _format_rows(rows: list[str], headline: str) -> str:
@@ -55,12 +55,19 @@ def build_memory_tools(user_id: str) -> list[StructuredTool]:
             return f"关键词「{keyword.strip()}」没有匹配的记忆，未删除任何内容。"
         return _format_rows(deleted, "已删除")
 
+    async def _rewrite_memory(old_content: str, new_content: str) -> str:
+        """精确改写一条记忆（old_content 为存储原文，new_content 为新陈述）。"""
+        ok, message = await memory_manager.rewrite_memory(user_id, old_content, new_content)
+        if not ok:
+            return message
+        return f"已改写:\n原文: {old_content}\n新文: {message}"
+
     return [
         StructuredTool.from_function(
             coroutine=_search_memories,
             name="search_memories",
             description=(
-                "预览当前用户已保存的长期记忆：传入关键词做匹配预览（删除前先用它确认范围），"
+                "预览当前用户已保存的长期记忆：传入关键词做匹配预览（删除/改写前先用它确认范围），"
                 "不传关键词则列出全部。只读，不改动任何数据。"
             ),
         ),
@@ -71,6 +78,15 @@ def build_memory_tools(user_id: str) -> list[StructuredTool]:
                 "删除当前用户匹配关键词的长期记忆（关键词从用户指令提取，如"
                 "「删掉关于苹果的记忆」→ keyword=苹果），返回被删除的清单。"
                 "破坏性操作：调用前应先用 search_memories 预览匹配范围。"
+            ),
+        ),
+        StructuredTool.from_function(
+            coroutine=_rewrite_memory,
+            name="rewrite_memory",
+            description=(
+                "把一条已有记忆精确改写成新内容（如「把我的位置从北京改成杭州」："
+                "old_content=search_memories 清单里的原文整段，new_content=英文第三人称新陈述）。"
+                "old_content 必须与存储原文逐字相等；未命中时先用 search_memories 取回原文再试。"
             ),
         ),
     ]

@@ -21,6 +21,7 @@
 
 ## 工程
 
+- **记忆系统三补丁（2026-10-04）**：①改写走精确匹配——`rewrite_memory(old_content, new_content)` 逐字命中单行（入库幂等去重保证同用户同内容唯一，精确文本即唯一键），未命中 fail-loud 附自愈指引，**不做关键词模糊覆盖**（多行命中被并成一条=信息静默丢失）；改写后 created_at 刷新（新事实按新时间参与衰减）。②检索时效衰减：相似度×exp(-ln2·age/90天) 重排（半衰期=排序行为契约，测试钉住；首版自审抓到把余弦距离当相似度用、排序整个反了）。③管理台记忆清理**只逐条删，刻意不提供批量删/按用户清空**——记忆属终端用户数据、误删不可再生，摩擦即护栏。
 - **记忆删除走闭包工具（2026-09-26）**：`tools/memory.py` 按请求构建 `search_memories` / `delete_memories`，**user_id 由服务端闭包注入（branch_context），绝不作为 LLM 参数**——模型填报用户身份即跨用户读删漏洞。治理白名单 `allowed_experts=("memorize_expert",)`；generic 侧护栏：缺 user_id 不注入工具，**用过记忆工具的分支跳过逐行入库**（输出是操作报告非记忆素材，历史"已为您删除…"回声即违反此条的产物）。硬删除无软删（记忆可再生）；教材经 000903 下发（memorize/router/commander 三家）。
 - **开发库存储= named volume（2026-09-26 事故后）**：Docker Desktop 对 WSL 路径的 bind mount 经 9p/virtiofs 跨系统共享，Windows 非干净关机（fast startup/强断电）曾把 `postgres_data/18/docker` 整树清空（PG 被入口脚本 initdb 重建、业务数据全失，自 D 盘快照恢复）。本地开发经 `docker-compose.override.yml`（gitignored）切 named volume `xpouch-ai_xpouch-pgdata`；生产（deploy.sh，原生 Linux）维持仓库根 bind mount 不变。伴生保险：每周 pg_dump 到 /mnt/d（WSL/Windows 双故障域）。同日修复空库部署建不出 checkpoint 四表的问题（langgraph setup 的 CONCURRENTLY 不能跑在事务里，改 autocommit 专用连接 + lifespan fail-loud），CI 补冷启动守卫。
 - **审批超时 24h（2026-09-24 用户拍板）**：waiting_for_approval 的 run 被"遗弃"时由租约 supervisor 的独立第三判据兜底（`utils/run_lease.approval_deadline_exceeded`，计时起点 `agentrun.waiting_since_at`，配置 `APPROVAL_TIMEOUT_HOURS` 默认 24、0=关闭）——语义是"等人等太久"，走 cancelled 而非 timed_out，且**必须在会话留可见取消说明**（否则用户体验与 09-13 误杀事故无异：审批卡凭空消失）。铁律不变：等待审批永不走租约/预算判死（09-13 一小时误杀 5 条的教训），新鲜等待与无计时起点的历史行一律不碰。

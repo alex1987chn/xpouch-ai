@@ -540,6 +540,8 @@ export type AdminConformanceAnchors = [
   _ToolsListResponse,
   _ExpertPreviewResponse,
   _GenerateDescriptionResponse,
+  _MemoryAdminItem,
+  _MemoryAdminList,
 ]
 
 export async function getAuditLogs(params: {
@@ -553,4 +555,49 @@ export async function getAuditLogs(params: {
   if (params.search?.trim()) query.set('search', params.search.trim())
   const response = await authenticatedFetch(buildUrl(`/admin/audit-logs?${query.toString()}`))
   return handleResponse<PaginatedAuditLogs>(response, '获取审计日志失败')
+}
+
+// ============================================================================
+// 记忆管理（管理台清理入口）
+// ============================================================================
+
+export interface MemoryAdminItem {
+  id: number
+  user_id: string
+  content: string
+  memory_type: string
+  source: string
+  created_at: string
+}
+
+export interface MemoryAdminList {
+  items: MemoryAdminItem[]
+  total: number
+}
+
+type _MemoryAdminItem = Assert<SameShape<MemoryAdminItem, Schemas['MemoryAdminItem']>>
+type _MemoryAdminList = Assert<SameShape<MemoryAdminList, Schemas['MemoryAdminListResponse']>>
+
+export async function getUserMemories(params: {
+  query?: string
+  user_id?: string
+  limit?: number
+  offset?: number
+}): Promise<MemoryAdminList> {
+  const query = new URLSearchParams()
+  query.set('limit', String(params.limit ?? 50))
+  query.set('offset', String(params.offset ?? 0))
+  if (params.query?.trim()) query.set('query', params.query.trim())
+  if (params.user_id?.trim()) query.set('user_id', params.user_id.trim())
+  const response = await authenticatedFetch(buildUrl(`/admin/memories?${query.toString()}`))
+  return handleResponse<MemoryAdminList>(response, '获取记忆列表失败')
+}
+
+export async function deleteUserMemory(id: number): Promise<void> {
+  const response = await authenticatedFetch(buildUrl(`/admin/memories/${id}`), {
+    method: 'DELETE',
+  })
+  if (!response.ok && response.status !== 204) {
+    await handleResponse(response, '删除记忆失败')
+  }
 }

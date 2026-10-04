@@ -24,6 +24,7 @@ from crud.audit_log import record_audit
 from database import get_session
 from dependencies import require_role
 from models import Artifact, SystemExpert, Thread, User, UserRole
+from models.memory import UserMemory
 from schemas.admin import (
     AdminCreateUserRequest,
     AdminResetPasswordRequest,
@@ -34,6 +35,8 @@ from schemas.admin import (
     ExpertUpdate,
     GenerateDescriptionRequest,
     GraphConcurrencyRequest,
+    MemoryAdminItem,
+    MemoryAdminListResponse,
     UserPromoteRequest,
 )
 from services.chat.thread_service import ChatThreadService
@@ -1185,4 +1188,68 @@ async def list_audit_logs_endpoint(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/memories", response_model=MemoryAdminListResponse)
+async def list_user_memories(
+    query: str = Query(default="", max_length=200),
+    user_id: str = Query(default="", max_length=64),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """管理台记忆列表（时间倒序；query 为 content ILIKE 模糊匹配，user_id 过滤）。
+
+    不含 embedding：1024 维向量进列表负载纯属浪费。清理入口配套
+    DELETE /memories/{id}；不提供批量删/按用户清空——记忆属终端用户数据，
+    误删不可再生，逐条删是刻意的摩擦。
+    """
+    filters = []
+    if query.strip():
+        filters.append(UserMemory.content.ilike(f"%{query.strip()}%"))
+    if user_id.strip():
+        filters.append(UserMemory.user_id == user_id.strip())
+
+    stmt = select(UserMemory)
+    count_stmt = select(func.count()).select_from(UserMemory)
+    for f in filters:
+        stmt = stmt.where(f)
+        count_stmt = count_stmt.where(f)
+
+    total = (await session.exec(count_stmt)).one()
+    rows = (
+        await session.exec(stmt.order_by(UserMemory.created_at.desc()).offset(offset).limit(limit))
+    ).all()
+    return MemoryAdminListResponse(
+        items=[
+            MemoryAdminItem(
+                id=r.id,
+                user_id=r.user_id,
+                content=r.content,
+                memory_type=r.memory_type,
+                source=r.source,
+                created_at=r.created_at,
+            )
+            for r in rows
+        ],
+        total=total,
+    )
+
+
+@router.delete("/memories/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_memory(
+    memory_id: int,
+    session: Session = Depends(get_session),
+    admin: User = Depends(get_current_admin),
+):
+    """删除单条记忆（管理台清理入口）。"""
+    memory = await session.get(UserMemory, memory_id)
+    if not memory:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found")
+    await session.delete(memory)
+    await session.commit()
+    logger.info(
+        f"[Admin] Memory #{memory_id} of user '{memory.user_id}' deleted by admin (version n/a)"
     )

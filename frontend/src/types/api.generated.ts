@@ -542,6 +542,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/memories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List User Memories
+         * @description 管理台记忆列表（时间倒序；query 为 content ILIKE 模糊匹配，user_id 过滤）。
+         *
+         *     不含 embedding：1024 维向量进列表负载纯属浪费。清理入口配套
+         *     DELETE /memories/{id}；不提供批量删/按用户清空——记忆属终端用户数据，
+         *     误删不可再生，逐条删是刻意的摩擦。
+         */
+        get: operations["list_user_memories_api_admin_memories_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/memories/{memory_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete User Memory
+         * @description 删除单条记忆（管理台清理入口）。
+         */
+        delete: operations["delete_user_memory_api_admin_memories__memory_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/library/templates": {
         parameters: {
             query?: never;
@@ -2318,6 +2362,34 @@ export interface components {
             name: string;
             /** Description */
             description: string;
+        };
+        /**
+         * MemoryAdminItem
+         * @description 管理台记忆条目（不含 embedding——大向量不进列表负载）
+         */
+        MemoryAdminItem: {
+            /** Id */
+            id: number;
+            /** User Id */
+            user_id: string;
+            /** Content */
+            content: string;
+            /** Memory Type */
+            memory_type: string;
+            /** Source */
+            source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** MemoryAdminListResponse */
+        MemoryAdminListResponse: {
+            /** Items */
+            items: components["schemas"]["MemoryAdminItem"][];
+            /** Total */
+            total: number;
         };
         /**
          * MessageResponse
@@ -4281,6 +4353,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PaginatedAuditLogResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_user_memories_api_admin_memories_get: {
+        parameters: {
+            query?: {
+                query?: string;
+                user_id?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryAdminListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_user_memory_api_admin_memories__memory_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memory_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

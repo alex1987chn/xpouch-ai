@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bot, ShieldCheck, FileCode, Cpu, Activity, Plug, Users, ScrollText } from 'lucide-react'
+import { Bot, ShieldCheck, FileCode, Cpu, Activity, Plug, Users, ScrollText, Brain } from 'lucide-react'
 import { useTranslation } from '@/i18n'
 import { useUserStore } from '@/store/userStore'
 import { SearchInput } from '@/components/ui/input'
@@ -27,9 +27,10 @@ import { ModelSection } from '@/components/settings/sections/ModelSection'
 import SkillTemplatePanel from '../library/SkillTemplatePanel'
 import UserAdminPanel from './UserAdminPanel'
 import AuditLogPanel from './AuditLogPanel'
+import MemoryAdminPanel from './MemoryAdminPanel'
 import { MCPList } from '../library/MCPList'
 
-type ConsoleTab = 'system' | 'experts' | 'governance' | 'templates' | 'mcp' | 'model' | 'users' | 'audit'
+type ConsoleTab = 'system' | 'experts' | 'governance' | 'templates' | 'mcp' | 'model' | 'users' | 'memories' | 'audit'
 
 export default function ManagementConsolePage() {
  const { t } = useTranslation()
@@ -42,7 +43,7 @@ export default function ManagementConsolePage() {
  // 侧边栏子项深链（/admin/console?tab=xxx）同步到分区
  useEffect(() => {
   const paramTab = searchParams.get('tab') as ConsoleTab | null
-  if (paramTab && ['system', 'experts', 'governance', 'templates', 'mcp', 'model', 'users', 'audit'].includes(paramTab)) {
+  if (paramTab && ['system', 'experts', 'governance', 'templates', 'mcp', 'model', 'users', 'memories', 'audit'].includes(paramTab)) {
    setTab(paramTab)
   }
  }, [searchParams])
@@ -51,6 +52,7 @@ export default function ManagementConsolePage() {
  const [templateQuery, setTemplateQuery] = useState('')
  const [usersQuery, setUsersQuery] = useState('')
  const [auditSearch, setAuditSearch] = useState('')
+ const [memoriesQuery, setMemoriesQuery] = useState('')
 
  // 权限锁定态（可见但锁）
  if (!isAdmin) {
@@ -71,6 +73,7 @@ export default function ManagementConsolePage() {
   { key: 'templates', label: t('templateManagement'), icon: FileCode },
   { key: 'mcp', label: t('mcpManagement'), icon: Plug },
   { key: 'users', label: t('userManagement'), icon: Users },
+  { key: 'memories', label: t('memoryManagement'), icon: Brain },
   { key: 'audit', label: t('auditLog'), icon: ScrollText },
  ]
 
@@ -81,6 +84,7 @@ export default function ManagementConsolePage() {
   mcp: { value: mcpQuery, set: setMcpQuery, placeholder: t('searchMCPServers') },
   users: { value: usersQuery, set: setUsersQuery, placeholder: t('searchUsers') },
   audit: { value: auditSearch, set: setAuditSearch, placeholder: t('auditSearch') },
+  memories: { value: memoriesQuery, set: setMemoriesQuery, placeholder: t('memorySearch') },
  }
  const search = sectionSearch[tab]
  const activeLabel = tabs.find(item => item.key === tab)?.label ?? t('navConsole')
@@ -117,6 +121,7 @@ export default function ManagementConsolePage() {
      {tab === 'mcp' && <MCPList searchQuery={mcpQuery} isAdmin />}
      {tab === 'users' && <UserAdminPanel searchQuery={usersQuery} />}
      {tab === 'audit' && <AuditLogPanel searchQuery={auditSearch} />}
+     {tab === 'memories' && <MemoryAdminPanel searchQuery={memoriesQuery} />}
     </div>
    </div>
   </SubPageLayout>

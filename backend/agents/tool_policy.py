@@ -106,6 +106,18 @@ BUILTIN_TOOL_POLICIES: dict[str, ToolPolicyMetadata] = {
             "教材要求先 search_memories 预览再删除。user_id 同上由服务端注入。"
         ),
     ),
+    "rewrite_memory": ToolPolicyMetadata(
+        name="rewrite_memory",
+        source="builtin",
+        description="把一条已有记忆精确改写成新内容（old_content 逐字匹配存储原文）",
+        risk_tier=ToolRiskTier.MEDIUM,
+        approval_required=False,
+        allowed_experts=("memorize_expert",),
+        policy_note=(
+            "改写类副作用，与 delete_memories 同级：用户明确指令触发、精确匹配"
+            "单行（逐字 fail-loud，不做模糊覆盖）。user_id 由服务端闭包注入。"
+        ),
+    ),
 }
 
 HIGH_RISK_KEYWORDS = (
