@@ -389,6 +389,24 @@ class RecoveryService:
                     [task.to_subtask_create() for task in revised_tasks],
                 )
 
+                # 修订基线快照：先于版本递增写入（version 字段取当前值 = v(n-1)）。
+                # v(n-1)↔v(n) 对比此前只活在审批卡内存（前端 setPendingPlan
+                # 版本跳变留档），切会话/刷新后 restore 只剩最新版，对比视图
+                # 永久丢失——基线随计划行持久化，GET /runs/{id}/plan 带出。
+                plan.baseline_snapshot = {
+                    "version": plan.plan_version,
+                    "tasks": [
+                        {
+                            "id": str(st.id),
+                            "expert_type": st.expert_type,
+                            "description": st.description,
+                            "sort_order": st.sort_order,
+                            "depends_on": st.depends_on or [],
+                        }
+                        for st in previous_subtasks
+                    ],
+                }
+
                 plan.plan_version += 1
                 plan.estimated_steps = len(revised.tasks)
                 if revised.strategy:
@@ -408,13 +426,17 @@ class RecoveryService:
                     f"（{len(revised.tasks)} 个任务）"
                 )
             except Exception as exc:  # noqa: BLE001 — 任何失败都退回"原计划待审"
+                # rollback 会把已加载实例过期，之后摸属性即同步懒加载（异步下
+                # MissingGreenlet）——裸值必须先取。此前这里二次抛错会把
+                # revision_failed 事件吞掉，前端永远停在"修订中"。
+                failure_version = plan.plan_version
                 await session.rollback()
                 emit_hitl_revision_failed(
                     session,
                     run_id=run_id,
                     thread_id=thread_id,
                     execution_plan_id=execution_plan_id,
-                    plan_version=plan.plan_version,
+                    plan_version=failure_version,
                     error=str(exc),
                 )
                 await session.commit()

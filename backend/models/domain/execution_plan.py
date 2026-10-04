@@ -8,7 +8,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Index, func
+from sqlalchemy import JSON, Column, Index, func
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -70,6 +70,17 @@ class ExecutionPlan(SQLModel, table=True):
         ),
     )
     plan_version: int = Field(default=1)
+
+    # 修订基线快照：{"version": n-1, "tasks": [RunPlanTask 形状]}
+    # v(n-1)↔v(n) 对比此前只活在审批卡内存（setPendingPlan 版本跳变留档），
+    # 切会话/刷新后 restore 只剩最新版，对比视图永久丢失——基线随计划行
+    # 持久化，GET /runs/{id}/plan 带出。整份赋值、从不原地改（JSON 列无
+    # mutable 追踪，原地改不会落库）。none_as_null：未修订的行存 SQL NULL
+    # 而非 json null（JSON 类型默认把 None 序列化成 json null，IS NULL 查询
+    # 会漏行——数据口径统一成 SQL NULL）。
+    baseline_snapshot: dict | None = Field(
+        default=None, sa_column=Column(JSON(none_as_null=True), nullable=True)
+    )
 
     __table_args__ = (Index("idx_executionplan_thread_created", "thread_id", "created_at"),)
 

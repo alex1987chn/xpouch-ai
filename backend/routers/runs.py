@@ -5,6 +5,7 @@
 """
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import ValidationError
 from sqlmodel import Session, select
 
 from crud.run_event import get_run_events_by_run_id, get_run_events_by_thread_id
@@ -12,6 +13,7 @@ from database import get_session
 from dependencies import get_current_user
 from models import AgentRun, ExecutionPlan, RunEvent, SubTask, Thread, User
 from schemas.run_event import (
+    PlanBaseline,
     RunPlanResponse,
     RunPlanTask,
     RunStatusResponse,
@@ -126,6 +128,16 @@ async def get_run_plan(
         elif latest.event_type == RunEventType.HITL_REVISION_FAILED:
             revision_error = (latest.event_data or {}).get("error")
 
+    # 修订基线：损坏的快照降级为无基线（对比视图是增强显示，不让轮询端点
+    # 500）——但必须留告警，不许静默
+    baseline: PlanBaseline | None = None
+    if plan.baseline_snapshot:
+        try:
+            baseline = PlanBaseline.model_validate(plan.baseline_snapshot)
+        except ValidationError:
+            logger.warning(f"[Runs API] 计划 {plan.id} 的修订基线快照无法解析，忽略")
+            baseline = None
+
     return RunPlanResponse(
         run_id=run_id,
         plan_id=plan.id,
@@ -133,6 +145,7 @@ async def get_run_plan(
         status=str(plan.status) if plan.status else "pending",
         revising=revising,
         revision_error=revision_error,
+        baseline=baseline,
         tasks=[
             RunPlanTask(
                 # id 必须是 SubTask 真实主键（uuid）：前端批准时把这份计划原样

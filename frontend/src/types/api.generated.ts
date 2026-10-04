@@ -2424,6 +2424,23 @@ export interface components {
             password: string;
         };
         /**
+         * PlanBaseline
+         * @description 修订基线：被本次修订替换掉的 v(n-1) 任务快照。
+         *
+         *     restore 场景的对比视图数据源（活会话里由前端内存留档，此处补齐
+         *     刷新/切会话后的缺口）。tasks 与 RunPlanTask 同构（uuid 主键 +
+         *     sort_order 位置语义）。
+         */
+        PlanBaseline: {
+            /** Version */
+            version: number;
+            /**
+             * Tasks
+             * @default []
+             */
+            tasks: components["schemas"]["RunPlanTask"][];
+        };
+        /**
          * PromoteUserResponse
          * @description 升级管理员响应（email 可空：用户可能未绑定邮箱）
          */
@@ -2591,6 +2608,7 @@ export interface components {
          *
          *     revising 判定来自事件账本：最新修订事件为 started 即修订中；
          *     revision_error 只在最新事件为 revision_failed 时非空。
+         *     baseline 非空 = 当前版本是修订结果，携带被替换的 v(n-1)。
          */
         RunPlanResponse: {
             /** Run Id */
@@ -2610,6 +2628,7 @@ export interface components {
              * @default []
              */
             tasks: components["schemas"]["RunPlanTask"][];
+            baseline?: components["schemas"]["PlanBaseline"] | null;
         };
         /**
          * RunPlanTask

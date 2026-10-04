@@ -32,6 +32,11 @@ export interface RunPlanTask {
   depends_on: string[]
 }
 
+export interface PlanBaseline {
+  version: number
+  tasks: RunPlanTask[]
+}
+
 export interface RunPlanStatus {
   run_id: string
   plan_id: string | null
@@ -40,6 +45,8 @@ export interface RunPlanStatus {
   revising: boolean
   revision_error: string | null
   tasks: RunPlanTask[]
+  /** 非空 = 当前版本是修订结果，携带被替换的 v(n-1)（restore 重建对比视图用） */
+  baseline: PlanBaseline | null
 }
 
 /**

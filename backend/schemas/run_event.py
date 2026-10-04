@@ -96,11 +96,24 @@ class RunPlanTask(BaseModel):
     depends_on: list[str] = []
 
 
+class PlanBaseline(BaseModel):
+    """修订基线：被本次修订替换掉的 v(n-1) 任务快照。
+
+    restore 场景的对比视图数据源（活会话里由前端内存留档，此处补齐
+    刷新/切会话后的缺口）。tasks 与 RunPlanTask 同构（uuid 主键 +
+    sort_order 位置语义）。
+    """
+
+    version: int
+    tasks: list[RunPlanTask] = []
+
+
 class RunPlanResponse(BaseModel):
     """计划状态响应（HITL 修订轮询专供）
 
     revising 判定来自事件账本：最新修订事件为 started 即修订中；
     revision_error 只在最新事件为 revision_failed 时非空。
+    baseline 非空 = 当前版本是修订结果，携带被替换的 v(n-1)。
     """
 
     run_id: str
@@ -110,3 +123,4 @@ class RunPlanResponse(BaseModel):
     revising: bool
     revision_error: str | None = None
     tasks: list[RunPlanTask] = []
+    baseline: PlanBaseline | None = None

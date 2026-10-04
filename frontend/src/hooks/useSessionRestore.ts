@@ -23,6 +23,7 @@ import { adoptRestoredExecution, endExecution } from '@/store/executionState'
 import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/utils/logger'
 import { getThread } from '@/services/chat'
+import { getRunPlanStatus } from '@/services/run'
 import { getRunTimeline } from '@/services/runs'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { toLocalDate } from '@/lib/datetime'
@@ -160,6 +161,7 @@ export function useSessionRestore(
   // 从 Store 获取状态（使用 Selectors 模式）
   const resetAll = useTaskStore((state) => state.resetAll)
   const setPendingPlan = useTaskStore((state) => state.setPendingPlan)
+  const setPreviousPendingPlan = useTaskStore((state) => state.setPreviousPendingPlan)
   const setMode = useTaskStore((state) => state.setMode)
   const addMessage = useChatStore((state) => state.addMessage)
   const setCurrentThreadId = useChatStore((state) => state.setCurrentThreadId)
@@ -368,6 +370,32 @@ export function useSessionRestore(
               latestRun?.id || execution_plan.run_id || null,
             )
             logger.debug('[useSessionRestore] HITL 恢复: pendingPlan 已设置', pendingPlan.length, '个任务')
+
+            // 修订基线重建：v(n-1) 在活会话里由 setPendingPlan 版本跳变自动留档，
+            // 刷新/切会话后只剩内存丢失——从计划轮询端点带回基线快照（仅修订过的
+            // 计划有），恢复「本次修订改动」对比视图。基线是增强显示：拉取失败
+            // 只降级为无对比，不阻塞恢复主链路。
+            const baselineRunId = latestRun?.id || execution_plan.run_id
+            if (baselineRunId) {
+              try {
+                const planState = await getRunPlanStatus(baselineRunId)
+                if (planState.baseline?.tasks?.length) {
+                  setPreviousPendingPlan(
+                    planState.baseline.tasks.map((task) => ({
+                      id: task.id,
+                      expert_type: task.expert_type,
+                      description: task.description,
+                      sort_order: task.sort_order,
+                      status: 'pending' as const,
+                      depends_on: task.depends_on || [],
+                      artifacts: [],
+                    })),
+                  )
+                }
+              } catch (err) {
+                logger.warn('[useSessionRestore] 修订基线拉取失败，跳过对比视图重建', err)
+              }
+            }
           }
         }
       }
@@ -400,7 +428,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, queryClient, setPendingPlan, setMode, addMessage, resetAll, onRestored, setCurrentThreadId, t])
+  }, [threadId, enabled, queryClient, setPendingPlan, setPreviousPendingPlan, setMode, addMessage, resetAll, onRestored, setCurrentThreadId, t])
 
   /**
    * 公开的手动恢复方法
