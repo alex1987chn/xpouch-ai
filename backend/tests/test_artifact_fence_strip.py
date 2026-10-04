@@ -1,4 +1,4 @@
-"""strip_code_fence 与围栏标注解析的行为测试。
+"""strip_code_fence 的行为测试。
 
 背景：模型常给产物起名（```html:index.html … ```），专家产物此前把整个响应
 原样入库，围栏头尾被 HTML 预览当正文渲染——页面顶部出现「index.html」、
@@ -12,7 +12,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from utils.artifacts import parse_artifacts_from_response, strip_code_fence  # noqa: E402
+from utils.artifacts import strip_code_fence  # noqa: E402
 
 
 class TestStripCodeFence:
@@ -47,25 +47,3 @@ class TestStripCodeFence:
 
     def test_non_string_passthrough(self):
         assert strip_code_fence(None) is None  # type: ignore[arg-type]
-
-
-class TestParseArtifactsFenceAnnotation:
-    def test_html_block_with_filename_annotation(self):
-        response = "```html:index.html\n<h1>x</h1>\n```"
-        artifacts = parse_artifacts_from_response(response)
-        assert len(artifacts) == 1
-        assert artifacts[0]["type"] == "html"
-        # 文件名成为标题，内容不再带围栏
-        assert artifacts[0]["title"] == "index.html"
-        assert artifacts[0]["content"] == "<h1>x</h1>"
-
-    def test_html_block_with_space_filename(self):
-        response = "```html page.html\n<h1>x</h1>\n```"
-        artifacts = parse_artifacts_from_response(response)
-        assert artifacts[0]["title"] == "page.html"
-        assert artifacts[0]["content"] == "<h1>x</h1>"
-
-    def test_plain_block_keeps_default_title(self):
-        response = "```html\n<h1>x</h1>\n```"
-        artifacts = parse_artifacts_from_response(response)
-        assert artifacts[0]["title"] == "HTML文档"

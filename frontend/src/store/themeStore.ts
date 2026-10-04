@@ -241,7 +241,3 @@ export function initTheme(): void {
 /**
  * 获取当前主题的元数据
  */
-export function getCurrentThemeMeta(): ThemeMeta {
-  const currentTheme = useThemeStore.getState().theme
-  return THEMES.find(t => t.id === currentTheme) || THEMES[0]
-}

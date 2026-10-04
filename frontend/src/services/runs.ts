@@ -5,7 +5,7 @@
  */
 
 import { authenticatedFetch, buildUrl, handleResponse } from './common'
-import type { RunTimelineResponse, ThreadTimelineResponse, RunSummary } from '@/types/run'
+import type { RunTimelineResponse, RunSummary } from '@/types/run'
 import { logger } from '@/utils/logger'
 
 /**
@@ -28,25 +28,6 @@ export async function getRunTimeline(
   return handleResponse<RunTimelineResponse>(response, '获取运行时间线失败')
 }
 
-/**
- * 获取线程的事件时间线
- * 
- * @param threadId 线程 ID
- * @param limit 返回数量限制（默认 200，最大 1000）
- * @param offset 偏移量（用于分页)
- */
-export async function getThreadTimeline(
-  threadId: string,
-  limit: number = 200,
-  offset: number = 0
-): Promise<ThreadTimelineResponse> {
-  logger.debug(`[Runs API] 获取线程时间线: threadId=${threadId}`)
-  
-  const url = buildUrl(`/runs/thread/${threadId}/timeline?limit=${limit}&offset=${offset}`)
-  const response = await authenticatedFetch(url)
-  
-  return handleResponse<ThreadTimelineResponse>(response, '获取线程时间线失败')
-}
 
 /**
  * 获取运行实例详情

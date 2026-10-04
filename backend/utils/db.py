@@ -84,18 +84,6 @@ def get_connection_pool() -> AsyncConnectionPool:
     return _pool
 
 
-async def reset_connection_pool():
-    """重置连接池（用于错误恢复）"""
-    global _pool
-    if _pool is not None:
-        try:
-            await _pool.close()
-        except Exception as e:
-            logger.warning(f"[DB] Failed to close connection pool: {e}")
-        _pool = None
-        logger.info("[DB] Connection pool reset")
-
-
 @asynccontextmanager
 async def get_db_connection():
     """

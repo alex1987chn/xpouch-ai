@@ -1,5 +1,4 @@
-import { SYSTEM_AGENTS, isSystemAgent } from '@/constants/agents'
-import type { AgentType } from '@/types'
+import { SYSTEM_AGENTS } from '@/constants/agents'
 
 /**
  * 旧 ID 到新 ID 的映射（与后端 constants.py 保持一致）
@@ -25,13 +24,3 @@ export function normalizeAgentId(agentId: string): string {
   return OLD_TO_NEW_AGENT_ID_MAPPING[agentId] || agentId
 }
 
-/**
- * 判断智能体类型（默认助手 / AI助手 / 自定义）
- */
-export function getAgentType(agentId: string): AgentType {
-  const normalizedId = normalizeAgentId(agentId)
-  if (isSystemAgent(normalizedId)) {
-    return 'system'
-  }
-  return 'custom'
-}
