@@ -24,7 +24,7 @@ async def test_complex_persistence_guard_rejects_non_ai_message(monkeypatch):
         updated_at=datetime.now(),
     )
     monkeypatch.setattr(
-        service, "_get_latest_execution_plan", lambda _thread_id: _plan_async(execution_plan)
+        service, "_get_current_execution_plan", lambda _thread_id: _plan_async(execution_plan)
     )
 
     error = await service._get_complex_result_persistence_error(
@@ -46,7 +46,7 @@ async def test_complex_persistence_guard_rejects_missing_task_results(monkeypatc
         updated_at=datetime.now(),
     )
     monkeypatch.setattr(
-        service, "_get_latest_execution_plan", lambda _thread_id: _plan_async(execution_plan)
+        service, "_get_current_execution_plan", lambda _thread_id: _plan_async(execution_plan)
     )
 
     error = await service._get_complex_result_persistence_error(
@@ -68,7 +68,7 @@ async def test_complex_persistence_guard_accepts_valid_result(monkeypatch):
         updated_at=datetime.now(),
     )
     monkeypatch.setattr(
-        service, "_get_latest_execution_plan", lambda _thread_id: _plan_async(execution_plan)
+        service, "_get_current_execution_plan", lambda _thread_id: _plan_async(execution_plan)
     )
 
     error = await service._get_complex_result_persistence_error(

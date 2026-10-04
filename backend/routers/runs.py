@@ -94,7 +94,10 @@ async def get_run_plan(
         await db.exec(
             select(ExecutionPlan)
             .where(ExecutionPlan.run_id == run_id)
-            .order_by(ExecutionPlan.id.desc())
+            # 「该 run 的计划」（run_id 定位，与线程级「当前计划」访问器是两个
+            # 问题）；正常一 run 一行，此排序仅为异常多行时的确定性兜底——
+            # 主键是 uuid 无时间语义，必须 created_at（2026-10-04 脑裂审计）
+            .order_by(ExecutionPlan.created_at.desc())
         )
     ).first()
     if not plan:

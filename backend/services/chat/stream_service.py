@@ -347,7 +347,7 @@ class StreamService(EventBuildersMixin, PersistenceMixin, EventTransformMixin):
 
                 # 发送 human.interrupt 事件（包含计划版本号，供乐观锁校验）
                 plan_version = await self._get_plan_version(thread_id)
-                execution_plan = await self._get_latest_execution_plan(thread_id)
+                execution_plan = await self._get_current_execution_plan(thread_id)
 
                 # 🔥 写入 hitl_interrupted 事件到账本
                 emit_hitl_interrupted(

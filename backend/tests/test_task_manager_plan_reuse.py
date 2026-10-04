@@ -20,7 +20,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, select
 
 from agents.services import task_manager
-from crud.execution_plan import get_latest_execution_plan_by_thread
+from crud.execution_plan import get_current_execution_plan_by_thread
 from models import Artifact, ExecutionPlan, SubTask, Thread
 from schemas.task import SubTaskCreate
 
@@ -238,7 +238,7 @@ class TestNewRunCreatesNewPlan:
         await _seed_plan(db)
         plan2, _ = await _call(db, run_id="r2")
 
-        latest = await get_latest_execution_plan_by_thread(db, "t1")
+        latest = await get_current_execution_plan_by_thread(db, "t1")
 
         assert latest is not None and latest.id == plan2.id
 

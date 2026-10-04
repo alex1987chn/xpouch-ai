@@ -58,9 +58,22 @@ async def get_execution_plan_by_run(db: Session, run_id: str) -> ExecutionPlan |
     return (await db.exec(select(ExecutionPlan).where(ExecutionPlan.run_id == run_id))).first()
 
 
-async def get_latest_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
-    """取线程**最新**的执行计划（显式 created_at 倒序；一个会话可有多份计划，
-    一 run 一计划，先生成网页再写小游戏各留一份、互不覆盖）。"""
+async def get_current_execution_plan_by_thread(db: Session, thread_id: str) -> ExecutionPlan | None:
+    """取线程**当前**执行计划——唯一访问入口，调用方不得自拼「当前计划」查询。
+
+    口径（三条历史选取路径的收敛点，2026-10-04）：
+    - `thread.execution_plan_id` 指针优先——所有创建/收尾路径事务内维护，
+      存量实测零漂移；指针是显式真相，排序只是启发式（时钟偏斜不可靠）
+    - 指针为空（清理路径置空 / 历史数据缺失）时退化 created_at 倒序最新；
+      兜底排序必须显式 created_at——主键是 uuid，按 id 排序无时间语义
+    - 一个会话可有多份计划（一 run 一计划），指针悬挂时兜底也能给出
+      合理答案而非空
+    """
+    thread = await db.get(Thread, thread_id)
+    if thread and thread.execution_plan_id:
+        plan = await db.get(ExecutionPlan, thread.execution_plan_id)
+        if plan:
+            return plan
     return (
         await db.exec(
             select(ExecutionPlan)

@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any
 
 from langchain_core.messages import AIMessage
-from sqlmodel import select
 
 from models import AgentRun, ExecutionPlan, RunStatus, Thread
 from models.enums import GraphTaskStatus, TaskStatus, to_task_status
@@ -41,7 +40,7 @@ class PersistenceMixin:
         # 复杂模式：创建 ExecutionPlan 和 SubTasks
         if router_decision == "complex":
             await self.thread_service.update_thread_agent_type(thread_id, "ai")
-            execution_plan = await self._get_latest_execution_plan(thread_id)
+            execution_plan = await self._get_current_execution_plan(thread_id)
             if execution_plan is None:
                 logger.warning("[StreamService] complex 结果保存时未找到 ExecutionPlan，跳过落库")
                 return
@@ -165,7 +164,7 @@ class PersistenceMixin:
             return "复杂模式未产出有效助手消息，已拒绝将当前结果落库为 completed"
         if not task_list:
             return "复杂模式未收集到任何任务结果，已拒绝将当前结果落库为 completed"
-        if await self._get_latest_execution_plan(thread_id) is None:
+        if await self._get_current_execution_plan(thread_id) is None:
             return "复杂模式未找到已创建的 ExecutionPlan，已拒绝写入错误兜底结果"
         return None
 
@@ -239,11 +238,11 @@ class PersistenceMixin:
                             len(bucket),
                         )
 
-    async def _get_latest_execution_plan(self, thread_id: str) -> ExecutionPlan | None:
-        """获取线程最新的 ExecutionPlan（单一实现在 crud.execution_plan）。"""
-        from crud.execution_plan import get_latest_execution_plan_by_thread
+    async def _get_current_execution_plan(self, thread_id: str) -> ExecutionPlan | None:
+        """获取线程当前的 ExecutionPlan（单一实现在 crud.execution_plan）。"""
+        from crud.execution_plan import get_current_execution_plan_by_thread
 
-        return await get_latest_execution_plan_by_thread(self.db, thread_id)
+        return await get_current_execution_plan_by_thread(self.db, thread_id)
 
     async def _get_execution_plan_by_run(self, run_id: str) -> ExecutionPlan | None:
         """按 run_id 获取 ExecutionPlan（单一实现在 crud.execution_plan）。"""
@@ -287,18 +286,12 @@ class PersistenceMixin:
 
     async def _get_plan_version(self, thread_id: str) -> int:
         """获取当前线程的计划版本号（乐观锁）"""
-        execution_plan = await self._get_latest_execution_plan(thread_id)
+        execution_plan = await self._get_current_execution_plan(thread_id)
         return int(execution_plan.plan_version) if execution_plan else 1
 
     async def _update_execution_plan_status(self, thread_id: str, status: TaskStatus) -> None:
-        """更新线程最新计划的 ExecutionPlan 状态。"""
-        execution_plan = (
-            await self.db.exec(
-                select(ExecutionPlan)
-                .where(ExecutionPlan.thread_id == thread_id)
-                .order_by(ExecutionPlan.created_at.desc())
-            )
-        ).first()
+        """更新线程当前计划的 ExecutionPlan 状态（唯一访问入口，不自拼查询）。"""
+        execution_plan = await self._get_current_execution_plan(thread_id)
 
         if execution_plan:
             execution_plan.status = status
