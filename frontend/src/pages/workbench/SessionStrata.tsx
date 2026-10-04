@@ -78,7 +78,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
   const deleteThreadMutation = useDeleteThreadMutation()
   const isDeleting = deleteThreadMutation.isPending
 
-  const { data, isLoading, fetchNextPage, hasNextPage } = useChatHistoryQuery({ limit: 20 })
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useChatHistoryQuery({ limit: 20 })
   const threads = useMemo(
     () => data?.pages.flatMap(page => page.items) ?? [],
     [data]
@@ -251,8 +251,19 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
             ) : null
           )
         )}
-        {/* 加载更多哨兵 */}
-        {hasNextPage && <div ref={sentinelRef} className="h-6" />}
+        {/* 加载更多：哨兵自动触发 + 显式按钮兜底（双触发器——观察器在任何
+            环境失灵时按钮仍可手动翻页，且让「还有更多」成为可见事实） */}
+        {hasNextPage && (
+          <div ref={sentinelRef} className="px-2 pb-2 pt-1">
+            <button
+              onClick={() => void fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="w-full rounded-sm py-1.5 text-tiny text-content-muted transition-colors hover:bg-surface-tint/60 hover:text-content-secondary disabled:opacity-50"
+            >
+              {isFetchingNextPage ? t('loading') : t('loadMoreThreads')}
+            </button>
+          </div>
+        )}
 
         {/* 删除确认 */}
         <DeleteConfirmDialog

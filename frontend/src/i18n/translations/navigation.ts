@@ -10,6 +10,7 @@ export const zh = {
   navConsole: '系统管理',
   systemStatusLockedDesc: '管理控制台仅对管理员开放，包含系统状态、专家与模型、工具治理等实例级管理功能',
   navStats: '运行统计',
+  loadMoreThreads: '加载更多会话',
 }
 
 export const en = {
@@ -22,6 +23,7 @@ export const en = {
   navConsole: 'System',
   systemStatusLockedDesc: 'The management console is admin-only: system status, experts & models, tool governance and other instance-level settings',
   navStats: 'Run Stats',
+  loadMoreThreads: 'Load more',
 }
 
 export const ja = {
@@ -34,4 +36,5 @@ export const ja = {
   navConsole: 'システム管理',
   systemStatusLockedDesc: '管理コンソールは管理者専用です。システム状態、エキスパートとモデル、ツールガバナンスなどのインスタンス設定を含みます',
   navStats: '実行統計',
+  loadMoreThreads: 'さらに読み込む',
 }
