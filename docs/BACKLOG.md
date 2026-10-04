@@ -18,9 +18,9 @@
 
 - 事件双真相源统一——**2026-09-27 已收口**：①crud 中央归一（append_run_event 接受 BaseModel 统一 model_dump(mode=json)，不再依赖 psycopg 隐式适配——SQLite 测试路径会炸、格式不受控）；②task_started/task_failed 单构造双用（此前 SSE 与账本各自构造已实际漂移：账本缺 message_id/sort_order/total_steps、description 硬编码空串，e2e 账本 payload 复核已补齐）；③tool_result 原本就是单构造范本；④task_completed/artifact_generated 的 SSE 与账本是「落库前通知 vs 落库后权威记录」两个事实、router_decided 两边 reason 是展示文案 vs 机器规则名——语义不同，**判定不做统一**（避免丢信息），后人勿再疑惑
 - RunContext 值对象 / 事件双真相源统一（同一组 pydantic 模型约束 SSE 流与 run_events 账本；StreamService 772 行 + parts 三 Mixin、generic 813 行 + 两个纯函数模块的拆解已于 2026-09-27 完成，双 e2e 全绿——结构性大手术已完成，剩余为语义统一类小项）
-- [ ] 前端状态三轨统一（周级，**进行中**）：Phase A 所有权清单已落 docs/FRONTEND-STATE.md（唯一真相源，改状态前对表）；Phase B 已收敛——离开会话编排单点化 `leaveCurrentThread()`（五处手写序列已替换，新代码禁止手写三连）；剩余 Phase C 执行态合并（isGenerating/activeRunId/轮询状态机三份投影归一为显式状态机）、Phase D 恢复写Selector 化
+- [ ] 前端状态三轨统一（周级，**主体完成 2026-10-04，待用户手工验证后销项**）：Phase A 所有权清单 docs/FRONTEND-STATE.md；Phase B 离开编排单点化 leaveCurrentThread；Phase C 执行态三投影归一（executionState.ts 七种转换，组件层零直写，SSE/恢复/生命周期三个例外面）；Phase D 恢复写入同帧提交。剩余：轮询状态机本体仍在 hook 实例内（投影已归一，状态机搬迁收益边际化，条件触发再动）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
-- [ ] i18n `common.ts` 按域拆分（**部分完成 2026-10-04**）：死键审计已做（全量扫描 + 动态引用核对，5 个真死键已删：history/required/currentPlan/menu/select）；Navigation→navigation.ts（新）、StatsPage→run.ts、Chat Actions→chat.ts、Create Agent→admin.ts 已迁出，common.ts 481→280 行。剩余：「权限与通用提示」~57 键的登录/验证杂烩再按域归位（auth 相关可独立成 auth.ts），判据同死键审计——`t('<key>')` 为空 ≠ 死键，`expertIdentity` 类映射是动态引用，删前连映射表一起查
+- [ ] i18n 按域拆分收尾（**主体完成 2026-10-04**）：死键审计已做（5 个真死键已删）；Navigation/StatsPage/Chat Actions/Create Agent/认证账户域（45 键→auth.ts）均已迁出，common.ts 481→145 行仅剩真跨域词汇。剩余：User Menu 残余（logout/download 等跨域词按主要消费者归 settings 或留在 common，收益边际）；判据同死键审计——`t('<key>')` 为空 ≠ 死键，`expertIdentity` 类映射是动态引用，删前连映射表一起查
 - [ ] Redis 限流（现内存态，多 worker 不共享）
 - [ ] 列表虚拟化（会话/画廊长列表）
 - [ ] i18n `common.ts` 按域拆分

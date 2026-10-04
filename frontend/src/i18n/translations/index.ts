@@ -1,5 +1,6 @@
 // 导入各模块翻译
 import * as common from './common'
+import * as auth from './auth'
 import * as navigation from './navigation'
 import * as home from './home'
 import * as chat from './chat'
@@ -12,6 +13,7 @@ import * as workbench from './workbench'
 // 合并所有中文翻译（键类型由此派生——TranslationKey 单一真相源）
 export const zh = {
   ...common.zh,
+  ...auth.zh,
   ...navigation.zh,
   ...home.zh,
   ...chat.zh,
@@ -28,6 +30,7 @@ export type TranslationKeys = keyof typeof zh
 // 合并所有英文翻译
 export const en: Record<TranslationKeys, string> = {
   ...common.en,
+  ...auth.en,
   ...navigation.en,
   ...home.en,
   ...chat.en,
@@ -41,6 +44,7 @@ export const en: Record<TranslationKeys, string> = {
 // 合并所有日文翻译
 export const ja: Record<TranslationKeys, string> = {
   ...common.ja,
+  ...auth.ja,
   ...navigation.ja,
   ...home.ja,
   ...chat.ja,

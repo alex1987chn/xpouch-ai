@@ -55,7 +55,7 @@
 | isRestored / isLatestRunControllable / latestRunId | useSessionRestore | 恢复进度，恢复完成即定 |
 | isSubmitting / isEditing | PlanReviewCard | 组件防抖 |
 
-## 三、生命周期编排（Phase B 已收敛）
+## 三、生命周期编排（Phase B）
 
 - **离开会话**：`leaveCurrentThread()`（src/store/sessionLifecycle.ts）——清
   messages、置空 threadId、resetAll。五处手写序列已全部替换：地层切换、
@@ -73,10 +73,27 @@
 3. react-query 失效不区分会话（画廊跨会话共享），流回调里的 invalidate
    不受归属守卫限制（刻意）。
 
-## 五、剩余阶段（Phase C/D，未动工）
+## 五、执行态转换（Phase C 已收敛）
 
-- **C · 执行态合并**：`isGenerating`（chatStore）/ `activeRunId`（taskStore）/
-  轮询状态机（hook）实为同一事实"本会话有活着的执行"的三份投影，长期目标
-  是一个显式状态机（idle / streaming / awaiting_approval / polling）。
-- **D · 恢复读Selector 化**：performRestore 的 store 写入改经 selector 批量
-  提交，减少中间态可观察窗口。
+三份投影（isGenerating / isWaitingForApproval / activeRunId）在组件/hook 层
+的**唯一写入入口**是 `src/store/executionState.ts` 的七种转换：
+beginStreaming / attachRunId / detachStream / beginAwaitingApproval /
+resolveApproval / endExecution / adoptRestoredExecution。合法例外写入面：
+- SSE 事件面：systemEvents 经 `setPendingPlan` 下发审批数据（slice 内置 waiting=true）
+- 服务端校准面：useSessionRestore（经 adoptRestoredExecution / endExecution）
+- 会话生命周期：leaveCurrentThread / resetAll（整体重置，不做投影级区分）
+
+**顺序铁律**（Phase C 全局 review 抓出的实案）：读-改-写序列里凡涉及
+isWaitingForApproval 的判断，必须**先读后调 endExecution**——该转换会把
+waiting 一并归零，判断放它之后恒读 false（useRunPolling 过期审批卡撤除
+差点因此失效）。
+
+**已知行为差异**（有意）：等审批时发送新消息，beginStreaming 会撤下审批卡
+（原行为卡片残留）；后端 ACTIVE_RUN_CONFLICT 的 409 提示接管用户认知，
+卡片残留反而是错误状态。
+
+## 六、恢复写入批量化（Phase D 已收敛）
+
+performRestore 的消息与线程标识经单次 `useChatStore.setState` 同帧提交——
+两连写之间是可观察中间态（消息已换、线程标识仍旧），归属守卫在该窗口内
+按旧会话判定。执行投影经 adoptRestoredExecution 单点写入。

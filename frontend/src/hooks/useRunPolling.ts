@@ -25,7 +25,7 @@
 import { useEffect, useRef, useCallback, useReducer } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRunStatus } from '@/services/run'
-import { useChatStore } from '@/store/chatStore'
+import { endExecution } from '@/store/executionState'
 import { useTaskStore } from '@/store/taskStore'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
@@ -172,8 +172,6 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
   const previousStatusRef = useRef<RunStatus | null>(null)
   const consecutiveErrorsRef = useRef(0)
 
-  const setGenerating = useChatStore((state) => state.setGenerating)
-  const clearActiveRunId = useTaskStore((state) => state.clearActiveRunId)
   const clearPendingPlan = useTaskStore((state) => state.clearPendingPlan)
 
   // 从 store 获取 activeRunId
@@ -231,15 +229,18 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
       if (!state.isTerminal) {
         logger.info('[useRunPolling] 终态，停止轮询:', status)
         dispatch({ type: 'TERMINAL_REACHED' })
-        setGenerating(false)
-        clearActiveRunId()
+        // 先读后清：endExecution 会把 isWaitingForApproval 一并归零，若放在
+        // 判断之前，下面的「过期审批卡撤除」永远读不到 true（引入转换入口时
+        // 差点埋进去的顺序坑——全局 review 抓出）
+        const wasAwaitingApproval = useTaskStore.getState().isWaitingForApproval
+        endExecution()
         // 断流兜底：SSE 已断时执行仍会在服务端完成，轮询是最后对账点
         queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
         queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
         // 审批卡必须跟着 run 一起收场：run 在别处被驳回/取消/超时（另一个标签页、
         // 任务控制页、清理服务）时这里才发现，而卡片此前没有任何机制会被撤下——
         // 用户看到一张点不动的卡（批准还会失败），这是实测踩到过的坑。
-        if (useTaskStore.getState().isWaitingForApproval) {
+        if (wasAwaitingApproval) {
           logger.info('[useRunPolling] run 已终态，撤下过期的审批卡')
           clearPendingPlan()
         }
@@ -261,7 +262,7 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
       logger.info('[useRunPolling] 从 HITL 恢复，继续轮询')
       dispatch({ type: 'HITL_RESUMED' })
     }
-  }, [data, activeRunId, state.isTerminal, state.status, setGenerating, clearActiveRunId, clearPendingPlan, queryClient])
+  }, [data, activeRunId, state.isTerminal, state.status, clearPendingPlan, queryClient])
 
   // 错误处理
   useEffect(() => {
@@ -277,10 +278,9 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
     if (shouldStop && state.status !== 'error') {
       logger.warn('[useRunPolling] 停止轮询：错误条件满足')
       dispatch({ type: 'ERROR_OCCURRED' })
-      setGenerating(false)
-      clearActiveRunId()
+      endExecution()
     }
-  }, [error, state.status, setGenerating, clearActiveRunId])
+  }, [error, state.status])
 
   // ==================== 外部控制接口 ====================
 

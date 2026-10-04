@@ -19,6 +19,7 @@ import { useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
 import { useTaskStore } from '@/store/taskStore'
+import { adoptRestoredExecution, endExecution } from '@/store/executionState'
 import { useChatStore } from '@/store/chatStore'
 import { logger } from '@/utils/logger'
 import { getThread } from '@/services/chat'
@@ -160,12 +161,8 @@ export function useSessionRestore(
   const resetAll = useTaskStore((state) => state.resetAll)
   const setPendingPlan = useTaskStore((state) => state.setPendingPlan)
   const setMode = useTaskStore((state) => state.setMode)
-  const setActiveRunId = useTaskStore((state) => state.setActiveRunId)
-  const clearActiveRunId = useTaskStore((state) => state.clearActiveRunId)
   const addMessage = useChatStore((state) => state.addMessage)
-  const setMessages = useChatStore((state) => state.setMessages)
   const setCurrentThreadId = useChatStore((state) => state.setCurrentThreadId)
-  const setGenerating = useChatStore((state) => state.setGenerating)
 
   /**
    * 核心恢复逻辑
@@ -261,7 +258,10 @@ export function useSessionRestore(
                   : m,
               )
             : restoredMessages
-        setMessages(merged)
+        // Phase D：消息与线程标识一次提交（两连写之间是可观察的中间态——
+        // 消息已换、线程标识还是旧的，归属守卫这类读 currentThreadId 的逻辑
+        // 在该窗口内按旧会话判定）
+        useChatStore.setState({ messages: merged, currentThreadId: threadId })
       }
       setCurrentThreadId(threadId)
 
@@ -293,15 +293,12 @@ export function useSessionRestore(
         (latestRunStatus === 'running' || latestRunStatus === 'resuming')
 
       if (isLatestRunControllable && latestRun?.id) {
-        setActiveRunId(latestRun.id)
-        setGenerating(isRunStreaming)
+        adoptRestoredExecution(latestRun.id, isRunStreaming)
         // 🔥 保存最新运行状态，供组件层决定是否启动轮询
         setIsLatestRunControllable(true)
         setLatestRunId(latestRun.id)
       } else {
-        clearActiveRunId()
-        // 🔥 确保终态时 isGenerating 为 false
-        setGenerating(false)
+        endExecution()
         setIsLatestRunControllable(false)
         setLatestRunId(null)
       }
@@ -403,7 +400,7 @@ export function useSessionRestore(
     } finally {
       setIsRestoring(false)
     }
-  }, [threadId, enabled, queryClient, setPendingPlan, setMode, setActiveRunId, clearActiveRunId, addMessage, resetAll, onRestored, setMessages, setCurrentThreadId, setGenerating, t])
+  }, [threadId, enabled, queryClient, setPendingPlan, setMode, addMessage, resetAll, onRestored, setCurrentThreadId, t])
 
   /**
    * 公开的手动恢复方法

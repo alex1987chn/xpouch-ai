@@ -36,6 +36,12 @@ import { useActiveRunId, useTaskMode, useTaskActions } from '@/hooks/useTaskSele
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { useChatStore } from '@/store/chatStore'
+import {
+  attachRunId,
+  beginStreaming,
+  detachStream,
+  endExecution,
+} from '@/store/executionState'
 import { useTaskStore } from '@/store/taskStore'
 
 import { useStreamHandler } from './useStreamHandler'
@@ -109,11 +115,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     setCurrentThreadId,
     addMessage,
     updateMessage,
-    setMessages,
-    setGenerating
-  } = useChatActions()
+    setMessages,  } = useChatActions()
 
-  const { setMode, setActiveRunId, clearActiveRunId } = useTaskActions()
+  const { setMode } = useTaskActions()
 
   const { reset: resetStreamHandler, createChunkHandler, retarget: retargetChunk, forceFlush, markFinalized } =
     useStreamHandler()
@@ -129,14 +133,11 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
    */
   const finalizeStream = useCallback((opts: { keepRunId?: boolean } = {}) => {
     forceFlush()
-    setGenerating(false)
-    if (!opts.keepRunId) {
-      clearActiveRunId()
-    }
+    endExecution(opts)
     abortControllerRef.current = null
     queryClient.invalidateQueries({ queryKey: chatHistoryKeys.lists() })
     queryClient.invalidateQueries({ queryKey: artifactsKeys.all })
-  }, [forceFlush, setGenerating, clearActiveRunId, queryClient])
+  }, [forceFlush, queryClient])
 
   /**
    * 流式回调工厂：syncRuntimeMeta + 可选的 threadId 同步 / 完成闩锁，
@@ -183,7 +184,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         return
       }
       if (runtimeMeta?.runId) {
-        setActiveRunId(runtimeMeta.runId)
+        attachRunId(runtimeMeta.runId)
       }
       if (threadId) {
         // 新会话首条消息：仅当用户未切走时收养新线程并通知上层导航
@@ -215,7 +216,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       }
       if (chunk) handleChunk(chunk)
     }
-  }, [setActiveRunId, queryClient, artifactFlushRef])
+  }, [queryClient, artifactFlushRef])
 
   /**
    * 切换会话时挂断在途流：只 abort 前端 SSE 连接（服务端 producer 继续
@@ -231,9 +232,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     // abort 的异步收尾跑完之前 useSessionRestore 的活跃流守卫就执行了，
     // 撞上 true 直接放弃恢复——切线程后消息永远不加载，页面停在空态
     // （2026-09-27 执行态切会话失效事故）。异步收尾的 finalizeStream
-    // 稍后幂等再跑一遍。
-    setGenerating(false)
-  }, [setGenerating])
+    // 稍后幂等再跑一遍。runId 保留给轮询接管（detachStream 的语义）。
+    detachStream()
+  }, [])
 
   /**
    * Stop generation
@@ -244,8 +245,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         debug('Stop generation')
         abortControllerRef.current.abort()
       }
-      setGenerating(false)
-      clearActiveRunId()
+      endExecution()
     }
 
     if (!activeRunId) {
@@ -260,7 +260,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       .finally(() => {
         finalizeAbort()
       })
-  }, [activeRunId, clearActiveRunId, setGenerating])
+  }, [activeRunId])
 
   /**
    * Send message core logic
@@ -282,7 +282,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       return
     }
 
-    setGenerating(true)
+    beginStreaming()
 
     // Reset taskStore mode, wait for backend Router decision
     setMode('simple')
@@ -465,11 +465,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     isGenerating,
     inputMessage,
     currentThreadId,
-    threadMode,
     onChunk,
     onNewThread,
     onStreamInterrupted,
-    setGenerating,
     setMode,
     setMessages,
     setInputMessage,
@@ -477,6 +475,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     addMessage,
     resetStreamHandler,
     createChunkHandler,
+    retargetChunk,
     finalizeStream,
     makeStreamCallback,
     markFinalized,
@@ -491,9 +490,9 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
         abortControllerRef.current.abort()
         abortControllerRef.current = null
       }
-      clearActiveRunId()
+      endExecution()
     }
-  }, [clearActiveRunId])
+  }, [])
 
   const resumeExecution = useCallback(async (
     params: ResumeChatParams
@@ -505,7 +504,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
       throw new Error('已有请求正在进行，请稍后再试')
     }
 
-    setGenerating(true)
+    beginStreaming(params.runId)
     abortControllerRef.current = new AbortController()
 
     // 不再预建占位消息：HITL 恢复恒为复杂模式，聚合正文挂服务端自造的
@@ -541,7 +540,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     } finally {
       finalizeStream()
     }
-  }, [isGenerating, onChunk, setGenerating, addMessage, resetStreamHandler, createChunkHandler, retargetChunk, finalizeStream, makeStreamCallback])
+  }, [isGenerating, onChunk, addMessage, resetStreamHandler, createChunkHandler, retargetChunk, finalizeStream, makeStreamCallback])
 
   /**
    * 重新生成指定 AI 消息的回复
@@ -582,7 +581,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     // 🔥 清除该消息 ID 的去重记录，允许再次处理
     clearProcessedMessageDone(String(messageId))
 
-    setGenerating(true)
+    beginStreaming()
     setMode('simple')
     resetStreamHandler()
 
@@ -646,7 +645,7 @@ export function useChatCore(options: UseChatCoreOptions = {}) {
     } finally {
       finalizeStream()
     }
-  }, [isGenerating, currentThreadId, setGenerating, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentThreadId, updateMessage, finalizeStream, makeStreamCallback])
+  }, [isGenerating, currentThreadId, setMode, setMessages, resetStreamHandler, createChunkHandler, onChunk, setCurrentThreadId, updateMessage, finalizeStream, makeStreamCallback])
 
   return {
     sendMessage: sendMessageCore,

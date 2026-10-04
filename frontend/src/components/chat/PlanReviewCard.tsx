@@ -31,7 +31,12 @@ import {
   useTaskActions,
 } from '@/hooks/useTaskSelectors'
 import { useAddMessageAction } from '@/hooks/useChatSelectors'
-import { useChatStore } from '@/store/chatStore'
+import {
+  beginAwaitingApproval,
+  detachStream,
+  endExecution,
+  resolveApproval,
+} from '@/store/executionState'
 
 interface PlanReviewCardProps {
   threadId: string
@@ -73,9 +78,8 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
   const pendingRunId = usePendingRunId()
   const pendingPlanVersion = usePendingPlanVersion()
   const planRevising = usePlanRevising()
-  const { clearPendingPlan, setIsWaitingForApproval, setPlanRevising, setPendingPlan, setMode, clearActiveRunId } = useTaskActions()
+  const { clearPendingPlan, setPlanRevising, setPendingPlan, setMode } = useTaskActions()
   const addMessage = useAddMessageAction()
-  const setGenerating = useChatStore((state) => state.setGenerating)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [showTerminateConfirm, setShowTerminateConfirm] = useState(false)
@@ -152,7 +156,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     const tempMessageId = `temp-resume-${Date.now()}`
     setIsSubmitting(true)
     setMode('complex')
-    setIsWaitingForApproval(false)
+    resolveApproval()
 
     addMessage({
       id: tempMessageId,
@@ -179,7 +183,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     } catch (error) {
       // 任何失败（含中断/重复请求）都必须恢复审批卡片：
       // 后端 run 仍处于 waiting_for_approval，卡片丢失 = 用户被永久卡在"恢复中"
-      setIsWaitingForApproval(true)
+      beginAwaitingApproval()
       if (isAbortError(error)) {
         return
       }
@@ -193,7 +197,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     } finally {
       setIsSubmitting(false)
     }
-  }, [threadId, pendingPlanVersion, pendingRunId, resumeExecution, setIsWaitingForApproval, addMessage, setMode, t])
+  }, [threadId, pendingPlanVersion, pendingRunId, resumeExecution, addMessage, setMode, t])
 
   const handleRevise = useCallback(async (feedback: string) => {
     if (!feedback) {
@@ -233,7 +237,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       })
       // 修订是后端后台任务，前端没有流在跑：输入台不该停在「生成中」
       // （与 terminate 同理：isGenerating 若被上游置真，停止键会一直挂着）
-      setGenerating(false)
+      detachStream()
     } catch (error) {
       // 失败必须恢复审批卡（run 仍处于等待审批）
       if (!isAbortError(error)) {
@@ -242,7 +246,7 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     } finally {
       setIsSubmitting(false)
     }
-  }, [threadId, pendingPlanVersion, pendingRunId, setPlanRevising, addMessage, t, setGenerating])
+  }, [threadId, pendingPlanVersion, pendingRunId, setPlanRevising, addMessage, t])
 
   const handleTerminate = useCallback(async () => {
     if (!pendingRunId) {
@@ -257,7 +261,6 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
     setIsSubmitting(true)
     clearPendingPlan()
     setPlanRevising(false)
-    setIsWaitingForApproval(false)
     setMode('simple')
 
     try {
@@ -280,16 +283,15 @@ export function PlanReviewCard({ threadId, resumeExecution }: PlanReviewCardProp
       // 终止成功 = run 已终态：输入台必须离开「生成中」，停止键回退成发送键。
       // 此前这里只清了卡片、没人动生成态——若 isGenerating 为真（恢复流程会把
       // 「可控」run 标成生成中），停止键就一直挂着，用户也发不出新消息。
-      setGenerating(false)
-      clearActiveRunId()
+      endExecution()
     } catch (error) {
       // 终止失败同样必须恢复审批卡片（后端 run 未取消，仍等待审批）
-      setIsWaitingForApproval(true)
+      beginAwaitingApproval()
       swallowAbort(error)
     } finally {
       setIsSubmitting(false)
     }
-  }, [threadId, pendingPlanVersion, pendingRunId, clearPendingPlan, setIsWaitingForApproval, setPlanRevising, setMode, addMessage, t, swallowAbort, setGenerating, clearActiveRunId])
+  }, [threadId, pendingPlanVersion, pendingRunId, clearPendingPlan, setPlanRevising, setMode, addMessage, t, swallowAbort])
 
   if (!isWaitingForApproval) return null
 
