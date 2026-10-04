@@ -19,7 +19,6 @@
 - 事件双真相源统一——**2026-09-27 已收口**：①crud 中央归一（append_run_event 接受 BaseModel 统一 model_dump(mode=json)，不再依赖 psycopg 隐式适配——SQLite 测试路径会炸、格式不受控）；②task_started/task_failed 单构造双用（此前 SSE 与账本各自构造已实际漂移：账本缺 message_id/sort_order/total_steps、description 硬编码空串，e2e 账本 payload 复核已补齐）；③tool_result 原本就是单构造范本；④task_completed/artifact_generated 的 SSE 与账本是「落库前通知 vs 落库后权威记录」两个事实、router_decided 两边 reason 是展示文案 vs 机器规则名——语义不同，**判定不做统一**（避免丢信息），后人勿再疑惑
 - RunContext 值对象 / 事件双真相源统一（同一组 pydantic 模型约束 SSE 流与 run_events 账本；StreamService 772 行 + parts 三 Mixin、generic 813 行 + 两个纯函数模块的拆解已于 2026-09-27 完成，双 e2e 全绿——结构性大手术已完成，剩余为语义统一类小项）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
-- [ ] i18n 既有重复键措辞审计（2026-10-04 二轮 review 发现，先于本批存在）：7 个键跨文件重复且 zh 值漂移（simpleMode/complexMode/source/deleting/saving/noToolsAvailable 等，如 chat'简单对话模式' vs settings'Simple 模式（直接对话）'）；合并取后文件值，域内意图措辞被别处覆盖。逐键定全局唯一措辞或改键名分域，再清死副本
 - [ ] Redis 限流（现内存态，多 worker 不共享）
 - [ ] 列表虚拟化（会话/画廊长列表）
 

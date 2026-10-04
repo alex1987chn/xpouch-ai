@@ -9,7 +9,6 @@ export const zh = {
   recommended: '推荐场景',
 
   // Create Agent Page - additional keys
-  category: '分类',
   chars: '字符',
   complete: '完成',
   input: '输入中',
@@ -18,7 +17,6 @@ export const zh = {
   tip: '提示',
   
   // Create Agent Page - Preview
-  preview: '预览',
 
   // Expert Names
   commander: '指挥官',
@@ -37,7 +35,6 @@ export const en = {
   recommended: 'Recommended',
 
   // Create Agent Page - additional keys
-  category: 'Category',
   chars: 'chars',
   complete: 'Complete',
   input: 'Input',
@@ -46,7 +43,6 @@ export const en = {
   tip: 'Tip',
   
   // Create Agent Page - Preview
-  preview: 'PREVIEW',
 
   // Expert Names
   commander: 'Commander',
@@ -65,7 +61,6 @@ export const ja = {
   recommended: 'おすすめシーン',
 
   // Create Agent Page - additional keys
-  category: 'カテゴリー',
   chars: '文字',
   complete: '完了',
   input: '入力中',
@@ -74,7 +69,6 @@ export const ja = {
   tip: 'ヒント',
   
   // Create Agent Page - Preview
-  preview: 'プレビュー',
 
   // Expert Names
   commander: 'コマンダー',

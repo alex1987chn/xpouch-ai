@@ -35,7 +35,6 @@ export const zh = {
   runList: '运行记录',
   prev: '上一页',
   next: '下一页',
-  loadFailed: '加载失败',
 }
 
 export const en = {
@@ -72,7 +71,6 @@ export const en = {
   runList: 'Run History',
   prev: 'Prev',
   next: 'Next',
-  loadFailed: 'Load Failed',
 }
 
 export const ja = {
@@ -109,5 +107,4 @@ export const ja = {
   runList: '実行履歴',
   prev: '前へ',
   next: '次へ',
-  loadFailed: '読み込み失敗',
 }

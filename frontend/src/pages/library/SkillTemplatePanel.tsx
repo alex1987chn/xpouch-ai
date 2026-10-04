@@ -548,8 +548,8 @@ export function SkillTemplatePanel({ searchQuery, canEdit }: SkillTemplatePanelP
        onChange={e => setDraft(prev => ({ ...prev, recommended_mode: e.target.value as 'simple' | 'complex' }))}
        className="w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2 text-sm text-content-primary outline-none focus:border-border-focus"
       >
-       <option value="simple">{t('simpleMode') || 'Simple'}</option>
-       <option value="complex">{t('complexMode') || 'Complex'}</option>
+       <option value="simple">{t('templateModeSimple') || 'Simple'}</option>
+       <option value="complex">{t('templateModeComplex') || 'Complex'}</option>
       </select>
      </Field>
      <Field label={t('templateDescription') || 'Description'} className="md:col-span-2">

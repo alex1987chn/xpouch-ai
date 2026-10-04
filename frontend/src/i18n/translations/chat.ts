@@ -16,8 +16,6 @@ export const zh = {
   // Input & Chat
   uploadImage: '上传图片',
   attachmentImages: '图片 ×{count}',
-  simpleMode: '简单对话模式',
-  complexMode: '复杂任务模式',
   simple: '简单',
   complex: '复杂',
   stop: '停止',
@@ -48,6 +46,7 @@ export const zh = {
 
   // Preview Button
   preview: '预览',
+  source: '源码',
 
   // Thinking Process
   thinking: '思考过程',
@@ -200,8 +199,6 @@ export const en = {
   // Input & Chat
   uploadImage: 'Upload Image',
   attachmentImages: 'Images ×{count}',
-  simpleMode: 'Simple Chat Mode',
-  complexMode: 'Complex Task Mode',
   simple: 'Simple',
   complex: 'Complex',
   stop: 'Stop',
@@ -231,6 +228,7 @@ export const en = {
 
   // Preview Button
   preview: 'Preview',
+  source: 'Source',
 
   // Thinking Process
   thinking: 'Thinking',
@@ -382,8 +380,6 @@ export const ja = {
   // Input & Chat
   uploadImage: '画像をアップロード',
   attachmentImages: '画像 ×{count}',
-  simpleMode: 'シンプルチャットモード',
-  complexMode: '複雑なタスクモード',
   simple: 'シンプル',
   complex: '複雑',
   stop: '停止',
@@ -413,6 +409,7 @@ export const ja = {
 
   // Preview Button
   preview: 'プレビュー',
+  source: 'ソース',
 
   // Thinking Process
   thinking: '思考プロセス',
