@@ -9,7 +9,8 @@
  * 搜索为已加载数据的前端过滤（沿用运行统计页惯例，量级 <100 无需服务端搜索）。
  */
 
-import { useMemo, useRef, useEffect, useState } from 'react'
+import type React from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from '@/i18n'
 import { formatDistanceToNow } from 'date-fns'
@@ -104,20 +105,16 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
 
   const locale = localeForLanguage(language)
 
-  // 加载更多：滚动到底触发（IntersectionObserver，沿用 HistoryPage 模式）
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = sentinelRef.current
-    if (!el || !hasNextPage) return
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) void fetchNextPage()
-      },
-      { rootMargin: '200px' }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [hasNextPage, fetchNextPage])
+  // 加载更多：滚动接近底部即翻页（onScroll 直判）。曾用 IntersectionObserver
+  // 哨兵——用户实测环境里首载后观察器不触发（切页重挂载才活），滚动事件
+  // 无此环境敏感性：真实滚动必发事件，不依赖可见性计算。
+  const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!hasNextPage || isFetchingNextPage) return
+    const el = e.currentTarget
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+      void fetchNextPage()
+    }
+  }
 
   // 删除会话：确认后调接口，刷新地层；删的是当前线程则回到新会话
   const handleConfirmDelete = async () => {
@@ -177,7 +174,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
       </div>
 
       {/* 地层列表 */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" onScroll={handleListScroll}>
         {isLoading ? (
           <div className="space-y-2 px-1 pt-1">
             {Array.from({ length: 6 }, (_, i) => (
@@ -251,10 +248,9 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
             ) : null
           )
         )}
-        {/* 加载更多：哨兵自动触发 + 显式按钮兜底（双触发器——观察器在任何
-            环境失灵时按钮仍可手动翻页，且让「还有更多」成为可见事实） */}
+        {/* 加载更多：onScroll 自动 + 显式按钮兜底（让「还有更多」成为可见事实） */}
         {hasNextPage && (
-          <div ref={sentinelRef} className="px-2 pb-2 pt-1">
+          <div className="px-2 pb-2 pt-1">
             <button
               onClick={() => void fetchNextPage()}
               disabled={isFetchingNextPage}

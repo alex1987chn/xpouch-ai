@@ -10,7 +10,8 @@
  * [画布两档宽度] 330px 紧凑 ↔ 560px 宽屏。
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import type React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@/i18n'
 import { useNavigate } from 'react-router-dom'
 import { Package, LayoutGrid, PanelRight, MessagesSquare, SearchX } from 'lucide-react'
@@ -66,21 +67,20 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
   const isLoading = tab === 'thread' ? threadQuery.isLoading : galleryQuery.isLoading
   const hasFilters = tab === 'gallery' && (!!typeFilter || !!search)
 
-  // 画廊加载更多哨兵（thread 页是单查询全量投影，无需翻页）
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const { fetchNextPage: fetchNextGalleryPage, hasNextPage: hasNextGalleryPage } = galleryQuery
-  useEffect(() => {
-    const el = sentinelRef.current
-    if (!el || !hasNextGalleryPage || tab !== 'gallery') return
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) void fetchNextGalleryPage()
-      },
-      { rootMargin: '200px' },
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [hasNextGalleryPage, fetchNextGalleryPage, tab])
+  // 画廊加载更多：滚动接近底部即翻页（onScroll 直判，不依赖 IntersectionObserver
+  // ——用户实测环境里 IO 首载不触发；thread 页是单查询全量投影，无需翻页）
+  const {
+    fetchNextPage: fetchNextGalleryPage,
+    hasNextPage: hasNextGalleryPage,
+    isFetchingNextPage: isFetchingNextGalleryPage,
+  } = galleryQuery
+  const handleGalleryScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (tab !== 'gallery' || !hasNextGalleryPage || isFetchingNextGalleryPage) return
+    const el = e.currentTarget
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+      void fetchNextGalleryPage()
+    }
+  }
 
   const locale = localeForLanguage(language)
 
@@ -232,7 +232,7 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
       )}
 
       {/* 卡片栅格 */}
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3" onScroll={handleGalleryScroll}>
         {isLoading ? (
           <div className="grid grid-cols-2 gap-2">
             {Array.from({ length: 4 }, (_, i) => (
@@ -260,7 +260,17 @@ export function ArtifactCanvas({ threadId }: ArtifactCanvasProps) {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">{activeList.map(renderCard)}</div>
-            {tab === 'gallery' && hasNextGalleryPage && <div ref={sentinelRef} className="h-6" />}
+            {tab === 'gallery' && hasNextGalleryPage && (
+              <div className="pb-2 pt-1">
+                <button
+                  onClick={() => void fetchNextGalleryPage()}
+                  disabled={isFetchingNextGalleryPage}
+                  className="w-full rounded-sm py-1.5 text-tiny text-content-muted transition-colors hover:bg-surface-tint/60 hover:text-content-secondary disabled:opacity-50"
+                >
+                  {isFetchingNextGalleryPage ? t('loading') : t('loadMoreThreads')}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
