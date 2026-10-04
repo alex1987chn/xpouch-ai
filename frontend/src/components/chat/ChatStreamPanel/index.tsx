@@ -180,8 +180,11 @@ export default function ChatStreamPanel({
   const isWaitingForApproval = useIsWaitingForApproval()
   const runningTaskIds = useRunningTaskIds()
   
-  // 从 TaskStore 计算状态
-  const isExecuting = mode === 'complex' && runningTaskIds.size > 0
+  // 从 TaskStore 计算状态。isExecuting 双源合一：run 级投影（isGenerating，
+  // 刷新后经 adoptRestoredExecution 重建）OR 任务级集合（taskEvents 维护、
+  // 会话内存态）——只靠后者时刷新中恢复执行会漏判，只靠前者则失去波次
+  // 间隙的粒度，取并集（2026-10-04 脑裂审计）
+  const isExecuting = mode === 'complex' && (isGenerating || runningTaskIds.size > 0)
   const isPlanning = mode === 'complex' && !isExecuting && !isWaitingForApproval
 
   // 获取计划步骤数

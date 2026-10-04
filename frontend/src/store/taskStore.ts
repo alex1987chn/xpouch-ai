@@ -90,19 +90,19 @@ export const useTaskStore = create<TaskStore>()(
       // Set → 数组：JSON 表达不了 Set（官方 persist 用 JSON 存），读回时在 merge 里还原。
       partialize: (state) =>
         ({
-          // UISlice：跨刷新需要保留的 UI 状态
-          runningTaskIds: Array.from(state.runningTaskIds),
           mode: state.mode,
-          // 不持久化临时状态：isWaitingForApproval, pendingPlan
-          // 这些状态应该在页面刷新后通过 API 恢复
+          // 不持久化：isWaitingForApproval / pendingPlan（刷新后经 API 恢复）、
+          // runningTaskIds（服务端派生态——任务在不在跑的真相在服务端，
+          // 刷新后由 restore 按 subtask 状态重建；持久化它=陈旧副本，
+          // 任务早完成后仍会假阳性「执行中」，2026-10-04 脑裂审计清除）
         }) as unknown as Partial<TaskStore>,
       merge: (persisted, current) => {
-        // 读回时把 Set 还原（store 内部契约是 Set，见 createUISlice）
-        const restored = (persisted ?? {}) as { runningTaskIds?: string[] }
+        // 旧版本 localStorage 可能残留 runningTaskIds 数组（已退役的持久化键）：
+        // 显式丢弃而非展开——服务端派生态不接收任何本地陈旧值
+        const { runningTaskIds: _stale, ...rest } = (persisted ?? {}) as Partial<TaskStore>
         return {
           ...current,
-          ...(persisted as Partial<TaskStore>),
-          runningTaskIds: new Set(restored.runningTaskIds ?? []),
+          ...rest,
         }
       },
       onRehydrateStorage: () => (_state, error) => {

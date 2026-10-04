@@ -22,16 +22,19 @@ function readPersisted(): { state: Record<string, unknown>; version: number } {
 describe('taskStore 持久化', () => {
   beforeEach(() => {
     localStorage.clear()
-    useTaskStore.setState({ mode: null })
+    useTaskStore.setState({ mode: null, runningTaskIds: new Set() })
   })
 
-  it('只写 UI 偏好，且 Set 落成数组（JSON 可表达）', () => {
+  it('只写 UI 偏好，服务端派生态不入 localStorage', () => {
     useTaskStore.getState().setMode('complex')
+    useTaskStore.getState().addRunningTaskId('task-x')
 
     const persisted = readPersisted()
     expect(persisted.version).toBe(3)
     expect(persisted.state.mode).toBe('complex')
-    expect(Array.isArray(persisted.state.runningTaskIds)).toBe(true)
+    // runningTaskIds 是服务端派生态（任务在不在跑的真相在服务端），持久化它
+    // = 刷新后拿陈旧副本假阳性「执行中」——2026-10-04 脑裂审计清除
+    expect(persisted.state).not.toHaveProperty('runningTaskIds')
     // 服务端数据的本地副本不得再进 localStorage（唯一真相在服务端）
     expect(persisted.state).not.toHaveProperty('tasks')
     expect(persisted.state).not.toHaveProperty('executionPlan')
@@ -40,7 +43,7 @@ describe('taskStore 持久化', () => {
     expect(persisted.state).not.toHaveProperty('planThinkingContent')
   })
 
-  it('读回时把数组还原成 Set（merge 的另一半）', async () => {
+  it('旧数据里残留的 runningTaskIds 不再被还原（陈旧副本防线）', async () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -56,7 +59,8 @@ describe('taskStore 持久化', () => {
 
     const state = useTaskStore.getState()
     expect(state.runningTaskIds).toBeInstanceOf(Set)
-    expect([...state.runningTaskIds].sort()).toEqual(['task-a', 'task-b'])
+    // 集合保持空：taskEvents 之外没人写入，刷新后由 restore 按服务端真相重建
+    expect(state.runningTaskIds.size).toBe(0)
     expect(state.mode).toBe('complex')
   })
 
