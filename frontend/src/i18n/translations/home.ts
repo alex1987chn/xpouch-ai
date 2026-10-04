@@ -15,7 +15,6 @@ export const zh = {
   input: '输入中',
 
   // 首页场景示例（点击即真实执行）
-  systemPromptPlaceholder: '你是一个专业的 AI 助手，擅长...',
   tip: '提示',
   
   // Create Agent Page - Preview
@@ -44,7 +43,6 @@ export const en = {
   input: 'Input',
 
   // Home scene examples (click to run live)
-  systemPromptPlaceholder: 'You are a professional AI assistant, skilled in...',
   tip: 'Tip',
   
   // Create Agent Page - Preview
@@ -73,7 +71,6 @@ export const ja = {
   input: '入力中',
 
   // ホームシーン例（クリックで実際に実行）
-  systemPromptPlaceholder: 'あなたは専門的なAIアシスタントで、...',
   tip: 'ヒント',
   
   // Create Agent Page - Preview

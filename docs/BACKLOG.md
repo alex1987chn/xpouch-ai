@@ -20,6 +20,7 @@
 - RunContext 值对象 / 事件双真相源统一（同一组 pydantic 模型约束 SSE 流与 run_events 账本；StreamService 772 行 + parts 三 Mixin、generic 813 行 + 两个纯函数模块的拆解已于 2026-09-27 完成，双 e2e 全绿——结构性大手术已完成，剩余为语义统一类小项）
 - [ ] 前端状态三轨统一（周级，**主体完成 2026-10-04，待用户手工验证后销项**）：Phase A 所有权清单 docs/FRONTEND-STATE.md；Phase B 离开编排单点化 leaveCurrentThread；Phase C 执行态三投影归一（executionState.ts 七种转换，组件层零直写，SSE/恢复/生命周期三个例外面）；Phase D 恢复写入同帧提交。剩余：轮询状态机本体仍在 hook 实例内（投影已归一，状态机搬迁收益边际化，条件触发再动）
 - [ ] User 表验证码六列摊平（规范=独立表；能用，收益低，搁置）
+- [ ] i18n 既有重复键措辞审计（2026-10-04 二轮 review 发现，先于本批存在）：7 个键跨文件重复且 zh 值漂移（simpleMode/complexMode/source/deleting/saving/noToolsAvailable 等，如 chat'简单对话模式' vs settings'Simple 模式（直接对话）'）；合并取后文件值，域内意图措辞被别处覆盖。逐键定全局唯一措辞或改键名分域，再清死副本
 - [ ] i18n 按域拆分收尾（**主体完成 2026-10-04**）：死键审计已做（5 个真死键已删）；Navigation/StatsPage/Chat Actions/Create Agent/认证账户域（45 键→auth.ts）均已迁出，common.ts 481→145 行仅剩真跨域词汇。剩余：User Menu 残余（logout/download 等跨域词按主要消费者归 settings 或留在 common，收益边际）；判据同死键审计——`t('<key>')` 为空 ≠ 死键，`expertIdentity` 类映射是动态引用，删前连映射表一起查
 - [ ] Redis 限流（现内存态，多 worker 不共享）
 - [ ] 列表虚拟化（会话/画廊长列表）

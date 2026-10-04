@@ -25,7 +25,7 @@
 import { useEffect, useRef, useCallback, useReducer } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getRunStatus } from '@/services/run'
-import { endExecution } from '@/store/executionState'
+import { abandonTracking, endExecution } from '@/store/executionState'
 import { useTaskStore } from '@/store/taskStore'
 import { chatHistoryKeys } from '@/hooks/queries/useChatHistoryQuery'
 import { artifactsKeys } from '@/hooks/queries/useArtifactsQuery'
@@ -278,7 +278,9 @@ export function useRunPolling(options: UseRunPollingOptions = {}): UseRunPolling
     if (shouldStop && state.status !== 'error') {
       logger.warn('[useRunPolling] 停止轮询：错误条件满足')
       dispatch({ type: 'ERROR_OCCURRED' })
-      endExecution()
+      // 只放弃前端接管，不撤审批卡：run 服务端可能仍在等待，网络抖动不构成
+      // 撤卡理由（abandonTracking 的语义，见 executionState.ts）
+      abandonTracking()
     }
   }, [error, state.status])
 

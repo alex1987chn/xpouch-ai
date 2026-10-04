@@ -76,17 +76,20 @@
 ## 五、执行态转换（Phase C 已收敛）
 
 三份投影（isGenerating / isWaitingForApproval / activeRunId）在组件/hook 层
-的**唯一写入入口**是 `src/store/executionState.ts` 的七种转换：
+的**唯一写入入口**是 `src/store/executionState.ts` 的八种转换：
 beginStreaming / attachRunId / detachStream / beginAwaitingApproval /
-resolveApproval / endExecution / adoptRestoredExecution。合法例外写入面：
+resolveApproval / endExecution / abandonTracking / adoptRestoredExecution。合法例外写入面：
 - SSE 事件面：systemEvents 经 `setPendingPlan` 下发审批数据（slice 内置 waiting=true）
 - 服务端校准面：useSessionRestore（经 adoptRestoredExecution / endExecution）
 - 会话生命周期：leaveCurrentThread / resetAll（整体重置，不做投影级区分）
 
-**顺序铁律**（Phase C 全局 review 抓出的实案）：读-改-写序列里凡涉及
-isWaitingForApproval 的判断，必须**先读后调 endExecution**——该转换会把
-waiting 一并归零，判断放它之后恒读 false（useRunPolling 过期审批卡撤除
-差点因此失效）。
+**顺序铁律**（Phase C 两轮 review 抓出的实案，均已在代码中修复）：
+1. 读-改-写序列里凡涉及 isWaitingForApproval 的判断，必须**先读后调
+   endExecution**——该转换会把 waiting 一并归零，判断放它之后恒读 false
+   （useRunPolling 过期审批卡撤除差点失效）。
+2. **轮询错误停止 ≠ 执行终点**：前端跟丢（网络抖动/404）时走
+   abandonTracking（清 generating/runId、**保留审批卡**）——run 在服务端
+   可能仍好好等着，撤卡理由必须是 run 终态（endExecution），不是前端失联。
 
 **已知行为差异**（有意）：等审批时发送新消息，beginStreaming 会撤下审批卡
 （原行为卡片残留）；后端 ACTIVE_RUN_CONFLICT 的 409 提示接管用户认知，

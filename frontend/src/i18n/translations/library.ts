@@ -451,7 +451,7 @@ export const ja = {
   templateShareCopied: '共有リンクをコピーしました',
   templateShareHint: 'リンクを開くとテンプレート JSON を取得できます。本システムの「ライブラリ → インポート」に貼り付けてください。',
   templateShareFailed: '共有に失敗しました',
-    exported: 'エクスポートしました',
+  exported: 'エクスポートしました',
   templateExported: 'テンプレートをエクスポートしました',
   exportFailed: 'エクスポートに失敗しました',
   loadFailed: '読み込みに失敗しました',

@@ -66,6 +66,19 @@ export function endExecution(options: { keepRunId?: boolean } = {}): void {
 }
 
 /**
+ * 前端放弃接管（轮询错误停止等）：清生成态与接管对象，**不动审批卡**。
+ *
+ * 为什么不清 waiting：轮询在 run 等审批期间也在跑（hitl_paused 态），连续
+ * 网络错误只说明「前端跟丢了」，run 在服务端可能仍好好等着——审批卡属于
+ * run 的真相，前端失联不构成撤卡理由（用 endExecution 会在网络抖动时撤卡，
+ * 2026-10-04 二轮 review 抓出的回归，原实现恰好只清 generating/runId）。
+ */
+export function abandonTracking(): void {
+  useChatStore.getState().setGenerating(false)
+  useTaskStore.getState().clearActiveRunId()
+}
+
+/**
  * 恢复路径的服务端校准入口：按 GET /threads 的真相一次性对齐三投影。
  * `streaming` 仅对 running/resuming 为真（等待审批是等人，不是生成——
  * 恢复曾把全部「可控」态都标成生成中，导致刷新后点批准被本地误拦）。
