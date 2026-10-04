@@ -241,6 +241,17 @@ async def _wait_until(predicate, *, timeout: float, what: str) -> None:
     raise AssertionError(f"超时：{what}")
 
 
+async def _wait_until_async(predicate, *, timeout: float, what: str) -> None:
+    """_wait_until 的异步谓词版（谓词本身要 await，如查库）。"""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
+        if await predicate():
+            return
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"超时：{what}")
+
+
 @pytest.mark.asyncio
 async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine):
     monkeypatch.setattr(settings, "stream_timeout", 0.05)
@@ -344,6 +355,19 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
             timeout=5,
             what="第一波两个分支开跑且 调研甲 完成",
         )
+
+        # 前置补齐（2026-10-05 CI 两连挂的真根因）：LLM 桩的 started/completed
+        # 记账**先于**图级事件发射——慢 CI 上此刻可能还没有任何执行帧流经
+        # pipeline（0 帧被 record），后面断言「执行期事件应连续落帧」的前提
+        # （至少存在一帧）就不成立。等首帧落库再取消（flush 0.1s，代价极小），
+        # 断言从此确定性成立，与机器速度无关。
+        from crud.run_stream_frame import list_frames_after as _lfa
+
+        async def _first_frame_landed() -> bool:
+            async with _test_session() as db:
+                return bool(await _lfa(db, "r1", 0))
+
+        await _wait_until_async(_first_frame_landed, timeout=5, what="首帧落库（断言前提）")
 
         recovery = RecoveryService(_test_session())
         result = await recovery.cancel_run("r1", "u1")
