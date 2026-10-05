@@ -123,10 +123,19 @@ The current stable baseline includes:
 - Complex mode (planner + experts) models are configured per expert in Expert Management
 - Users simply use the product — model/thinking governance is admin-side (see the two-role model below)
 
+### Bring your own key (BYOK)
+
+- Each user can configure personal provider API keys in **Settings → API Keys** — a user key takes priority over the instance key for that provider's LLM calls, so usage bills to the user's own account
+- Keys are Fernet-encrypted at rest; the master key (`BYOK_MASTER_KEY`) lives only in the server environment. Plaintext is never returned by any API or shown in any UI — only a last-4 mask; admins see masked metadata only
+- A "test connection" button probes the provider with the saved key; credential-class failures (401/402/403/429) attribute the error to the user's own key with a pointer to settings
+- Deleting a key takes effect on the next request (falls back to the instance key); leave `BYOK_MASTER_KEY` unset to disable the feature entirely — behavior stays byte-for-byte identical to before
+- Embeddings always use the instance key (deliberate scope for v1)
+
 ### Multimodal image input
 
 - Attach images to a chat message; vision models (DeepSeek V4.1 Flash, Kimi K2.6) see them natively via OpenAI-style multimodal content
-- Non-vision models reject image input explicitly instead of failing silently
+- In complex mode, images travel with the wave dispatch into expert workers: vision experts consume them natively, non-vision experts get an explicit in-prompt annotation instead of silently losing the images
+- Non-vision models in simple mode reject image input explicitly instead of failing silently
 
 ### Template sharing
 
