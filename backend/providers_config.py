@@ -176,10 +176,22 @@ def get_provider_api_key(provider: str) -> str | None:
 
     Returns:
         API Key 或 None
+
+    BYOK（2026-10-05）：优先取当前执行上下文里的用户 key（ContextVar，
+    由请求入口经 utils.byok.load_user_api_keys 装载——本函数是同步的、
+    查表是异步的，环境上下文是唯一不撞异步纪律的传法），无则回退
+    实例 env key（与 BYOK 之前逐字节一致）。embedding 不走本函数
+    （直读 env），天然留在实例 key。
     """
     config = get_provider_config(provider)
     if not config:
         return None
+
+    from utils.byok import resolve_user_key
+
+    user_key = resolve_user_key(provider)
+    if user_key:
+        return user_key
 
     env_key = config.get("env_key")
     if env_key:

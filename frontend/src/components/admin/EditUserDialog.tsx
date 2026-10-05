@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from '@/i18n'
 import { X, Copy, Check, KeyRound, Loader2 } from 'lucide-react'
 import { ModalShell } from '@/components/ui/modal-shell'
@@ -15,6 +16,7 @@ import { pushToast } from '@/components/ui/use-toast'
 import {
   updateAdminUser, resetAdminUserPassword, type AdminUser,
 } from '@/services/admin'
+import { getUserApiKeysMetadata } from '@/services/admin'
 import { cn } from '@/lib/utils'
 import { useCopy } from '@/hooks/useCopy'
 
@@ -34,6 +36,13 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'admin' | 'user'>('user')
+  // BYOK 元信息（掩码）：管理员可见「配了哪些 provider」但永远看不到明文
+  const byokQuery = useQuery({
+    queryKey: ['admin-user-apikeys', user?.id],
+    queryFn: () => getUserApiKeysMetadata(user!.id),
+    enabled: open && !!user,
+    staleTime: 30_000,
+  })
   const [isSaving, setIsSaving] = useState(false)
 
   // 重置密码区
@@ -197,6 +206,25 @@ export function EditUserDialog({ open, user, isSelf, onClose, onSaved }: EditUse
           </div>
         )}
       </div>
+
+      {/* BYOK 元信息（只读掩码） */}
+      {(byokQuery.data?.length ?? 0) > 0 && (
+        <div className="flex flex-col gap-2 border-t border-border-divider px-5 py-4">
+          <span className="text-micro font-bold text-content-secondary">
+            {t('byokTitle')}（{t('byokAdminReadonly')}）
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {byokQuery.data!.map(k => (
+              <span
+                key={k.provider}
+                className="rounded-full border border-border-default bg-surface-page px-2 py-0.5 font-mono text-nano text-content-secondary"
+              >
+                {k.provider} {k.key_hint}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 重置密码区 */}
       <div className="flex flex-col gap-3 border-t border-border-divider px-5 py-4">

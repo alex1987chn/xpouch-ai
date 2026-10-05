@@ -335,6 +335,12 @@ async def chat_endpoint(
     # 1.5 附件文档解析（任一失败即 400，不产生半截消息）
     parsed_documents = _parse_documents(request.documents)
 
+    # BYOK：装载本用户的 provider key（ContextVar；SSE 流与后台 producer 共享
+    # 请求上下文/复制上下文，全链路 LLM 调用解析「用户 key > 实例 key」）
+    from utils.byok import load_user_api_keys, set_byok_context
+
+    set_byok_context(await load_user_api_keys(session, current_user.id))
+
     await ensure_no_active_run_for_thread(
         session,
         thread_id=thread_id,
@@ -479,6 +485,7 @@ async def resume_chat(
             thread_id=request.thread_id,
             execution_plan_id=result["execution_plan_id"],
             feedback=(request.feedback or "").strip(),
+            user_id=current_user.id,
         )
     return result
 

@@ -12,9 +12,11 @@ from sqlmodel import Session, select
 
 from database import engine, get_session
 from dependencies import get_current_user_with_auth, require_role
-from models import Thread, User, UserRole
+from models import Thread, User, UserApiKey, UserRole
+from schemas.byok import ApiKeyListResponse, ApiKeyMeta, ApiKeyTestResponse, ApiKeyUpsertRequest
 from schemas.user_profile import UpdateUserRequest, UpdateUserSettingsRequest, UserProfileResponse
 from utils.exceptions import NotFoundError
+from utils.logger import logger
 from utils.time import utc_now
 
 router = APIRouter(prefix="/api", tags=["system"])
@@ -387,3 +389,136 @@ async def get_usage_summary(
         "today": await _sum_since(today_start),
         "total": await _sum_since(None),
     }
+
+
+# ============================================================================
+# BYOK：用户自带 API Key（2026-10-05 v1）
+# 明文只在写入请求出现一次、落库即加密；所有响应只带掩码元信息
+# ============================================================================
+
+
+@router.get("/user/api-keys", response_model=ApiKeyListResponse)
+async def list_my_api_keys(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_auth),
+):
+    """列出当前用户的 BYOK key（掩码元信息）。enabled=false = 实例未配置主密钥。"""
+    from utils.byok import byok_enabled
+
+    if not byok_enabled():
+        return ApiKeyListResponse(enabled=False, items=[])
+    items = [
+        ApiKeyMeta(provider=row.provider, key_hint=row.key_hint, updated_at=row.updated_at)
+        for row in (
+            await session.exec(select(UserApiKey).where(UserApiKey.user_id == current_user.id))
+        ).all()
+    ]
+    return ApiKeyListResponse(enabled=True, items=items)
+
+
+@router.put("/user/api-keys", response_model=ApiKeyMeta)
+async def upsert_my_api_key(
+    request: ApiKeyUpsertRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_auth),
+):
+    """录入/更新一个 provider 的 key（覆盖语义；明文落库即加密，响应只回掩码）。"""
+    from utils.byok import byok_enabled, encrypt_key, key_hint
+    from utils.exceptions import ValidationError
+
+    if not byok_enabled():
+        raise ValidationError(
+            message="本实例未启用 BYOK（管理员未配置 BYOK_MASTER_KEY）",
+        )
+
+    from providers_config import get_provider_config
+
+    provider = request.provider.strip()
+    config = get_provider_config(provider)
+    if not config or not config.get("enabled", True):
+        raise ValidationError(message=f"未知或已禁用的提供商: {provider}")
+
+    row = (
+        await session.exec(
+            select(UserApiKey).where(
+                UserApiKey.user_id == current_user.id, UserApiKey.provider == provider
+            )
+        )
+    ).first()
+    hint = key_hint(request.api_key.strip())
+    if row:
+        row.encrypted_key = encrypt_key(request.api_key.strip())
+        row.key_hint = hint
+        row.updated_at = utc_now()
+    else:
+        row = UserApiKey(
+            user_id=current_user.id,
+            provider=provider,
+            encrypted_key=encrypt_key(request.api_key.strip()),
+            key_hint=hint,
+            updated_at=utc_now(),
+        )
+        session.add(row)
+    await session.commit()
+    logger.info(f"[BYOK] user={current_user.id} 更新 provider={provider} 的 key（{hint}）")
+    return ApiKeyMeta(provider=provider, key_hint=hint, updated_at=row.updated_at)
+
+
+@router.delete("/user/api-keys/{provider}", status_code=204)
+async def delete_my_api_key(
+    provider: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_auth),
+):
+    """删除当前用户在某 provider 的 key（删除后该 provider 回落实例 key）。"""
+    row = (
+        await session.exec(
+            select(UserApiKey).where(
+                UserApiKey.user_id == current_user.id, UserApiKey.provider == provider
+            )
+        )
+    ).first()
+    if row:
+        await session.delete(row)
+        await session.commit()
+        logger.info(f"[BYOK] user={current_user.id} 删除 provider={provider} 的 key")
+
+
+@router.post("/user/api-keys/{provider}/test", response_model=ApiKeyTestResponse)
+async def test_my_api_key(
+    provider: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_auth),
+):
+    """用**已保存**的 key 打 provider 的 /models（不收请求体明文，避免二次传输）。"""
+    import httpx
+
+    from utils.byok import byok_enabled, load_user_api_keys
+
+    if not byok_enabled():
+        return ApiKeyTestResponse(ok=False, detail="本实例未启用 BYOK")
+
+    from providers_config import get_provider_config
+
+    config = get_provider_config(provider)
+    if not config:
+        return ApiKeyTestResponse(ok=False, detail=f"未知提供商: {provider}")
+
+    keys = await load_user_api_keys(session, current_user.id)
+    key = keys.get(provider)
+    if not key:
+        return ApiKeyTestResponse(ok=False, detail=f"尚未保存 {provider} 的 key")
+
+    base_url = (config.get("base_url") or "").rstrip("/")
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{base_url}/models", headers={"Authorization": f"Bearer {key}"}
+            )
+        if resp.status_code == 200:
+            return ApiKeyTestResponse(ok=True, detail="连接成功")
+        return ApiKeyTestResponse(
+            ok=False, detail=f"提供商返回 {resp.status_code}（key 无效或无权限）"
+        )
+    except httpx.HTTPError as exc:
+        return ApiKeyTestResponse(ok=False, detail=f"网络错误: {exc.__class__.__name__}")

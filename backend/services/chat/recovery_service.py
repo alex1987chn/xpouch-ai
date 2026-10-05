@@ -146,6 +146,12 @@ class RecoveryService:
                 status_code=409,
             )
 
+        # BYOK：装载 run 属主的 key（恢复流 + 后台修订任务都从这里继承；
+        # 修订任务自身也会再装一次——它可能被其他路径调度，不依赖继承）
+        from utils.byok import load_user_api_keys, set_byok_context
+
+        set_byok_context(await load_user_api_keys(self.db, agent_run.user_id))
+
         # 2. 分支处理：修订（驳回+反馈，任务保持挂起）/ 终止。
         # 三个裁决动作各记一条审计日志（与管理面 8 个动作同一 append-only 通道），
         # 只在分支**成功返回后**落笔——失败路径不产生"做了没做成"的误导记录。
@@ -324,6 +330,7 @@ class RecoveryService:
         thread_id: str,
         execution_plan_id: str,
         feedback: str,
+        user_id: str | None = None,
     ) -> None:
         """后台修订任务（路由层 BackgroundTasks 调度；独立会话）。
 
@@ -333,7 +340,13 @@ class RecoveryService:
         """
         from agents.services.plan_revision import revise_plan_tasks
 
+        # BYOK 自持装载：任务可能从任意路径调度（不依赖调用方上下文），
+        # user_id 缺失时回退实例 key（安全降级方向）
+        from utils.byok import load_user_api_keys, set_byok_context
+
         async with SessionFactory() as session:
+            if user_id:
+                set_byok_context(await load_user_api_keys(session, user_id))
             plan = await session.get(ExecutionPlan, execution_plan_id)
             if not plan:
                 logger.error(f"[HITL REVISION] 计划不存在: {execution_plan_id}")

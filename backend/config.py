@@ -128,6 +128,8 @@ class Settings(BaseSettings):
 
     # 安全限制
     max_upload_size_mb: int = Field(default=10, alias="MAX_UPLOAD_SIZE_MB")
+    # BYOK 用户 key 加密主密钥（Fernet；空 = 功能关闭）。生成：openssl rand -base64 32
+    byok_master_key: str = Field(default="", alias="BYOK_MASTER_KEY")
     request_timeout_seconds: int = Field(default=120, alias="REQUEST_TIMEOUT_SECONDS")
 
     # 初始管理员配置（方案1：环境变量）

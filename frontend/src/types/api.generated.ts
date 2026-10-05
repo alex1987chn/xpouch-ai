@@ -586,6 +586,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{user_id}/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List User Api Keys Metadata
+         * @description 用户 BYOK key 元信息（管理台只读视图）。
+         *
+         *     只有掩码元数据（provider / 尾 4 位 / 更新时间）——明文对管理员也
+         *     不可见（加密落库，主密钥不在库里）；删除经管理台用户管理流程另行处理。
+         */
+        get: operations["list_user_api_keys_metadata_api_admin_users__user_id__api_keys_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/library/templates": {
         parameters: {
             query?: never;
@@ -1230,6 +1253,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/user/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List My Api Keys
+         * @description 列出当前用户的 BYOK key（掩码元信息）。enabled=false = 实例未配置主密钥。
+         */
+        get: operations["list_my_api_keys_api_user_api_keys_get"];
+        /**
+         * Upsert My Api Key
+         * @description 录入/更新一个 provider 的 key（覆盖语义；明文落库即加密，响应只回掩码）。
+         */
+        put: operations["upsert_my_api_key_api_user_api_keys_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/user/api-keys/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete My Api Key
+         * @description 删除当前用户在某 provider 的 key（删除后该 provider 回落实例 key）。
+         */
+        delete: operations["delete_my_api_key_api_user_api_keys__provider__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/user/api-keys/{provider}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test My Api Key
+         * @description 用**已保存**的 key 打 provider 的 /models（不收请求体明文，避免二次传输）。
+         */
+        post: operations["test_my_api_key_api_user_api_keys__provider__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/mcp/servers": {
         parameters: {
             query?: never;
@@ -1702,6 +1789,52 @@ export interface components {
             completed_at: string | null;
             /** Started At */
             started_at: string | null;
+        };
+        /** ApiKeyListResponse */
+        ApiKeyListResponse: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["ApiKeyMeta"][];
+        };
+        /**
+         * ApiKeyMeta
+         * @description key 元信息（掩码）——用户侧与管理台共用形状
+         */
+        ApiKeyMeta: {
+            /** Provider */
+            provider: string;
+            /** Key Hint */
+            key_hint: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ApiKeyTestResponse
+         * @description 测试连接结果：用已保存的 key 打 provider 的 /models（写入前先存后测，
+         *     或前端先存再测；不测请求体里的明文——避免明文二次传输）
+         */
+        ApiKeyTestResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Detail */
+            detail: string;
+        };
+        /**
+         * ApiKeyUpsertRequest
+         * @description 录入/更新一个 provider 的 key（覆盖语义：同 provider 整行替换）
+         */
+        ApiKeyUpsertRequest: {
+            /** Provider */
+            provider: string;
+            /** Api Key */
+            api_key: string;
         };
         /**
          * ArtifactDetailResponse
@@ -4428,6 +4561,37 @@ export interface operations {
             };
         };
     };
+    list_user_api_keys_metadata_api_admin_users__user_id__api_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyMeta"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_skill_templates_api_library_templates_get: {
         parameters: {
             query?: {
@@ -5564,6 +5728,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UsageSummaryResponse"];
+                };
+            };
+        };
+    };
+    list_my_api_keys_api_user_api_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyListResponse"];
+                };
+            };
+        };
+    };
+    upsert_my_api_key_api_user_api_keys_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiKeyUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyMeta"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_my_api_key_api_user_api_keys__provider__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_my_api_key_api_user_api_keys__provider__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyTestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

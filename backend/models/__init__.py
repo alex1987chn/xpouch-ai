@@ -55,6 +55,7 @@ from models.domain import (  # noqa: E402
     Thread,
     ToolPolicy,
     User,
+    UserApiKey,
     UserSettings,
 )
 from models.enums import (  # noqa: E402
@@ -147,6 +148,7 @@ __all__ = [
     "UserMemory",
     "MCPServer",
     "UserSettings",
+    "UserApiKey",
     # DTO - Conversation
     "MessageResponse",
     "ThreadListResponse",

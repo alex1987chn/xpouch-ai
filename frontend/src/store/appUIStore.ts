@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 /** 设置中心的分区；三个历史入口（设置/个人设置/账号与安全）映射为初始分区 */
-export type SettingsSection = 'profile' | 'security' | 'about'
+export type SettingsSection = 'profile' | 'security' | 'apiKeys' | 'about'
 
 type AppUIState = {
   isSidebarCollapsed: boolean

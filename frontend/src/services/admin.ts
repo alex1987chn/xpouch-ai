@@ -601,3 +601,10 @@ export async function deleteUserMemory(id: number): Promise<void> {
     await handleResponse(response, '删除记忆失败')
   }
 }
+
+export async function getUserApiKeysMetadata(userId: string): Promise<
+  { provider: string; key_hint: string; updated_at: string }[]
+> {
+  const response = await authenticatedFetch(buildUrl(`/admin/users/${userId}/api-keys`))
+  return handleResponse(response, '获取用户 API Key 元信息失败')
+}

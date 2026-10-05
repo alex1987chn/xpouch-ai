@@ -39,6 +39,7 @@ from schemas.admin import (
     MemoryAdminListResponse,
     UserPromoteRequest,
 )
+from schemas.byok import ApiKeyMeta
 from services.chat.thread_service import ChatThreadService
 from utils.jwt_handler import hash_password
 from utils.logger import logger
@@ -1253,3 +1254,23 @@ async def delete_user_memory(
     logger.info(
         f"[Admin] Memory #{memory_id} of user '{memory.user_id}' deleted by admin (version n/a)"
     )
+
+
+@router.get("/users/{user_id}/api-keys", response_model=list[ApiKeyMeta])
+async def list_user_api_keys_metadata(
+    user_id: str,
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_admin),
+):
+    """用户 BYOK key 元信息（管理台只读视图）。
+
+    只有掩码元数据（provider / 尾 4 位 / 更新时间）——明文对管理员也
+    不可见（加密落库，主密钥不在库里）；删除经管理台用户管理流程另行处理。
+    """
+    from models import UserApiKey
+
+    rows = (await session.exec(select(UserApiKey).where(UserApiKey.user_id == user_id))).all()
+    return [
+        ApiKeyMeta(provider=row.provider, key_hint=row.key_hint, updated_at=row.updated_at)
+        for row in rows
+    ]

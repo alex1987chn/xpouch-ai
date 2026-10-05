@@ -10,7 +10,7 @@
  */
 
 import { createPortal } from 'react-dom'
-import { User, ShieldCheck, Info, X, LogOut } from 'lucide-react'
+import { KeyRound, User, ShieldCheck, Info, X, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTranslation, type Language } from '@/i18n'
 import { Segmented } from '@/components/ui/segmented'
@@ -24,6 +24,7 @@ import { useEscapeToClose } from '@/hooks/useEscapeToClose'
 import { useDialogA11y } from '@/hooks/useDialogA11y'
 import { ProfileSection } from '@/components/settings/sections/ProfileSection'
 import { SecuritySection } from '@/components/settings/sections/SecuritySection'
+import { ApiKeysSection } from '@/components/settings/sections/ApiKeysSection'
 import { AboutSection } from '@/components/settings/sections/AboutSection'
 
 /** 语言切换分段胶囊（设置中心头部，蓝本 .seg 语法） */
@@ -73,6 +74,7 @@ export function SettingsHubDialog() {
   const tabs: { key: SettingsSection; label: string; icon: typeof User }[] = [
     { key: 'profile', label: t('userConfig'), icon: User },
     { key: 'security', label: t('accountSecurity'), icon: ShieldCheck },
+    { key: 'apiKeys', label: t('byokTitle'), icon: KeyRound },
     { key: 'about', label: t('navAbout'), icon: Info },
   ]
 
@@ -154,6 +156,7 @@ export function SettingsHubDialog() {
             className="flex-1 min-h-0 flex flex-col animate-in fade-in duration-150"
           >
             {section === 'profile' && <ProfileSection onClose={closeSettings} />}
+            {section === 'apiKeys' && <ApiKeysSection />}
             {section === 'security' && <SecuritySection />}
             {section === 'about' && <AboutSection />}
           </div>
