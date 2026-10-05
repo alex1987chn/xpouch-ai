@@ -22,13 +22,13 @@ def fake_provider(monkeypatch):
     def _install(**overrides):
         config.update(overrides)
         monkeypatch.setattr(llm_factory, "get_provider_config", lambda p: config)
-        monkeypatch.setattr(llm_factory, "get_provider_api_key", lambda p: "sk-test")
         return config
 
     return _install
 
 
 def _build(llm_factory_module, provider="fake", **kwargs):
+    kwargs.setdefault("api_key", "sk-test")
     return llm_factory_module._build_llm_instance(
         provider=provider, model=None, streaming=False, temperature=0.3, **kwargs
     )

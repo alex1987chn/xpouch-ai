@@ -19,7 +19,16 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, select
 
-from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread, User
+from models import (
+    AgentRun,
+    AuditLog,
+    ExecutionPlan,
+    Message,
+    RunEvent,
+    Thread,
+    User,
+    UserApiKey,
+)
 from models.enums import RunStatus
 from services.chat.recovery_service import RecoveryService
 from utils.exceptions import ValidationError
@@ -53,6 +62,7 @@ TABLES = [
     RunEvent.__table__,
     Message.__table__,
     User.__table__,
+    UserApiKey.__table__,
     AuditLog.__table__,
 ]
 

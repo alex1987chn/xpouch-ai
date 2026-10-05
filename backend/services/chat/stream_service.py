@@ -43,6 +43,7 @@ from services.chat.parts.persistence import PersistenceMixin
 from services.chat.run_context import RunContext
 from services.chat.stream_pipeline import StreamPipeline
 from services.mcp_tools_service import mcp_tools_service
+from utils.byok import with_byok_hint
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
 from utils.logger import logger, set_run_id
@@ -282,30 +283,34 @@ class StreamService(EventBuildersMixin, PersistenceMixin, EventTransformMixin):
                     await pipeline.emit(self._build_error_event(ErrorCode.RUN_CANCELLED, e.message))
                     return
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                await self._mark_agent_run_failed(run_id, str(e))
+                await self._mark_agent_run_failed(run_id, with_byok_hint(e))
                 # 🔥 写入 run_failed 事件到账本
                 emit_run_failed(
                     self.db,
                     run_id=run_id,
                     thread_id=thread_id,
                     error_code=str(e.code) if e.code else None,
-                    error_message=str(e),
+                    error_message=with_byok_hint(e),
                 )
                 await self.db.commit()
-                await pipeline.emit(self._build_error_event(ErrorCode.GRAPH_ERROR, str(e)))
+                await pipeline.emit(
+                    self._build_error_event(ErrorCode.GRAPH_ERROR, with_byok_hint(e))
+                )
                 return
             except Exception as e:
                 logger.error(f"[StreamService] 流式处理异常: {e}", exc_info=True)
-                await self._mark_agent_run_failed(run_id, str(e))
+                await self._mark_agent_run_failed(run_id, with_byok_hint(e))
                 # 🔥 写入 run_failed 事件到账本
                 emit_run_failed(
                     self.db,
                     run_id=run_id,
                     thread_id=thread_id,
-                    error_message=str(e),
+                    error_message=with_byok_hint(e),
                 )
                 await self.db.commit()
-                await pipeline.emit(self._build_error_event(ErrorCode.GRAPH_ERROR, str(e)))
+                await pipeline.emit(
+                    self._build_error_event(ErrorCode.GRAPH_ERROR, with_byok_hint(e))
+                )
                 return
 
             # HITL 检测：`interrupt()` 把「停在审批点等人」变成了**原生状态**。

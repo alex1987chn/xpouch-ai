@@ -38,6 +38,7 @@ from database import SessionFactory
 from models import AgentRun, ExecutionPlan, RunStatus, SubTask, Thread, User
 from models.enums import TERMINAL_RUN_STATUSES, TaskStatus
 from services.chat.run_lifecycle import sse_stream_headers
+from utils.byok import with_byok_hint
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError, AuthorizationError, NotFoundError, ValidationError
 from utils.logger import logger, set_run_id
@@ -450,7 +451,7 @@ class RecoveryService:
                     thread_id=thread_id,
                     execution_plan_id=execution_plan_id,
                     plan_version=failure_version,
-                    error=str(exc),
+                    error=with_byok_hint(exc),
                 )
                 await session.commit()
                 logger.error(f"[HITL REVISION] 修订失败，保持原计划待审: {exc}")
@@ -627,12 +628,12 @@ class RecoveryService:
                         yield self._build_error_event(ErrorCode.PLAN_VERSION_CONFLICT, e.message)
                     else:
                         logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
-                        await self._mark_run_failed(run_id, str(e))
-                        yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
+                        await self._mark_run_failed(run_id, with_byok_hint(e))
+                        yield self._build_error_event(ErrorCode.RESUME_ERROR, with_byok_hint(e))
                 except Exception as e:
                     logger.error(f"[HITL RESUME] 流式执行错误: {e}", exc_info=True)
-                    await self._mark_run_failed(run_id, str(e))
-                    yield self._build_error_event(ErrorCode.RESUME_ERROR, str(e))
+                    await self._mark_run_failed(run_id, with_byok_hint(e))
+                    yield self._build_error_event(ErrorCode.RESUME_ERROR, with_byok_hint(e))
                 finally:
                     self._exit_inflight_resume(run_id, resume_key)
 

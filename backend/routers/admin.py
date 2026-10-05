@@ -366,7 +366,7 @@ async def promote_user(
 async def preview_expert(
     request: ExpertPreviewRequest,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_admin),  # 🔥 修改：仅管理员可预览（会产生 LLM 调用费用）
+    admin_user: User = Depends(get_current_admin),  # 🔥 修改：仅管理员可预览（会产生 LLM 调用费用）
 ):
     """
     预览专家响应（模拟执行）
@@ -394,6 +394,12 @@ async def preview_expert(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"专家 '{request.expert_type}' 不存在"
         )
+
+    # 管理端 LLM 动作（预览/生成描述）走操作者本人的有效凭据（个人 key >
+    # 实例 key），与其聊天口径一致；实例级健康检查不是这两个接口的职责
+    from utils.byok import load_user_api_keys, set_byok_context
+
+    set_byok_context(await load_user_api_keys(session, admin_user.id))
 
     # 调用 LLM 进行预览
     started_at = utc_now()
@@ -445,7 +451,8 @@ async def preview_expert(
 @router.post("/experts/generate-description", response_model=GenerateDescriptionResponse)
 async def generate_expert_description(
     request: GenerateDescriptionRequest,
-    _: User = Depends(get_current_admin),  # 需要管理员权限
+    session: Session = Depends(get_session),
+    admin_user: User = Depends(get_current_admin),  # 需要管理员权限
 ):
     """
     根据 System Prompt 自动生成专家描述
@@ -491,6 +498,12 @@ System Prompt:
 请只输出描述文字，不要有任何前缀、解释或额外内容。"""
 
     try:
+        # 管理端 LLM 动作走操作者本人的有效凭据（个人 key > 实例 key），
+        # 与预览接口/聊天口径一致
+        from utils.byok import load_user_api_keys, set_byok_context
+
+        set_byok_context(await load_user_api_keys(session, admin_user.id))
+
         # 使用 Router LLM 生成描述（温度稍高以获得更有创意的描述）
         started_at = utc_now()
         llm = get_router_llm()

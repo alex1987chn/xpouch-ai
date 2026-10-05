@@ -106,3 +106,78 @@ def resolve_user_key(provider: str) -> str | None:
     if not keys:
         return None
     return keys.get(provider)
+
+
+# ── 凭据类 LLM 错误归因 ───────────────────────────────────────────────
+
+# 视为「凭据/账号侧」失败的 HTTP 状态：key 无效、欠费、无权限、限流。
+# 连接错误/超时/5xx 是平台侧问题，与用户 key 无关，不归因。
+_CREDENTIAL_STATUS_CODES = {401, 402, 403, 429}
+
+
+def _exception_status(exc: BaseException) -> int | None:
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int):
+        return status
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", None)
+    return status if isinstance(status, int) else None
+
+
+def _exception_urls(exc: BaseException) -> str:
+    """异常里能挖到的 URL 线索（openai SDK 的 response.url / 异常文本本身）。
+
+    httpx.Response.url 是 URL 对象而非 str，统一 str() 归一。"""
+    parts: list[str] = [str(exc)]
+    response = getattr(exc, "response", None)
+    for source in (
+        getattr(response, "url", None),
+        getattr(getattr(response, "request", None), "url", None),
+    ):
+        if source is not None:
+            parts.append(str(source))
+    return " ".join(parts)
+
+
+def byok_error_hint(exc: BaseException) -> str | None:
+    """凭据类 LLM 失败的归因提示：返回追加到错误消息后的文本，无关则 None。
+
+    判定口径：
+    - 仅对 401/402/403/429 归因（见 _CREDENTIAL_STATUS_CODES）
+    - 请求入口装载的 key 快照（ContextVar）在本次运行内不可变，工厂每次
+      调用都从它解析——「快照里有某 provider」等价于「本次该 provider 的
+      调用走的就是用户 key」，错误时重读快照即可确定性归因，无需在
+      图执行里回写状态（LangGraph 子任务各自拷贝上下文，写不回来）
+    - provider 定位优先用异常里的 base_url 线索；无线索且快照只有一个
+      key 时按它归因，多个则列出候选
+    """
+    if _exception_status(exc) not in _CREDENTIAL_STATUS_CODES:
+        return None
+    keys = _byok_keys.get()
+    if not keys:
+        return None
+
+    def _provider_base(provider: str) -> str | None:
+        from providers_config import get_provider_config
+
+        config = get_provider_config(provider)
+        return (config or {}).get("base_url")
+
+    url_text = _exception_urls(exc)
+    attributed = [p for p in keys if (base := _provider_base(p)) and base.rstrip("/") in url_text]
+    if len(attributed) == 1 or (not attributed and len(keys) == 1):
+        provider = attributed[0] if attributed else next(iter(keys))
+        return (
+            f"本次 {provider} 调用使用的是你的个人 API key"
+            f"（可能已失效、欠费或无权限），请到 设置 → API Keys 更新或删除后重试"
+        )
+    if len(keys) > 1:
+        providers = "、".join(sorted(keys))
+        return f"本次运行配置了个人 key：{providers}——若错误与 key 相关，请到 设置 → API Keys 核验"
+    return None
+
+
+def with_byok_hint(exc: BaseException) -> str:
+    """错误消息 + BYOK 归因提示（byok_error_hint 的拼接版，错误浮出点直接可用）。"""
+    hint = byok_error_hint(exc)
+    return f"{exc}；{hint}" if hint else str(exc)

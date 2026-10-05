@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel
 
-from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread, User
+from models import AgentRun, AuditLog, ExecutionPlan, Message, RunEvent, Thread, User, UserApiKey
 from services.chat.recovery_service import RecoveryService
 from utils.error_codes import ErrorCode
 from utils.exceptions import AppError
@@ -43,7 +43,8 @@ def _test_session():
 
 
 # 审计扩范围后 resume_chat 的成功路径会落审计/反馈消息/账本，
-# 夹具需带上对应表（守卫拒绝路径不触碰它们）
+# 夹具需带上对应表（守卫拒绝路径不触碰它们）；BYOK 后 resume 入口
+# 还会查用户 key 表（load_user_api_keys），同样必须建
 TABLES = [
     Thread.__table__,
     AgentRun.__table__,
@@ -51,6 +52,7 @@ TABLES = [
     RunEvent.__table__,
     Message.__table__,
     User.__table__,
+    UserApiKey.__table__,
     AuditLog.__table__,
 ]
 

@@ -9,6 +9,7 @@ P1 优化:
 - tenacity 重试机制
 """
 
+import hashlib
 import logging
 import threading
 from collections import OrderedDict
@@ -124,15 +125,33 @@ def _create_llm_instance(
     创建 LLM 实例（内部函数，LRU 缓存）
 
     注意：参数必须是可哈希的（str, bool, float 等），所以 model 和 temperature 用 Optional[str/float]
+
+    凭据纪律（2026-10-05 BYOK 事故）：key 必须先于缓存查找解析，其摘要
+    （sha256 前 16 位——不落原文，缓存键元组可能进 repr）纳入缓存键。
+    key 在构建时被焊进实例（ChatOpenAI(api_key=...)），若缓存键不含凭据身份：
+    ① 删除/更换 key 后旧条目仍被命中，请求继续带着已删除的 key 计费；
+    ② 缓存跨用户共享，A 的个人 key 会被发给没有 key 的 B。摘要入键后，
+    不同 key 天然隔离，key 生命周期变化必然落在新条目上。
     """
-    key = (provider, model, streaming, temperature, thinking, max_tokens)
+    api_key = get_provider_api_key(provider)
+    if not api_key:
+        config = get_provider_config(provider)
+        if not config:
+            raise ValueError(f"未知的提供商: {provider}")
+        env_key = config.get("env_key", f"{provider.upper()}_API_KEY")
+        raise ValueError(
+            f"未配置 {provider} 的 API Key：可在 设置 → API Keys 配置个人 key，"
+            f"或由管理员在 .env 设置 {env_key}=your-api-key"
+        )
+    key_digest = hashlib.sha256(api_key.encode()).hexdigest()[:16]
+    key = (provider, model, streaming, temperature, thinking, max_tokens, key_digest)
     with _llm_cache_lock:
         cached = _llm_instance_cache.get(key)
         if cached is not None:
             _llm_instance_cache.move_to_end(key)
             return cached
         instance = _build_llm_instance(
-            provider, model, streaming, temperature, thinking, max_tokens
+            provider, model, streaming, temperature, thinking, max_tokens, api_key
         )
         evicted = None
         if len(_llm_instance_cache) >= _LLM_CACHE_MAX:
@@ -150,21 +169,18 @@ def _build_llm_instance(
     temperature: float | None,
     thinking: str | None = None,
     max_tokens: int | None = None,
+    api_key: str = "",
 ) -> ChatOpenAI:
-    """构建 LLM 实例（无缓存；实例构建为纯对象构造，无网络 IO）"""
+    """构建 LLM 实例（无缓存；实例构建为纯对象构造，无网络 IO）。
+
+    api_key 由调用方 _create_llm_instance 解析后传入（凭据单一解析点，
+    避免锁内外两次解析产生口径漂移）。"""
     config = get_provider_config(provider)
     if not config:
         raise ValueError(f"未知的提供商: {provider}")
 
     if not config.get("enabled", True):
         raise ValueError(f"提供商 {provider} 已在配置中禁用")
-
-    api_key = get_provider_api_key(provider)
-    if not api_key:
-        env_key = config.get("env_key", f"{provider.upper()}_API_KEY")
-        raise ValueError(
-            f"未配置 {provider} 的 API Key，请在 .env 文件中设置: {env_key}=your-api-key"
-        )
 
     llm_config = {
         "model": model or config.get("default_model"),
