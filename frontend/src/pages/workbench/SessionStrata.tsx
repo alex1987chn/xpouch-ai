@@ -85,7 +85,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
     [data]
   )
 
-  // 搜索：前端过滤已加载数据（标题 + 最后消息预览，沿用 HistoryPage 语义）
+  // 搜索：前端过滤已加载数据（标题 + 最后消息预览）
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return threads
@@ -133,7 +133,7 @@ export function SessionStrata({ activeThreadId, onNewChat }: SessionStrataProps)
     }
   }
 
-  // 切换会话：清空聊天态再换线程（与 HistoryPageWrapper 同一守卫序列）
+  // 切换会话：清空聊天态再换线程（与 leaveCurrentThread 同一守卫序列）
   const handleSelect = (thread: Thread) => {
     if (thread.id === activeThreadId) return
     leaveCurrentThread()

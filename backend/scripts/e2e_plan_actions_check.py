@@ -206,6 +206,27 @@ def main() -> int:
             failures.append("修订后批准的运行产物为 0（队列保存路径又断了）")
             print("  ✗", failures[-1])
 
+        print("### A6. 跨真相源对账（事件账本 ↔ 计划 SubTask，双 id 纪律的断言锚点）")
+        # 图内 task_list（语义 id）与 SubTask 行（uuid）是刻意并存的双真相（见
+        # DECISIONS 2026-10-04 脑裂审计 #1）；2026-10-03 事故正是语义 id 流进
+        # task_list 打断了事件→SubTask→产物的 id 链。此断言钉住链路末端：
+        # 账本 task_completed 的 task_id 与计划轮询的 SubTask uuid 严格双射。
+        plan_state = _get_json(opener, f"/runs/{run_id}/plan")
+        plan_ids = {t["id"] for t in plan_state.get("tasks") or []}
+        tl = _get_json(opener, f"/runs/{run_id}/timeline?limit=1000")
+        completed_ids = {
+            ev.get("task_id")
+            for ev in tl.get("events") or []
+            if ev.get("event_type") == "task_completed" and ev.get("task_id")
+        }
+        print(f"  ✓ 对账：task_completed {len(completed_ids)} 条 ↔ 计划任务 {len(plan_ids)} 个")
+        if not plan_ids or completed_ids != plan_ids:
+            failures.append(
+                "跨真相源对账失败：事件账本与计划 SubTask 不一致 "
+                f"(ledger={sorted(completed_ids)} plan={sorted(plan_ids)})"
+            )
+            print("  ✗", failures[-1])
+
     # ===== 场景 B：终止 =====
     print("### B1. 发第二个任务到审批中断")
     thread_b, run_b, v_b, _ = _start_plan(opener, COMPLEX_QUERY_B)
