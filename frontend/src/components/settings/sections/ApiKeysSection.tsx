@@ -3,11 +3,12 @@
  *
  * 明文只在保存请求出现一次（落库即加密）；界面永远只显示掩码。
  * 优先级语义：保存后该 provider 的请求走用户 key，删除即回落实例 key。
+ * 布局严格沿用 SecuritySection 的分区规范（根容器/输入/按钮/行样式同款）。
  */
 
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { KeyRound, Plus, Trash2, FlaskConical, RefreshCw } from 'lucide-react'
+import { KeyRound, Trash2, FlaskConical } from 'lucide-react'
 import { format } from 'date-fns'
 import { useTranslation } from '@/i18n'
 import { pushToast } from '@/components/ui/use-toast'
@@ -21,7 +22,9 @@ import {
   type ApiKeyMeta,
 } from '@/services/byok'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
+
+const inputCls =
+  'w-full rounded-md border-theme-input border-border-default bg-surface-page px-3 py-2.5 text-sm transition-colors focus:border-border-focus focus:outline-none'
 
 export function ApiKeysSection() {
   const { t } = useTranslation()
@@ -52,7 +55,7 @@ export function ApiKeysSection() {
 
   const handleSave = async () => {
     if (!provider || apiKey.trim().length < 8) {
-      pushToast({ title: t('byokInvalidInput'), variant: 'destructive' })
+      pushToast({ title: t('byokInvalidInput') })
       return
     }
     setSaving(true)
@@ -95,27 +98,28 @@ export function ApiKeysSection() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+      {/* 分区标题（同款规范：icon + 小号粗体） */}
       <div className="flex items-center gap-2">
-        <KeyRound className="h-4 w-4 text-content-muted" />
-        <span className="text-sm font-bold text-content-primary">{t('byokTitle')}</span>
+        <KeyRound className="w-4 h-4 text-content-secondary" />
+        <span className="text-xs font-bold text-content-secondary">{t('byokTitle')}</span>
       </div>
-      <p className="text-xs leading-5 text-content-secondary">{t('byokDesc')}</p>
+      <p className="text-caption text-content-muted leading-relaxed">{t('byokDesc')}</p>
 
       {!enabled && (
-        <div className="rounded-md border border-accent-warning/40 bg-accent-warning/10 px-3 py-2 text-xs text-accent-warning">
+        <p className="rounded-md border border-accent-warning/40 bg-accent-warning/10 px-3 py-2 text-caption text-accent-warning">
           {t('byokDisabledHint')}
-        </div>
+        </p>
       )}
 
       {enabled && (
         <>
-          {/* 录入行 */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* 录入表单：纵向分组（同 SecuritySection 表单规范），不挤排一行 */}
+          <div className="space-y-3 pt-1">
             <select
               value={provider}
               onChange={e => setProvider(e.target.value)}
-              className="h-8 min-w-0 flex-1 rounded-md border border-border-default bg-surface-page px-2 text-xs text-content-primary"
+              className={inputCls}
               aria-label={t('byokProvider')}
             >
               <option value="">{t('byokProviderPlaceholder')}</option>
@@ -131,55 +135,54 @@ export function ApiKeysSection() {
               onChange={e => setApiKey(e.target.value)}
               placeholder={t('byokKeyPlaceholder')}
               autoComplete="off"
-              className="h-8 min-w-0 flex-[2] rounded-md border border-border-default bg-surface-page px-2 text-xs text-content-primary"
+              className={inputCls}
             />
             <button
               onClick={handleSave}
               disabled={saving || !provider}
-              className="flex h-8 items-center gap-1 rounded-md bg-accent-brand px-3 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-full border border-border-divider bg-accent-brand px-5 py-2 text-xs font-bold text-accent-ink transition-all hover:-translate-y-px hover:shadow-theme-card disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
             >
-              <Plus className="h-3.5 w-3.5" />
               {t('byokSave')}
             </button>
           </div>
 
-          {/* 已存列表（掩码） */}
+          {/* 已存列表：InfoRow 同款（label + 值 + 行内动作） */}
           {keysQuery.isLoading ? (
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-12 w-full" />
           ) : items.length === 0 ? (
-            <p className="text-xs text-content-muted">{t('byokEmpty')}</p>
+            <p className="text-caption text-content-muted">{t('byokEmpty')}</p>
           ) : (
-            <div className="overflow-hidden rounded-lg border border-border-divider">
+            <div className="pt-1">
               {items.map(item => (
                 <div
                   key={item.provider}
-                  className="flex items-center gap-2 border-b border-border-divider px-3 py-2 last:border-b-0"
+                  className="flex items-center gap-3 border-b border-border-divider py-2.5 last:border-b-0"
                 >
-                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-content-primary">
+                  <span className="min-w-0 flex-1 truncate text-body-sm font-medium text-content-primary">
                     {item.provider}
                   </span>
-                  <span className="font-mono text-nano text-content-secondary">
+                  <span className="shrink-0 font-mono text-xs text-content-secondary">
                     {item.key_hint}
                   </span>
-                  <span className="hidden text-nano text-content-muted sm:inline">
-                    {item.updated_at
-                      ? format(toLocalDate(item.updated_at), 'MM-dd HH:mm')
-                      : ''}
+                  <span className="hidden w-20 shrink-0 text-right text-caption text-content-muted sm:inline">
+                    {item.updated_at ? format(toLocalDate(item.updated_at), 'MM-dd HH:mm') : ''}
                   </span>
                   <button
                     onClick={() => handleTest(item.provider)}
                     disabled={testingProvider === item.provider}
                     title={t('byokTest')}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-50"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-content-muted transition-colors hover:bg-surface-tint hover:text-content-primary disabled:opacity-40"
                   >
                     <FlaskConical
-                      className={cn('h-3.5 w-3.5', testingProvider === item.provider && 'animate-pulse')}
+                      className={
+                        testingProvider === item.provider ? 'h-3.5 w-3.5 animate-pulse' : 'h-3.5 w-3.5'
+                      }
                     />
                   </button>
                   <button
                     onClick={() => handleDelete(item.provider)}
                     title={t('delete')}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-status-offline transition-colors hover:bg-status-offline/10"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-status-offline transition-colors hover:bg-status-offline/10"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -187,10 +190,7 @@ export function ApiKeysSection() {
               ))}
             </div>
           )}
-          <p className="flex items-center gap-1 text-nano text-content-muted">
-            <RefreshCw className="h-3 w-3" />
-            {t('byokFallbackHint')}
-          </p>
+          <p className="text-caption text-content-muted">{t('byokFallbackHint')}</p>
         </>
       )}
     </div>
