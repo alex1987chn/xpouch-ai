@@ -54,6 +54,7 @@ from agents.event_stream import emit_event
 from agents.nodes.message_normalization import (
     _detect_artifact_type,
     _format_input_data,
+    build_task_human_message,
     normalize_messages_for_llm,
 )
 from agents.plan_waves import task_key
@@ -535,9 +536,14 @@ async def expert_worker_node(
 
             task_prompt += f"输入参数:\n{_format_input_data(input_data)}"
 
+            # 附件图片（路线 A）：随任务消息进工具循环历史，vision 门控附加
             messages_for_llm = [
                 SystemMessage(content=enhanced_system_prompt),
-                HumanMessage(content=task_prompt),
+                build_task_human_message(
+                    task_prompt,
+                    branch_context.get("attachments"),
+                    effective_model,
+                ),
             ]
 
         # 熔断收尾：在消息末尾追加显式指令，让模型停止发起工具调用、直接作答。

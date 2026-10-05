@@ -74,6 +74,14 @@ class AgentState(TypedDict):
     # v3.4 新增：用户模型偏好（simple 模式使用，来自 user_settings 表）
     simple_model: str | None  # 用户选择的模型 ID，None = 跟随系统默认
     simple_thinking: str | None  # 思考模式偏好：auto/enabled/disabled
+    # 本轮用户附件图片（data URL）。复杂模式下随波次分派进 branch_context、
+    # worker 构造任务消息时按模型 vision 能力门控附加（2026-10-05 路线 A，
+    # 此前图片只挂在初始消息上、专家 worker 完全不可见）。简单模式不消费
+    # （direct_reply 走 messages 上的多模态部件，见 routers.chat._attach_images）。
+    # 注：messages 里同样存着图片部件（_attach_images 所致），checkpoint 会双份
+    # ——接受该重复（checkpoint 是瞬态的，run 终态即清），换取显式字段可
+    # grep、分派侧无需从消息里反向解析
+    attachments: list[str]
     # v3.0 的 event_queue 已随事件协议 v2（emit_event/custom stream）移除
     #
     # 已删除（C2，2026-09-13）：

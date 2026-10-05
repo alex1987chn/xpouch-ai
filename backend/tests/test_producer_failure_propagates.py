@@ -56,12 +56,16 @@ async def _run(monkeypatch, svc: StreamService) -> None:
     monkeypatch.setattr("utils.db.get_shared_checkpointer", lambda: object())
 
     async def _drain() -> None:
+        from services.chat.run_context import RunContext
+
         async for _ in svc.execute_langgraph_stream(
-            thread_id="t-1",
-            stream_queue=asyncio.Queue(),
-            sse_queue=asyncio.Queue(),
-            realtime_queue=asyncio.Queue(),
-            run_id=None,  # 避免触发 run 级副作用
+            RunContext(
+                thread_id="t-1",
+                run_id=None,  # 避免触发 run 级副作用
+                stream_queue=asyncio.Queue(),
+                sse_queue=asyncio.Queue(),
+                realtime_queue=asyncio.Queue(),
+            )
         ):
             pass
 
@@ -107,12 +111,16 @@ class TestProducerFailurePropagates:
         from utils.exceptions import AppError
 
         async def _drain() -> None:
+            from services.chat.run_context import RunContext
+
             async for _ in svc.execute_langgraph_stream(
-                thread_id="t-1",
-                stream_queue=asyncio.Queue(),
-                sse_queue=asyncio.Queue(),
-                realtime_queue=asyncio.Queue(),
-                run_id=None,
+                RunContext(
+                    thread_id="t-1",
+                    run_id=None,
+                    stream_queue=asyncio.Queue(),
+                    sse_queue=asyncio.Queue(),
+                    realtime_queue=asyncio.Queue(),
+                )
             ):
                 pass
 

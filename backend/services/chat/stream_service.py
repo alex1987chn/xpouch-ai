@@ -40,6 +40,7 @@ from services.chat.frame_recorder import get_frame_recorder
 from services.chat.parts.event_builders import EventBuildersMixin
 from services.chat.parts.event_transform import EventTransformMixin
 from services.chat.parts.persistence import PersistenceMixin
+from services.chat.run_context import RunContext
 from services.chat.stream_pipeline import StreamPipeline
 from services.mcp_tools_service import mcp_tools_service
 from utils.error_codes import ErrorCode
@@ -560,29 +561,32 @@ class StreamService(EventBuildersMixin, PersistenceMixin, EventTransformMixin):
 
     async def execute_langgraph_stream(
         self,
-        thread_id: str,
-        stream_queue: asyncio.Queue,
-        sse_queue: asyncio.Queue,
-        realtime_queue: asyncio.Queue,
+        ctx: RunContext,
         updated_plan: list[dict] | None = None,
-        run_id: str | None = None,
     ) -> AsyncGenerator[str]:
         """
         执行 LangGraph 流式处理（供 RecoveryService 复用）
 
-        这是核心的流式执行逻辑，RecoveryService 在清理状态后调用此方法
+        这是核心的流式执行逻辑，RecoveryService 在清理状态后调用此方法。
+        执行上下文（thread_id / run_id / 三条队列）经 RunContext 值对象传入：
+        纯值簇位置传参的错位不被类型检查捕获（2026-10-05 收敛，详见
+        services/chat/run_context.py）。
 
         Args:
-            thread_id: 线程ID
-            stream_queue: 流式队列
-            sse_queue: SSE 事件队列
-            realtime_queue: 实时推送队列
+            ctx: 执行上下文簇（thread_id、run_id、stream/sse/realtime 队列）
             updated_plan: 用户修改后的计划（可选）
-            run_id: 关联的 AgentRun ID（可选）
 
         Yields:
             SSE 事件字符串
         """
+        # 局部名解包：方法体与闭包保持原样（零行为变更），调用边界的
+        # 错位免疫由 ctx 签名承担
+        thread_id = ctx.thread_id
+        run_id = ctx.run_id
+        stream_queue = ctx.stream_queue
+        sse_queue = ctx.sse_queue
+        realtime_queue = ctx.realtime_queue
+
         # 在方法内部导入，防止循环引用
         from agents.graph_builder import create_smart_router_workflow
         from utils.db import get_shared_checkpointer

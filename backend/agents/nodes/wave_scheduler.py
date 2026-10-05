@@ -114,6 +114,9 @@ def build_branch_payload(state: dict[str, Any], task: dict[str, Any]) -> dict[st
             # 计划任务总数：专家消息「步骤 i/N」的分母（分支读不到主图 task_list，
             # 必须随 payload 带入）
             "total_steps": len(state.get("task_list") or []),
+            # 本轮用户附件图片（data URL）：worker 构造任务消息时按模型 vision
+            # 能力门控附加；无图为空列表（路线 A，2026-10-05）
+            "attachments": list(state.get("attachments") or []),
         },
     }
 

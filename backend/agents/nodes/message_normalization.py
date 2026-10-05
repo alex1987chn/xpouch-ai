@@ -10,9 +10,10 @@ import json
 import re
 from typing import Any
 
-from langchain_core.messages import BaseMessage, ToolMessage
+from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage
 
 from tools.memory import MEMORY_TOOL_NAMES
+from utils.logger import logger
 
 
 def _branch_used_memory_tools(branch_messages: list) -> bool:
@@ -136,3 +137,42 @@ def _detect_artifact_type(content: str, expert_type: str) -> str:
 
     # 3. 默认返回 text
     return "text"
+
+
+def build_task_human_message(
+    task_prompt: str,
+    attachments: list[str] | None,
+    model_id: str,
+) -> HumanMessage:
+    """构造 worker 的任务 HumanMessage，附件图片按模型 vision 能力门控附加。
+
+    路线 A（2026-10-05）：图片留在消息里随工具循环历史贯穿（模型可随时
+    「回头看图」）；每轮重发是无可状态 API 的固有成本，供应商侧 prompt
+    caching 可省（Anthropic/Gemini），不做中途剥离——那会砍掉回看能力。
+
+    非 vision 模型：剥离图片并在正文追加显式标注——模型知道图存在但未
+    参与，答案能如实向用户说明限制，而不是静默丢图。
+    """
+    if not attachments:
+        return HumanMessage(content=task_prompt)
+
+    from providers_config import get_model_config
+
+    config = get_model_config(model_id) or {}
+    if config.get("vision"):
+        parts: list[dict[str, Any]] = [{"type": "text", "text": task_prompt}]
+        parts += [{"type": "image_url", "image_url": {"url": url}} for url in attachments]
+        return HumanMessage(content=parts)
+
+    logger.warning(
+        "[GenericWorker] ⚠️ 模型 %s 不支持视觉输入，%d 张附件图片未参与本任务（正文已标注）",
+        model_id,
+        len(attachments),
+    )
+    return HumanMessage(
+        content=(
+            task_prompt
+            + f"\n\n[系统提示：用户提供了 {len(attachments)} 张图片，但当前专家模型不支持"
+            "视觉输入，图片未参与本任务。若任务必须依赖图片内容，请在答复中如实说明该限制。]"
+        )
+    )

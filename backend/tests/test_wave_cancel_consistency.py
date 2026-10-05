@@ -329,12 +329,16 @@ async def test_cancel_mid_wave_is_cooperative_and_consistent(monkeypatch, engine
         patch("agents.nodes.generic.tool_policy_service.get_overrides", return_value={}),
         patch("agents.nodes.generic.filter_tools_for_binding", return_value=([], [])),
     ):
+        from services.chat.run_context import RunContext
+
         agen = svc.execute_langgraph_stream(
-            thread_id="t1",
-            stream_queue=asyncio.Queue(),
-            sse_queue=asyncio.Queue(),
-            realtime_queue=asyncio.Queue(),
-            run_id="r1",
+            RunContext(
+                thread_id="t1",
+                run_id="r1",
+                stream_queue=asyncio.Queue(),
+                sse_queue=asyncio.Queue(),
+                realtime_queue=asyncio.Queue(),
+            )
         )
 
         events: list[str] = []

@@ -567,14 +567,20 @@ class RecoveryService:
                 """事件生成器 - 复用 StreamService 的核心流式逻辑"""
                 set_run_id(run_id)
                 try:
-                    # 调用 StreamService 执行 LangGraph 流式处理
-                    async for event in self.stream_service.execute_langgraph_stream(
+                    # 调用 StreamService 执行 LangGraph 流式处理（上下文经
+                    # RunContext 值对象传入，参数簇错位免疫）
+                    from services.chat.run_context import RunContext
+
+                    ctx = RunContext(
                         thread_id=thread_id,
+                        run_id=run_id,
                         stream_queue=stream_queue,
                         sse_queue=sse_queue,
                         realtime_queue=realtime_queue,
+                    )
+                    async for event in self.stream_service.execute_langgraph_stream(
+                        ctx,
                         updated_plan=updated_plan,
-                        run_id=run_id,
                     ):
                         yield event
 

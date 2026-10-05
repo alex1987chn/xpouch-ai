@@ -413,6 +413,9 @@ async def chat_endpoint(
         "recent_artifacts": recent_artifacts,
         "simple_model": user_preferences.get("simple_model"),
         "simple_thinking": user_preferences.get("simple_thinking", "auto"),
+        # 复杂模式的图片通道：随波次分派进分支、worker 按 vision 门控附加
+        # （路线 A，2026-10-05）。简单模式不消费（走 messages 多模态部件）
+        "attachments": request.images or [],
     }
 
     if request.stream:
